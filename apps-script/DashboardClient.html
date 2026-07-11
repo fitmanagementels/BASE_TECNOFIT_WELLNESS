@@ -72,9 +72,14 @@
   }
 
   function responseData(response) {
-    return response && response.ok === true && response.dados && typeof response.dados === 'object'
-      ? response.dados
-      : {};
+    if (!response || response.ok !== true || response.pagina !== state.page) return null;
+    const data = response.dados;
+    const isObject = function (value) {
+      return value !== null && typeof value === 'object' && !Array.isArray(value);
+    };
+    if (!isObject(data) || !isObject(data.kpis) || !isObject(data.graficos) ||
+        !Array.isArray(data.lista) || !isObject(data.filtros)) return null;
+    return data;
   }
 
   function valueText(value, type) {
@@ -339,6 +344,10 @@
 
   function renderDashboard(response) {
     const data = responseData(response);
+    if (!data) {
+      renderError();
+      return;
+    }
     const rows = Array.isArray(data.lista) ? data.lista : [];
     if (!rows.length) {
       renderEmpty();

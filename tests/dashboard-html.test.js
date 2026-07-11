@@ -29,6 +29,8 @@ test('estilos definem breakpoints desktop e mobile da marca', () => {
   assert.match(css, /\.filter-control\s*\{[^}]*min-height:\s*(?:4[4-9]|[5-9]\d)px/s);
   assert.match(css, /\.content\s*\{[^}]*padding-bottom:\s*calc\([^)]*env\(safe-area-inset-bottom\)[^)]*\)/s);
   assert.match(css, /\.table-scroll\s*\{[^}]*max-height:[^;}]+;[^}]*overflow-y:\s*auto/s);
+  assert.match(css, /\.table-scroll\s*\{[^}]*display:\s*block/s);
+  assert.match(css, /@media\s*\(max-width:\s*720px\)\s*\{[\s\S]*?\.table-scroll\s*\{\s*display:\s*none;?\s*\}[\s\S]*?@media\s*\(prefers-reduced-motion:/);
 });
 
 test('navegação compacta mantém tooltip textual em hover e foco', () => {
@@ -100,4 +102,248 @@ test('helpers interpretam o envelope da API e classificam estados sem colisão d
   assert.equal(context.statusClass('atualizada'), 'status status-success');
   assert.equal(context.statusClass('desatualizada'), 'status status-warning');
   assert.equal(context.statusClass('inativo'), 'status status-warning');
+});
+
+class FakeNode {
+  constructor(tagName) {
+    this.tagName = String(tagName || '').toUpperCase();
+    this.children = [];
+    this.attributes = {};
+    this.dataset = {};
+    this.listeners = {};
+    this.hidden = false;
+    this.className = '';
+    this.textContent = '';
+    this.value = '';
+    this.classList = {
+      toggle: (name, active) => {
+        const classes = new Set(this.className.split(/\s+/).filter(Boolean));
+        if (active) classes.add(name); else classes.delete(name);
+        this.className = Array.from(classes).join(' ');
+      },
+      contains: name => this.className.split(/\s+/).includes(name)
+    };
+  }
+
+  appendChild(child) {
+    this.children.push(child);
+    child.parentNode = this;
+    return child;
+  }
+
+  replaceChildren(...children) {
+    this.children = [];
+    children.forEach(child => this.appendChild(child));
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = String(value);
+  }
+
+  getAttribute(name) {
+    return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null;
+  }
+
+  removeAttribute(name) {
+    delete this.attributes[name];
+  }
+
+  addEventListener(type, listener) {
+    (this.listeners[type] ||= []).push(listener);
+  }
+
+  dispatch(type) {
+    (this.listeners[type] || []).forEach(listener => listener({ target: this }));
+  }
+}
+
+function descendants(node) {
+  return node.children.flatMap(child => [child, ...descendants(child)]);
+}
+
+function nodeByText(node, text) {
+  return [node, ...descendants(node)].find(child => child.textContent === text);
+}
+
+function validResponse(page = 'vencimentos', overrides = {}) {
+  const dados = {
+    kpis: { vencidos: 1, ate7: 2, ate30: 3, valorAte30: 100 },
+    graficos: { situacao: { vencido: 1 }, semanas: [{ label: 'Semana 1', valor: 1 }] },
+    lista: [{ aluno: 'ALUNO TESTE', contato: '85987654321', polo: 'POLO A', vencimento: '11/07/2026', situacao: 'ate7', valor: 100 }],
+    filtros: { polos: ['POLO A', 'POLO B'], statusAlunos: ['Ativo', 'Inativo'] },
+    ...overrides
+  };
+  return { ok: true, pagina: page, atualizadoEm: '', avisoImportacao: '', dados };
+}
+
+function setupClient(options = {}) {
+  const ids = ['filters', 'kpiGrid', 'chartGrid', 'listPanel', 'appState', 'mainContent', 'pageTitle'];
+  const nodes = Object.fromEntries(ids.map(id => [id, new FakeNode(id === 'pageTitle' ? 'h1' : 'section')]));
+  const pages = ['vencimentos', 'fichas', 'avaliacoes', 'planos'];
+  const buttons = pages.flatMap(page => [0, 1].map(() => {
+    const button = new FakeNode('button');
+    button.dataset.page = page;
+    return button;
+  }));
+  const documentListeners = {};
+  const document = {
+    createElement: tag => new FakeNode(tag),
+    getElementById: id => nodes[id],
+    querySelectorAll: selector => selector === '[data-page]' ? buttons : [],
+    addEventListener(type, listener) {
+      (documentListeners[type] ||= []).push(listener);
+    }
+  };
+  const requests = [];
+  let successHandler;
+  let failureHandler;
+  const runner = {
+    withSuccessHandler(handler) { successHandler = handler; return runner; },
+    withFailureHandler(handler) { failureHandler = handler; return runner; },
+    obterDadosPaginaDashboard(page, filters) {
+      requests.push({ page, filters, success: successHandler, failure: failureHandler });
+      successHandler = undefined;
+      failureHandler = undefined;
+    }
+  };
+  const charts = [];
+  function FakeChart(canvas, config) {
+    if (options.chartThrows) throw new Error('CDN inválida');
+    this.canvas = canvas;
+    this.config = config;
+    this.destroyed = false;
+    this.destroy = () => { this.destroyed = true; };
+    charts.push(this);
+  }
+  const source = fs.readFileSync('apps-script/DashboardClient.html', 'utf8')
+    .replace(/^\s*<script>\s*/, '')
+    .replace(/\s*<\/script>\s*$/, '') + '\nthis.__state = state;';
+  const context = {
+    document,
+    window: { matchMedia: () => ({ matches: false }) },
+    Intl,
+    console,
+    google: { script: { run: runner } }
+  };
+  if (!options.chartMissing) context.Chart = FakeChart;
+  vm.runInNewContext(source, context);
+  return { context, nodes, buttons, documentListeners, requests, charts };
+}
+
+function startClient(client) {
+  assert.equal(client.documentListeners.DOMContentLoaded.length, 1);
+  client.documentListeners.DOMContentLoaded[0]();
+}
+
+test('DOMContentLoaded registra navegação e inicia a primeira chamada Apps Script', () => {
+  const client = setupClient();
+  startClient(client);
+  assert.equal(client.requests.length, 1);
+  assert.equal(client.requests[0].page, 'vencimentos');
+  assert.deepEqual({ ...client.requests[0].filters }, {});
+  assert.ok(client.buttons.every(button => button.listeners.click.length === 1));
+});
+
+test('navegação sincroniza as duas navs e preserva filtros independentes por página', () => {
+  const client = setupClient();
+  startClient(client);
+  client.requests[0].success(validResponse());
+  const polo = client.nodes.filters.children[0].children[1];
+  polo.value = 'POLO A';
+  polo.dispatch('change');
+  client.buttons.find(button => button.dataset.page === 'fichas').dispatch('click');
+  client.requests.at(-1).success(validResponse('fichas'));
+  const statusAluno = client.nodes.filters.children[1].children[1];
+  statusAluno.value = 'Ativo';
+  statusAluno.dispatch('change');
+  client.buttons.find(button => button.dataset.page === 'vencimentos').dispatch('click');
+
+  const vencimentos = client.buttons.filter(button => button.dataset.page === 'vencimentos');
+  const demais = client.buttons.filter(button => button.dataset.page !== 'vencimentos');
+  assert.ok(vencimentos.every(button => button.classList.contains('active') && button.getAttribute('aria-current') === 'page'));
+  assert.ok(demais.every(button => !button.classList.contains('active') && button.getAttribute('aria-current') === null));
+  assert.deepEqual({ ...client.context.__state.filters }, { polo: 'POLO A' });
+  assert.deepEqual({ ...client.context.__state.filtersByPage.fichas }, { statusAluno: 'Ativo' });
+  assert.equal(client.nodes.pageTitle.textContent, 'Vencimentos dos alunos');
+});
+
+test('resposta stale não renderiza e mudança de filtro envia uma cópia', () => {
+  const client = setupClient();
+  startClient(client);
+  const first = client.requests[0];
+  client.context.navigate('fichas');
+  first.success(validResponse());
+  assert.equal(client.nodes.kpiGrid.children.length, 0);
+
+  client.context.navigate('vencimentos');
+  const current = client.requests.at(-1);
+  current.success(validResponse());
+  const polo = client.nodes.filters.children[0].children[1];
+  polo.value = 'POLO B';
+  polo.dispatch('change');
+  const filtered = client.requests.at(-1);
+  assert.deepEqual({ ...filtered.filters }, { polo: 'POLO B' });
+  assert.notEqual(filtered.filters, client.context.__state.filters);
+  client.context.__state.filters.polo = 'ALTERADO';
+  assert.equal(filtered.filters.polo, 'POLO B');
+});
+
+test('failure oferece retry e limpar filtros zera apenas a página atual', () => {
+  const client = setupClient();
+  startClient(client);
+  client.requests[0].failure(new Error('segredo'));
+  const retry = nodeByText(client.nodes.appState, 'Tentar novamente');
+  assert.ok(retry);
+  retry.dispatch('click');
+  assert.equal(client.requests.length, 2);
+
+  client.context.__state.filters = { polo: 'POLO A' };
+  client.context.__state.filtersByPage.vencimentos = { polo: 'POLO A' };
+  client.context.__state.filtersByPage.fichas = { statusAluno: 'Ativo' };
+  client.requests.at(-1).success(validResponse('vencimentos', { lista: [] }));
+  const clear = nodeByText(client.nodes.appState, 'Limpar filtros');
+  assert.ok(clear);
+  clear.dispatch('click');
+  assert.deepEqual({ ...client.context.__state.filtersByPage.vencimentos }, {});
+  assert.deepEqual({ ...client.context.__state.filtersByPage.fichas }, { statusAluno: 'Ativo' });
+  assert.deepEqual({ ...client.requests.at(-1).filters }, {});
+});
+
+test('Chart é destruído e falhas do CDN não impedem KPIs, lista e tabela acessível', () => {
+  const client = setupClient();
+  startClient(client);
+  client.requests[0].success(validResponse());
+  assert.equal(client.charts.length, 2);
+  const scroll = client.nodes.listPanel.children.find(child => child.className === 'table-scroll');
+  assert.equal(scroll.getAttribute('tabindex'), '0');
+  assert.match(scroll.getAttribute('aria-label'), /Detalhamento dos dados/);
+  client.context.loadPage();
+  assert.ok(client.charts.every(chart => chart.destroyed));
+
+  for (const options of [{ chartMissing: true }, { chartThrows: true }]) {
+    const fallback = setupClient(options);
+    startClient(fallback);
+    fallback.requests[0].success(validResponse());
+    assert.equal(fallback.nodes.kpiGrid.children.length, 4);
+    assert.ok(fallback.nodes.listPanel.children.some(child => child.className === 'table-scroll'));
+  }
+});
+
+test('envelopes inválidos exibem erro com retry em vez de estado vazio', () => {
+  const variants = [
+    { ...validResponse(), ok: false },
+    { ...validResponse(), pagina: 'planos' },
+    validResponse('vencimentos', { kpis: undefined }),
+    validResponse('vencimentos', { graficos: undefined }),
+    validResponse('vencimentos', { lista: undefined }),
+    validResponse('vencimentos', { filtros: undefined })
+  ];
+  variants.forEach(response => {
+    const client = setupClient();
+    startClient(client);
+    client.requests[0].success(response);
+    assert.ok(nodeByText(client.nodes.appState, 'Não foi possível carregar esta página.'));
+    assert.ok(nodeByText(client.nodes.appState, 'Tentar novamente'));
+    assert.equal(nodeByText(client.nodes.appState, 'Nenhum resultado para os filtros selecionados.'), undefined);
+  });
 });
