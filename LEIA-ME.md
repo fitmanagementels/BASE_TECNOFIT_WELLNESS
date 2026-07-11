@@ -429,21 +429,21 @@ As páginas são:
 #### `Vencimentos`
 
 - vencidos, próximos 7 dias, próximos 30 dias e valor a renovar;
-- vencimentos por semana e distribuição por situação;
-- filtros por polo e período;
-- lista de alunos ordenada por urgência, com contato, plano, polo, vencimento e valor.
+- vencimentos por semana, distribuição por situação e análise por polo;
+- busca por nome ou ID e filtros por polo, status do aluno, período de 30/60/90 dias, situação, frequência, modalidade e status do contrato;
+- lista paginada e ordenada por urgência, com contato, frequência, polo, vencimento, situação e valor.
 
 #### `Fichas prescritas`
 
 - alunos com ficha, sem ficha, com ficha desatualizada e cobertura percentual;
-- situação das fichas e tempo desde a última prescrição;
+- situação das fichas, faixas de idade e cobertura por polo;
 - lista prioritária de alunos sem ficha ou com ficha antiga;
 - limite inicial configurável de 30 dias para considerar uma ficha desatualizada.
 
 #### `Avaliações`
 
 - alunos avaliados, sem avaliação, com avaliação desatualizada e cobertura percentual;
-- avaliações por período e tempo desde a última avaliação;
+- situação das avaliações, faixas de idade e cobertura por polo;
 - lista prioritária de alunos sem avaliação ou com avaliação antiga;
 - limite inicial configurável de 90 dias para considerar uma avaliação desatualizada.
 
@@ -451,7 +451,8 @@ As páginas são:
 
 - alunos distintos, contratos, valor total e ticket médio;
 - contratos por polo, frequência semanal, modalidade e status;
-- tabela detalhada de contratos e alunos.
+- valor contratado por polo;
+- tabela paginada com status do aluno, frequência, modalidade, polo, início corrente, vencimento, status do contrato e valor.
 
 ### 16.4 Fontes e regras
 
@@ -462,6 +463,10 @@ As páginas são:
 
 Indicadores de alunos usam contagem distinta de `id`. Indicadores financeiros e de contratos usam `_chave_contrato` distinta para evitar duplicidades.
 
-Os limites de 30 dias para fichas e 90 dias para avaliações são configurações centralizadas. O dashboard exibe estados próprios de carregamento, ausência de resultados e erro. Quando uma importação falha, o dashboard continua apresentando a última base válida e sinaliza a falha.
+Os limites de 30 dias para fichas e 90 dias para avaliações são configurações centralizadas. O dashboard exibe esqueletos durante o carregamento e estados próprios de ausência de resultados e erro. O cabeçalho informa a data da última base válida e, quando uma tentativa posterior falha, apresenta um alerta sem expor a mensagem bruta da importação. As listas usam paginação no servidor (25 itens por padrão e máximo de 100), sem reduzir a população usada pelos indicadores e gráficos.
+
+Cada gráfico possui um resumo textual acessível associado ao canvas. O Chart.js 4.4.7 é carregado pelo CDN configurado com SRI e `crossorigin="anonymous"`; se o CDN falhar, os indicadores, resumos e listas continuam disponíveis.
+
+No celular, somente os cartões com contato parcialmente oculto são criados no DOM; no desktop, somente a tabela correspondente é criada. Essa ocultação reduz a exposição visual em telas pequenas, mas não concede nem substitui autorização: a barreira de acesso é a publicação do Web App restrita aos usuários autorizados do Google Workspace.
 
 A especificação completa está em `docs/superpowers/specs/2026-07-11-dashboard-xsteam-design.md`.

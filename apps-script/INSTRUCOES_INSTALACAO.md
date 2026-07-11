@@ -188,6 +188,8 @@ Antes de publicar, conclua a instalação dos arquivos `00_Config.gs` a `08_Main
 
 Quando o código do dashboard mudar, crie uma nova versão em **Implantar > Gerenciar implantações**, atualize a implantação existente e repita a verificação abaixo.
 
+O cliente usa Chart.js 4.4.7 com verificação SRI. Não remova os atributos `integrity` e `crossorigin="anonymous"` do arquivo `Dashboard.html` ao copiar ou revisar o código.
+
 ## 12. Checklist de aceitação do dashboard
 
 - [ ] A página abre sem solicitar acesso público à planilha.
@@ -199,6 +201,10 @@ Quando o código do dashboard mudar, crie uma nova versão em **Implantar > Gere
 - [ ] Fichas sem data aparecem como ausentes; fichas com mais de 30 dias, como desatualizadas.
 - [ ] Avaliações sem data aparecem como ausentes; avaliações com mais de 90 dias, como desatualizadas.
 - [ ] Busca e filtros atualizam cartões, gráficos e lista.
+- [ ] Trocar qualquer filtro volta a lista para a página 1; Anterior e Próxima respeitam os limites.
+- [ ] Indicadores e gráficos permanecem globais ao avançar a página da lista.
+- [ ] A última atualização e eventual falha posterior aparecem no cabeçalho sem mensagem bruta da importação.
+- [ ] Cada gráfico oferece um resumo textual navegável por tecnologia assistiva.
 - [ ] Telefones ficam parcialmente ocultos nos cartões do celular.
 - [ ] Nenhuma mensagem de erro exibe nomes ou contatos.
 
@@ -211,6 +217,8 @@ Com a URL `/exec` implantada e um usuário autorizado, verifique o dashboard nes
 - `390 × 844`: transição do menu lateral para a navegação inferior, cartões móveis, indicadores com rolagem horizontal e gráficos empilhados.
 
 Nas três dimensões, teste também a navegação por teclado, a preferência de movimento reduzido, a busca, os filtros e a ausência de dados pessoais nas mensagens de erro. Registre a data, o navegador, o usuário de teste autorizado e o resultado de cada item do checklist. A verificação visual real não pode ser concluída apenas com os arquivos locais: ela requer a implantação autorizada e a leitura controlada da planilha mestre.
+
+No viewport móvel, confirme no inspetor que a tabela desktop e os contatos completos não existem no DOM. Ao ampliar a janela acima de `720px`, confirme que os cartões móveis são removidos e a tabela é criada sem uma nova chamada à API. O mascaramento móvel é apenas minimização de exposição visual; a autorização continua sendo controlada exclusivamente pelo acesso restrito ao Web App.
 
 ## 14. Validação com exports autorizados
 
