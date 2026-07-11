@@ -23,6 +23,45 @@ function tipoErroDashboardSeguro_(erro) {
   return permitidos.indexOf(nome) === -1 ? 'Error' : nome;
 }
 
+function objetoDashboardValido_(valor) {
+  return valor !== null && typeof valor === 'object' && !Array.isArray(valor);
+}
+
+function camposNumericosDashboardValidos_(objeto, campos) {
+  return campos.every(function (campo) { return typeof objeto[campo] === 'number'; });
+}
+
+function dadosCacheDashboardValidos_(dados, pagina) {
+  if (!objetoDashboardValido_(dados) || !objetoDashboardValido_(dados.kpis) ||
+      !objetoDashboardValido_(dados.graficos) || !Array.isArray(dados.lista) ||
+      !objetoDashboardValido_(dados.filtros)) return false;
+
+  if (pagina === 'vencimentos') {
+    return camposNumericosDashboardValidos_(dados.kpis, ['vencidos', 'ate7', 'ate30', 'valorAte30']) &&
+      objetoDashboardValido_(dados.graficos.situacao) && Array.isArray(dados.graficos.semanas);
+  }
+  if (pagina === 'fichas' || pagina === 'avaliacoes') {
+    return camposNumericosDashboardValidos_(dados.kpis, ['atualizadas', 'desatualizadas', 'ausentes', 'cobertura']) &&
+      objetoDashboardValido_(dados.graficos.situacao) &&
+      objetoDashboardValido_(dados.graficos.faixas) &&
+      Array.isArray(dados.graficos.coberturaPorPolo);
+  }
+  return camposNumericosDashboardValidos_(dados.kpis, ['alunos', 'contratos', 'valor', 'ticketMedio']) &&
+    objetoDashboardValido_(dados.graficos.polos) &&
+    objetoDashboardValido_(dados.graficos.frequencias) &&
+    objetoDashboardValido_(dados.graficos.modalidades) &&
+    objetoDashboardValido_(dados.graficos.status) &&
+    objetoDashboardValido_(dados.graficos.valorPorPolo);
+}
+
+function respostaCacheDashboardValida_(resposta, pagina) {
+  return objetoDashboardValido_(resposta) &&
+    resposta.ok === true && resposta.pagina === pagina &&
+    typeof resposta.atualizadoEm === 'string' &&
+    typeof resposta.avisoImportacao === 'string' &&
+    dadosCacheDashboardValidos_(resposta.dados, pagina);
+}
+
 function obterDadosPaginaDashboard(pagina, filtros) {
   var construtores = {
     vencimentos: montarPaginaVencimentos_,
@@ -38,7 +77,10 @@ function obterDadosPaginaDashboard(pagina, filtros) {
     var cache = CacheService.getScriptCache();
     var chave = chaveCacheDashboard_(pagina, filtros);
     var existente = cache.get(chave);
-    if (existente) return JSON.parse(existente);
+    if (existente) {
+      var respostaCache = JSON.parse(existente);
+      if (respostaCacheDashboardValida_(respostaCache, pagina)) return respostaCache;
+    }
     var base = lerBaseDashboard_();
     var hoje = new Date();
     var dados = construtores[pagina](base.alunos, base.contratos, hoje);

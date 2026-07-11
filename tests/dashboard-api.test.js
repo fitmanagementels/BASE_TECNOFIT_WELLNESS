@@ -14,18 +14,24 @@ const FILES = [
 
 function criarAba(valores) {
   const chamadas = [];
+  let leiturasDataRange = 0;
   return {
     chamadas,
+    leiturasDataRange: () => leiturasDataRange,
     getLastRow: () => valores.length,
     getRange(linha, coluna, quantidadeLinhas, quantidadeColunas) {
       chamadas.push([linha, coluna, quantidadeLinhas, quantidadeColunas]);
       return {
         getValues: () => valores
           .slice(linha - 1, linha - 1 + quantidadeLinhas)
-          .map(item => item.slice(coluna - 1, coluna - 1 + quantidadeColunas))
+          .map(item => item.slice(coluna - 1, coluna - 1 + quantidadeColunas)),
+        getDisplayValues: () => valores
+          .slice(linha - 1, linha - 1 + quantidadeLinhas)
+          .map(item => item.slice(coluna - 1, coluna - 1 + quantidadeColunas).map(valor => String(valor)))
       };
     },
     getDataRange() {
+      leiturasDataRange += 1;
       return {
         getDisplayValues: () => valores.map(item => item.map(valor => String(valor)))
       };
@@ -92,6 +98,50 @@ test('lerTabelaDashboard_ valida o cabeçalho mesmo quando não há linhas de da
   );
 });
 
+test('obterUltimaImportacaoDashboard_ valida aba só com cabeçalho e retorna vazio', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const aba = criarAba([Array.from(config.cabecalhos.importacoes)]);
+  const { gas } = carregarComPlanilha({ getSheetByName: () => aba }, criarCache());
+
+  const resultado = gas.obterUltimaImportacaoDashboard_({ getSheetByName: () => aba });
+
+  assert.equal(resultado, null);
+  assert.deepEqual(aba.chamadas, [[1, 1, 1, config.cabecalhos.importacoes.length]]);
+  assert.equal(aba.leiturasDataRange(), 0);
+});
+
+test('obterUltimaImportacaoDashboard_ rejeita cabeçalhos reordenados', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const cabecalhos = Array.from(config.cabecalhos.importacoes);
+  [cabecalhos[0], cabecalhos[1]] = [cabecalhos[1], cabecalhos[0]];
+  const aba = criarAba([cabecalhos]);
+  const { gas } = carregarComPlanilha({ getSheetByName: () => aba }, criarCache());
+
+  assert.throws(
+    () => gas.obterUltimaImportacaoDashboard_({ getSheetByName: () => aba }),
+    /^Error: Estrutura de dados incompatível\.$/
+  );
+  assert.equal(aba.leiturasDataRange(), 0);
+});
+
+test('obterUltimaImportacaoDashboard_ encontra a última SUCESSO em leitura reversa limitada', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const cabecalhos = Array.from(config.cabecalhos.importacoes);
+  const linha = (id, status) => [id, 'inicio', `fim-${id}`, 'vencimentos', 'arquivo.html', 'drive', '2026-07-11', 'r1', '1', '1', '0', status, 'mensagem'];
+  const valores = [cabecalhos, linha('antiga', 'SUCESSO')];
+  for (let indice = 0; indice < 202; indice += 1) valores.push(linha(`falha-${indice}`, 'ERRO'));
+  valores.splice(150, 0, linha('mais-recente', 'SUCESSO'));
+  const aba = criarAba(valores);
+  const { gas } = carregarComPlanilha({ getSheetByName: () => aba }, criarCache());
+
+  const resultado = gas.obterUltimaImportacaoDashboard_({ getSheetByName: () => aba });
+
+  assert.equal(resultado.execucaoId, 'mais-recente');
+  assert.equal(resultado.concluidaEm, 'fim-mais-recente');
+  assert.equal(aba.leiturasDataRange(), 0);
+  assert.ok(aba.chamadas.slice(1).every(chamada => chamada[2] <= 200));
+});
+
 test('obterDadosPaginaDashboard despacha a página e reutiliza resposta JSON do cache', () => {
   const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
   const abas = {
@@ -124,6 +174,35 @@ test('obterDadosPaginaDashboard despacha a página e reutiliza resposta JSON do 
   assert.equal(serializado.includes('2026-07-10T'), false);
   assert.throws(() => gas.obterDadosPaginaDashboard('inexistente', {}), /Página inválida/);
   assert.throws(() => gas.obterDadosPaginaDashboard('toString', {}), /^Error: Página inválida\.$/);
+});
+
+test('obterDadosPaginaDashboard ignora cache JSON válido fora do contrato e recalcula', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const formatosInvalidos = [
+    'null',
+    '{}',
+    JSON.stringify({ ok: true, pagina: 'vencimentos', dados: {} }),
+    JSON.stringify({ ok: true, pagina: 'vencimentos', atualizadoEm: '', avisoImportacao: '', dados: {} }),
+    JSON.stringify({ ok: true, pagina: 'planos', atualizadoEm: '', avisoImportacao: '', dados: {} })
+  ];
+
+  formatosInvalidos.forEach((conteudo, indice) => {
+    const abas = {
+      BASE_ALUNOS: criarAba([Array.from(config.cabecalhos.alunos)]),
+      CONTRATOS: criarAba([Array.from(config.cabecalhos.contratos)]),
+      IMPORTACOES: criarAba([Array.from(config.cabecalhos.importacoes)])
+    };
+    const cache = criarCache();
+    const { gas, aberturas } = carregarComPlanilha({ getSheetByName: nome => abas[nome] || null }, cache);
+    cache.valores.set(gas.chaveCacheDashboard_('vencimentos', { caso: indice }), conteudo);
+
+    const resultado = gas.obterDadosPaginaDashboard('vencimentos', { caso: indice });
+
+    assert.equal(resultado.ok, true);
+    assert.equal(resultado.pagina, 'vencimentos');
+    assert.deepEqual(JSON.parse(JSON.stringify(resultado.dados.kpis)), { vencidos: 0, ate7: 0, ate30: 0, valorAte30: 0 });
+    assert.equal(aberturas(), 1);
+  });
 });
 
 test('chaveCacheDashboard_ mantém filtros grandes dentro do limite do Apps Script', () => {

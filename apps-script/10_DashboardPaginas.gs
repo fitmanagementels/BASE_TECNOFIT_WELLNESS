@@ -3,14 +3,14 @@ function contarPorDashboard_(linhas, campo) {
     var chave = String(linha[campo] || 'Não informado');
     acc[chave] = (acc[chave] || 0) + 1;
     return acc;
-  }, {});
+  }, Object.create(null));
 }
 
 function mapaAlunosDashboard_(alunos) {
   return unicosPor_(alunos, 'id').reduce(function (acc, aluno) {
     acc[String(aluno.id)] = aluno;
     return acc;
-  }, {});
+  }, Object.create(null));
 }
 
 function polosPorAlunoDashboard_(contratos) {
@@ -20,7 +20,7 @@ function polosPorAlunoDashboard_(contratos) {
     if (!acc[id]) acc[id] = [];
     if (acc[id].indexOf(polo) === -1) acc[id].push(polo);
     return acc;
-  }, {});
+  }, Object.create(null));
 }
 
 function vencimentosPorSemanaDashboard_(linhas, hoje) {
@@ -46,11 +46,11 @@ function faixasAtualizacaoDashboard_(lista) {
       : dias <= 90 ? '61–90 dias' : 'Mais de 90 dias';
     acc[faixa] = (acc[faixa] || 0) + 1;
     return acc;
-  }, {});
+  }, Object.create(null));
 }
 
 function coberturaPorPoloDashboard_(lista) {
-  var grupos = {};
+  var grupos = Object.create(null);
   lista.forEach(function (linha) {
     (linha.polos || ['Não informado']).forEach(function (polo) {
       if (!grupos[polo]) grupos[polo] = { total: 0, cobertos: 0 };
@@ -68,7 +68,7 @@ function somarPorDashboard_(linhas, grupo, valor) {
     var chave = String(linha[grupo] || 'Não informado');
     acc[chave] = (acc[chave] || 0) + (Number(linha[valor]) || 0);
     return acc;
-  }, {});
+  }, Object.create(null));
 }
 
 function linhaContratoDashboard_(contrato, aluno, hoje) {

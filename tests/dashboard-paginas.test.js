@@ -43,3 +43,41 @@ test('planos calcula alunos, contratos, valor e ticket sem duplicar', () => {
   assert.deepEqual(JSON.parse(JSON.stringify(page.kpis)), { alunos: 2, contratos: 3, valor: 600, ticketMedio: 200 });
   assert.deepEqual(JSON.parse(JSON.stringify(page.graficos.valorPorPolo)), { 'POLO A': 400, 'POLO B': 200 });
 });
+
+test('ids herdados do protótipo preservam associação entre alunos e contratos', () => {
+  const ids = ['toString', 'constructor', '__proto__'];
+  const alunosEspeciais = ids.map((id, indice) => ({
+    id, aluno: `ALUNO ${indice}`, contato: `CONTATO ${indice}`, status: 'Ativo',
+    data_ficha: new Date(2026, 6, 1), data_avaliacao: new Date(2026, 6, 1)
+  }));
+  const contratosEspeciais = ids.map((id, indice) => ({
+    _chave_contrato: `especial-${indice}`, id, contrato_x_sem: '2X', valor: 100,
+    vencimento: new Date(2026, 6, 20), status_contrato: 'Ativo', polo: `POLO ${indice}`,
+    modalidade: 'MUSCULAÇÃO'
+  }));
+
+  const vencimentos = gas.montarPaginaVencimentos_(alunosEspeciais, contratosEspeciais, hoje);
+  const fichas = gas.montarPaginaFichas_(alunosEspeciais, contratosEspeciais, hoje);
+
+  assert.deepEqual(vencimentos.lista.map(item => item.aluno).sort(), ['ALUNO 0', 'ALUNO 1', 'ALUNO 2']);
+  assert.equal(fichas.lista.length, 3);
+  assert.deepEqual(fichas.lista.map(item => item.polos[0]).sort(), ['POLO 0', 'POLO 1', 'POLO 2']);
+});
+
+test('rótulos herdados do protótipo são contados como grupos próprios', () => {
+  const rotulos = ['toString', 'constructor', '__proto__'];
+  const contratosEspeciais = rotulos.map((rotulo, indice) => ({
+    _chave_contrato: `grupo-${indice}`, id: String(indice), contrato_x_sem: rotulo,
+    valor: indice + 1, vencimento: new Date(2026, 6, 20), status_contrato: rotulo,
+    polo: rotulo, modalidade: rotulo
+  }));
+
+  const page = gas.montarPaginaPlanos_([], contratosEspeciais);
+  const polos = JSON.parse(JSON.stringify(page.graficos.polos));
+  const valores = JSON.parse(JSON.stringify(page.graficos.valorPorPolo));
+
+  rotulos.forEach((rotulo, indice) => {
+    assert.equal(polos[rotulo], 1);
+    assert.equal(valores[rotulo], indice + 1);
+  });
+});
