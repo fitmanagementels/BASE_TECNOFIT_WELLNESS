@@ -206,6 +206,8 @@ O cliente usa Chart.js 4.4.7 com verificação SRI. Não remova os atributos `in
 - [ ] A última atualização e eventual falha posterior aparecem no cabeçalho sem mensagem bruta da importação.
 - [ ] Cada gráfico oferece um resumo textual navegável por tecnologia assistiva.
 - [ ] Telefones ficam parcialmente ocultos nos cartões do celular.
+- [ ] **Ver detalhes** abre um diálogo com foco inicial; botão Fechar e `Escape` fecham e restauram o foco.
+- [ ] Antes de abrir os detalhes no celular, o contato completo não existe no DOM.
 - [ ] Nenhuma mensagem de erro exibe nomes ou contatos.
 
 ## 13. Verificação visual após a publicação
@@ -218,7 +220,7 @@ Com a URL `/exec` implantada e um usuário autorizado, verifique o dashboard nes
 
 Nas três dimensões, teste também a navegação por teclado, a preferência de movimento reduzido, a busca, os filtros e a ausência de dados pessoais nas mensagens de erro. Registre a data, o navegador, o usuário de teste autorizado e o resultado de cada item do checklist. A verificação visual real não pode ser concluída apenas com os arquivos locais: ela requer a implantação autorizada e a leitura controlada da planilha mestre.
 
-No viewport móvel, confirme no inspetor que a tabela desktop e os contatos completos não existem no DOM. Ao ampliar a janela acima de `720px`, confirme que os cartões móveis são removidos e a tabela é criada sem uma nova chamada à API. O mascaramento móvel é apenas minimização de exposição visual; a autorização continua sendo controlada exclusivamente pelo acesso restrito ao Web App.
+No viewport móvel, confirme no inspetor que a tabela desktop e os contatos completos não existem no DOM antes de acionar **Ver detalhes**. Abra e feche o diálogo por botão e por `Escape`, verificando a restauração de foco. Ao ampliar a janela acima de `720px`, confirme que os cartões móveis são removidos e a tabela é criada sem uma nova chamada à API. O mascaramento móvel é apenas minimização de exposição visual; a autorização continua sendo controlada exclusivamente pelo acesso restrito ao Web App.
 
 ## 14. Validação com exports autorizados
 

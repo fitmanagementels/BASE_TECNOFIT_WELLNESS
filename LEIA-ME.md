@@ -456,9 +456,9 @@ As páginas são:
 
 ### 16.4 Fontes e regras
 
-- `VISAO_MESTRE`: fonte principal das páginas e listas consolidadas;
-- `BASE_ALUNOS`: dados únicos do aluno e datas de ficha e avaliação;
-- `CONTRATOS`: detalhes de modalidade, polo, frequência, status e valor;
+- `BASE_ALUNOS`: fonte efetiva dos dados únicos do aluno e das datas de ficha e avaliação;
+- `CONTRATOS`: fonte efetiva dos detalhes de modalidade, polo, frequência, status, datas e valor;
+- `VISAO_MESTRE`: visão consolidada disponível na planilha para conferência e outras integrações, mas não lida pela API atual do dashboard;
 - `IMPORTACOES`: data, estado e mensagens da última atualização.
 
 Indicadores de alunos usam contagem distinta de `id`. Indicadores financeiros e de contratos usam `_chave_contrato` distinta para evitar duplicidades.
@@ -467,6 +467,6 @@ Os limites de 30 dias para fichas e 90 dias para avaliações são configuraçõ
 
 Cada gráfico possui um resumo textual acessível associado ao canvas. O Chart.js 4.4.7 é carregado pelo CDN configurado com SRI e `crossorigin="anonymous"`; se o CDN falhar, os indicadores, resumos e listas continuam disponíveis.
 
-No celular, somente os cartões com contato parcialmente oculto são criados no DOM; no desktop, somente a tabela correspondente é criada. Essa ocultação reduz a exposição visual em telas pequenas, mas não concede nem substitui autorização: a barreira de acesso é a publicação do Web App restrita aos usuários autorizados do Google Workspace.
+No celular, somente os cartões com contato parcialmente oculto são criados no DOM; no desktop, somente a tabela correspondente é criada. Linhas com contato oferecem **Ver detalhes**, que abre um diálogo acessível e revela o contato completo somente após a ação. O diálogo recebe foco inicial, fecha por botão ou `Escape` e devolve o foco ao acionador. Essa ocultação reduz a exposição visual em telas pequenas, mas não concede nem substitui autorização: a barreira de acesso é a publicação do Web App restrita aos usuários autorizados do Google Workspace.
 
 A especificação completa está em `docs/superpowers/specs/2026-07-11-dashboard-xsteam-design.md`.
