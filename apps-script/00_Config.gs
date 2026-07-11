@@ -4,6 +4,12 @@ var CONFIG = Object.freeze({
   pastaProcessadosId: '1t8GJKi_VDI8kSEzxv1Q0wxk1evzOPSUr',
   pastaRejeitadosId: '1ttdgt5lvXwEacgkDYurhuMoZ09yPENNb',
   fusoHorario: 'America/Fortaleza',
+  dashboard: Object.freeze({
+    diasFicha: 30,
+    diasAvaliacao: 90,
+    cacheSegundos: 300,
+    chartJsUrl: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js'
+  }),
   tiposObrigatorios: Object.freeze(['vencimentos', 'fichas', 'avaliacao_fisica']),
   abas: Object.freeze({
     alunos: 'BASE_ALUNOS',
