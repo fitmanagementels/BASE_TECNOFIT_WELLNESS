@@ -28,3 +28,19 @@ test('deduplica pelo primeiro valor não vazio da chave', () => {
   const rows = [{ id: '1', nome: 'A' }, { id: '1', nome: 'A2' }, { id: '2', nome: 'B' }];
   assert.deepEqual(Array.from(gas.unicosPor_(rows, 'id'), row => row.nome), ['A', 'B']);
 });
+
+test('deduplica _chave_contrato sem colidir com propriedades herdadas', () => {
+  const rows = [
+    { _chave_contrato: '__proto__', nome: 'Proto 1' },
+    { _chave_contrato: '__proto__', nome: 'Proto 2' },
+    { _chave_contrato: 'toString', nome: 'ToString 1' },
+    { _chave_contrato: 'toString', nome: 'ToString 2' },
+    { _chave_contrato: 'comum', nome: 'Comum 1' },
+    { _chave_contrato: 'comum', nome: 'Comum 2' }
+  ];
+
+  assert.deepEqual(
+    Array.from(gas.unicosPor_(rows, '_chave_contrato'), row => row.nome),
+    ['Proto 1', 'ToString 1', 'Comum 1']
+  );
+});

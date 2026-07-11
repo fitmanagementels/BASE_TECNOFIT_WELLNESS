@@ -50,7 +50,7 @@ function classificarAtualizacao_(data, hoje, limiteDias) {
 }
 
 function unicosPor_(linhas, chave) {
-  var vistos = {};
+  var vistos = Object.create(null);
   return (linhas || []).filter(function (linha) {
     var valor = String(linha[chave] == null ? '' : linha[chave]).trim();
     if (!valor || vistos[valor]) return false;
