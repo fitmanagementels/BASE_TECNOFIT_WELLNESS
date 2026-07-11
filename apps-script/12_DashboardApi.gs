@@ -17,6 +17,25 @@ function chaveCacheDashboard_(pagina, filtros) {
   return prefixo + 'hash:' + hashTextoDashboard_(serializado) + ':' + serializado.length;
 }
 
+function normalizarFiltrosDashboard_(recebidos) {
+  recebidos = objetoDashboardValido_(recebidos) ? recebidos : {};
+  var filtros = {};
+  ['busca', 'polo', 'statusAluno', 'situacao', 'frequencia', 'modalidade', 'statusContrato'].forEach(function (campo) {
+    var valor = String(recebidos[campo] == null ? '' : recebidos[campo]).trim();
+    if (valor) filtros[campo] = valor.slice(0, campo === 'busca' ? 120 : 80);
+  });
+  var periodo = String(recebidos.periodoDias == null ? '' : recebidos.periodoDias).trim();
+  if (['30', '60', '90'].indexOf(periodo) !== -1) filtros.periodoDias = periodo;
+  else if (periodo) filtros.periodoDias = '__INVALIDO__';
+  var pagina = Math.floor(Number(recebidos.paginaLista));
+  var limite = Math.floor(Number(recebidos.limite));
+  filtros.paginaLista = isFinite(pagina) && pagina > 0 ? pagina : 1;
+  filtros.limite = isFinite(limite) && limite > 0 ? Math.min(limite, 100) : 25;
+  if (filtros.paginaLista === 1 && recebidos.paginaLista == null) delete filtros.paginaLista;
+  if (filtros.limite === 25 && recebidos.limite == null) delete filtros.limite;
+  return filtros;
+}
+
 function tipoErroDashboardSeguro_(erro) {
   var permitidos = ['Error', 'TypeError', 'RangeError', 'SyntaxError'];
   var nome = erro && erro.name ? String(erro.name) : 'Error';
@@ -34,12 +53,16 @@ function camposNumericosDashboardValidos_(objeto, campos) {
 function dadosCacheDashboardValidos_(dados, pagina) {
   if (!objetoDashboardValido_(dados) || !objetoDashboardValido_(dados.kpis) ||
       !objetoDashboardValido_(dados.graficos) || !Array.isArray(dados.lista) ||
-      !objetoDashboardValido_(dados.filtros) || !Array.isArray(dados.filtros.polos) ||
-      !Array.isArray(dados.filtros.statusAlunos)) return false;
+      !objetoDashboardValido_(dados.filtros) || !objetoDashboardValido_(dados.paginacao) ||
+      !camposNumericosDashboardValidos_(dados.paginacao, ['pagina', 'limite', 'totalItens', 'totalPaginas']) ||
+      !Array.isArray(dados.filtros.polos) ||
+      !Array.isArray(dados.filtros.statusAlunos) || !Array.isArray(dados.filtros.frequencias) ||
+      !Array.isArray(dados.filtros.modalidades) || !Array.isArray(dados.filtros.statusContratos)) return false;
 
   if (pagina === 'vencimentos') {
     return camposNumericosDashboardValidos_(dados.kpis, ['vencidos', 'ate7', 'ate30', 'valorAte30']) &&
-      objetoDashboardValido_(dados.graficos.situacao) && Array.isArray(dados.graficos.semanas);
+      objetoDashboardValido_(dados.graficos.situacao) && Array.isArray(dados.graficos.semanas) &&
+      objetoDashboardValido_(dados.graficos.porPolo);
   }
   if (pagina === 'fichas' || pagina === 'avaliacoes') {
     return camposNumericosDashboardValidos_(dados.kpis, ['atualizadas', 'desatualizadas', 'ausentes', 'cobertura']) &&
@@ -108,24 +131,32 @@ function obterDadosPaginaDashboard(pagina, filtros) {
   if (!Object.prototype.hasOwnProperty.call(construtores, pagina)) {
     throw new Error('Página inválida.');
   }
-  filtros = filtros || {};
+  filtros = normalizarFiltrosDashboard_(filtros);
   try {
     var cache = CacheService.getScriptCache();
     var chave = chaveCacheDashboard_(pagina, filtros);
     var existente = cache.get(chave);
     if (existente) {
-      var respostaCache = JSON.parse(existente);
-      if (respostaCacheDashboardValida_(respostaCache, pagina)) return respostaCache;
+      try {
+        var respostaCache = JSON.parse(existente);
+        if (respostaCacheDashboardValida_(respostaCache, pagina)) return respostaCache;
+      } catch (erroJsonCache) {
+        // Conteúdo inválido é apenas um cache miss; a fonte oficial será relida.
+      }
     }
     var base = lerBaseDashboard_();
     var hoje = new Date();
     var opcoes = {
       polos: opcoesDashboard_(base.contratos, 'polo'),
-      statusAlunos: opcoesDashboard_(base.alunos, 'status')
+      statusAlunos: opcoesDashboard_(base.alunos, 'status'),
+      frequencias: opcoesDashboard_(base.contratos, 'contrato_x_sem'),
+      modalidades: opcoesDashboard_(base.contratos, 'modalidade'),
+      statusContratos: opcoesDashboard_(base.contratos, 'status_contrato')
     };
-    var filtrada = filtrarBaseDashboard_(base.alunos, base.contratos, filtros);
+    var filtrada = filtrarBaseDashboard_(base.alunos, base.contratos, filtros, hoje, pagina);
     var dados = construtores[pagina](filtrada.alunos, filtrada.contratos, hoje);
     dados.filtros = opcoes;
+    dados = paginarPaginaDashboard_(dados, filtros.paginaLista || 1, filtros.limite || 25);
     var erroPosterior = base.ultimaImportacao && base.ultimaTentativa &&
       base.ultimaTentativa.status === 'ERRO' &&
       base.ultimaTentativa.linha > base.ultimaImportacao.linha;

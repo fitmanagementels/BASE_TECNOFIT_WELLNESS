@@ -4,7 +4,8 @@
     filters: {},
     filtersByPage: {},
     charts: [],
-    requestId: 0
+    requestId: 0,
+    currentData: null
   };
 
   const pageLabels = {
@@ -22,17 +23,17 @@
   };
 
   const listColumns = {
-    vencimentos: [['aluno', 'Aluno'], ['contato', 'Contato'], ['polo', 'Polo'], ['vencimento', 'Vencimento'], ['situacao', 'Situação', 'status'], ['valor', 'Valor', 'money']],
+    vencimentos: [['aluno', 'Aluno'], ['contato', 'Contato'], ['frequencia', 'Frequência'], ['polo', 'Polo'], ['vencimento', 'Vencimento'], ['situacao', 'Situação', 'status'], ['valor', 'Valor', 'money']],
     fichas: [['aluno', 'Aluno'], ['contato', 'Contato'], ['polos', 'Polos', 'list'], ['data', 'Última ficha'], ['diasSemAtualizacao', 'Dias sem atualização', 'number'], ['situacao', 'Situação', 'status']],
     avaliacoes: [['aluno', 'Aluno'], ['contato', 'Contato'], ['polos', 'Polos', 'list'], ['data', 'Última avaliação'], ['diasSemAtualizacao', 'Dias sem atualização', 'number'], ['situacao', 'Situação', 'status']],
-    planos: [['aluno', 'Aluno'], ['contato', 'Contato'], ['polo', 'Polo'], ['modalidade', 'Modalidade'], ['frequencia', 'Frequência'], ['statusContrato', 'Status', 'status'], ['valor', 'Valor', 'money']]
+    planos: [['aluno', 'Aluno'], ['statusAluno', 'Status do aluno', 'status'], ['frequencia', 'Frequência'], ['modalidade', 'Modalidade'], ['polo', 'Polo'], ['inicioCorrente', 'Início corrente'], ['vencimento', 'Vencimento'], ['statusContrato', 'Status do contrato', 'status'], ['valor', 'Valor', 'money']]
   };
 
   const chartMaps = {
-    vencimentos: [['situacao', 'Situação dos vencimentos', 'doughnut'], ['semanas', 'Vencimentos nas próximas semanas', 'bar']],
-    fichas: [['situacao', 'Situação das fichas', 'doughnut'], ['faixas', 'Tempo desde a atualização', 'bar']],
-    avaliacoes: [['situacao', 'Situação das avaliações', 'doughnut'], ['coberturaPorPolo', 'Cobertura por polo', 'bar']],
-    planos: [['polos', 'Contratos por polo', 'doughnut'], ['valorPorPolo', 'Valor contratado por polo', 'bar']]
+    vencimentos: [['situacao', 'Situação dos vencimentos', 'doughnut'], ['semanas', 'Vencimentos nas próximas semanas', 'bar'], ['porPolo', 'Vencimentos por polo', 'bar']],
+    fichas: [['situacao', 'Situação das fichas', 'doughnut'], ['faixas', 'Faixas de idade das fichas', 'bar'], ['coberturaPorPolo', 'Cobertura de fichas por polo', 'bar']],
+    avaliacoes: [['situacao', 'Situação das avaliações', 'doughnut'], ['faixas', 'Faixas de idade das avaliações', 'bar'], ['coberturaPorPolo', 'Cobertura de avaliações por polo', 'bar']],
+    planos: [['polos', 'Contratos por polo', 'doughnut'], ['frequencias', 'Contratos por frequência', 'bar'], ['modalidades', 'Contratos por modalidade', 'bar'], ['status', 'Contratos por status', 'bar'], ['valorPorPolo', 'Valor contratado por polo', 'bar']]
   };
 
   const chartColors = ['#dfff22', '#9daa29', '#505a25', '#ffb84d', '#ff6b5f'];
@@ -78,8 +79,23 @@
       return value !== null && typeof value === 'object' && !Array.isArray(value);
     };
     if (!isObject(data) || !isObject(data.kpis) || !isObject(data.graficos) ||
-        !Array.isArray(data.lista) || !isObject(data.filtros)) return null;
+        !Array.isArray(data.lista) || !isObject(data.filtros) || !isObject(data.paginacao)) return null;
     return data;
+  }
+
+  function setHealth(kind, response) {
+    const updated = document.getElementById('lastUpdate');
+    const warning = document.getElementById('importWarning');
+    warning.textContent = '';
+    warning.setAttribute('role', 'alert');
+    warning.hidden = true;
+    if (kind === 'loading') updated.textContent = 'Atualização indisponível durante o carregamento';
+    else if (!response || kind === 'error') updated.textContent = 'Atualização indisponível';
+    else updated.textContent = response.atualizadoEm ? 'Última atualização: ' + response.atualizadoEm : 'Nenhuma atualização válida disponível';
+    if (response && kind !== 'loading' && kind !== 'error' && response.avisoImportacao) {
+      warning.textContent = String(response.avisoImportacao);
+      warning.hidden = false;
+    }
   }
 
   function valueText(value, type) {
@@ -99,8 +115,9 @@
 
   function showState(kind, message, actionLabel, action) {
     destroyCharts();
-    setContentVisibility(false);
+    setContentVisibility(kind === 'loading');
     const appState = document.getElementById('appState');
+    appState.hidden = false;
     clearNode(appState);
     appState.className = kind === 'error' ? 'app-state error' : 'app-state';
     appState.setAttribute('role', kind === 'error' ? 'alert' : 'status');
@@ -114,6 +131,20 @@
     }
     const main = document.getElementById('mainContent');
     main.setAttribute('aria-busy', kind === 'loading' ? 'true' : 'false');
+    if (kind === 'loading') {
+      state.currentData = null;
+      renderSkeletons();
+    }
+    setHealth(kind);
+  }
+
+  function renderSkeletons() {
+    const definitions = [['kpiGrid', 4, 'card kpi-card skeleton'], ['chartGrid', 2, 'card chart-card skeleton'], ['listPanel', 1, 'skeleton list-skeleton']];
+    definitions.forEach(function (definition) {
+      const container = document.getElementById(definition[0]);
+      clearNode(container);
+      for (let index = 0; index < definition[1]; index += 1) container.appendChild(el('div', definition[2]));
+    });
   }
 
   function navigate(page) {
@@ -157,27 +188,43 @@
     loadPage();
   }
 
-  function renderEmpty() {
+  function renderEmpty(response) {
     showState('empty', 'Nenhum resultado para os filtros selecionados.', 'Limpar filtros', clearFilters);
+    setHealth('empty', response);
   }
 
   function renderFilters(options) {
     const container = document.getElementById('filters');
     clearNode(container);
+    const situations = state.page === 'vencimentos'
+      ? ['vencido', 'ate7', 'ate30', 'futuro', 'semData']
+      : (state.page === 'fichas' || state.page === 'avaliacoes' ? ['ausente', 'desatualizada', 'atualizada'] : []);
     const definitions = [
       { key: 'polo', source: 'polos', label: 'Polo' },
-      { key: 'statusAluno', source: 'statusAlunos', label: 'Status do aluno' }
+      { key: 'statusAluno', source: 'statusAlunos', label: 'Status do aluno' },
+      { key: 'busca', label: 'Buscar aluno ou ID', input: true },
+      { key: 'periodoDias', label: 'Vencimento no período', values: ['30', '60', '90'] },
+      { key: 'situacao', label: 'Situação', values: situations },
+      { key: 'frequencia', source: 'frequencias', label: 'Frequência' },
+      { key: 'modalidade', source: 'modalidades', label: 'Modalidade' },
+      { key: 'statusContrato', source: 'statusContratos', label: 'Status do contrato' }
     ];
     definitions.forEach(function (definition) {
-      const values = options && Array.isArray(options[definition.source]) ? options[definition.source] : [];
-      if (!values.length) return;
+      const values = definition.values || (options && Array.isArray(options[definition.source]) ? options[definition.source] : []);
+      if (!definition.input && !values.length) return;
       const field = el('div', 'filter-field');
       const id = 'filter-' + definition.key;
       const label = el('label', '', definition.label);
       label.htmlFor = id;
-      const select = el('select', 'filter-control');
+      const select = el(definition.input ? 'input' : 'select', 'filter-control');
       select.id = id;
       select.name = definition.key;
+      select.setAttribute('name', definition.key);
+      if (definition.input) {
+        select.type = 'search';
+        select.value = state.filters[definition.key] || '';
+      }
+      if (!definition.input) {
       const all = el('option', '', 'Todos');
       all.value = '';
       select.appendChild(all);
@@ -187,8 +234,10 @@
         select.appendChild(option);
       });
       select.value = state.filters[definition.key] || '';
+      }
       select.addEventListener('change', function () {
         const next = Object.assign({}, state.filters);
+        delete next.paginaLista;
         if (select.value) next[definition.key] = select.value;
         else delete next[definition.key];
         state.filters = next;
@@ -236,15 +285,22 @@
       const canvas = el('canvas');
       canvas.setAttribute('role', 'img');
       canvas.setAttribute('aria-label', definition[1]);
+      const data = chartValues(graphs && graphs[definition[0]]);
+      const summary = el('ul', 'chart-summary');
+      summary.id = 'chart-summary-' + state.page + '-' + definition[0];
+      canvas.setAttribute('aria-describedby', summary.id);
+      data.labels.forEach(function (label, index) {
+        summary.appendChild(el('li', '', label + ': ' + number(data.values[index])));
+      });
       frame.appendChild(canvas);
       card.appendChild(frame);
+      card.appendChild(summary);
       grid.appendChild(card);
 
       if (typeof Chart === 'undefined') {
         frame.replaceChildren(el('p', 'card-subtitle', 'Gráfico indisponível. Consulte os indicadores e a lista abaixo.'));
         return;
       }
-      const data = chartValues(graphs && graphs[definition[0]]);
       const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const isCircular = definition[2] === 'doughnut';
       try {
@@ -289,15 +345,17 @@
     return valueText(row[definition[0]], definition[2]);
   }
 
-  function renderList(rows) {
+  function renderList(rows, pagination) {
     const panel = document.getElementById('listPanel');
     clearNode(panel);
     const header = el('div', 'list-header');
     header.appendChild(el('h2', 'card-title', 'Detalhamento'));
-    header.appendChild(el('span', 'card-subtitle', number(rows.length) + ' registros'));
+    header.appendChild(el('span', 'card-subtitle', number(pagination.totalItens) + ' registros'));
     panel.appendChild(header);
 
     const columns = listColumns[state.page] || [];
+    const mobile = window.matchMedia && window.matchMedia('(max-width: 720px)').matches;
+    if (!mobile) {
     const scroll = el('div', 'table-scroll');
     scroll.setAttribute('tabindex', '0');
     scroll.setAttribute('aria-label', 'Detalhamento dos dados; role para ver todas as colunas');
@@ -327,7 +385,7 @@
     table.appendChild(tbody);
     scroll.appendChild(table);
     panel.appendChild(scroll);
-
+    } else {
     const mobileCards = el('div', 'mobile-cards');
     rows.forEach(function (row) {
       const card = el('article', 'mobile-data-row');
@@ -340,6 +398,28 @@
       mobileCards.appendChild(card);
     });
     panel.appendChild(mobileCards);
+    }
+    const pager = el('nav', 'pagination');
+    pager.setAttribute('aria-label', 'Paginação da lista');
+    const previous = el('button', 'filter-control', 'Anterior');
+    previous.type = 'button';
+    previous.disabled = pagination.pagina <= 1;
+    const current = el('span', 'pagination-current', 'Página ' + pagination.pagina + ' de ' + pagination.totalPaginas);
+    current.setAttribute('aria-live', 'polite');
+    const next = el('button', 'filter-control', 'Próxima');
+    next.type = 'button';
+    next.disabled = pagination.pagina >= pagination.totalPaginas;
+    function go(page) {
+      state.filters.paginaLista = page;
+      state.filtersByPage[state.page] = Object.assign({}, state.filters);
+      loadPage();
+    }
+    previous.addEventListener('click', function () { go(pagination.pagina - 1); });
+    next.addEventListener('click', function () { go(pagination.pagina + 1); });
+    pager.appendChild(previous);
+    pager.appendChild(current);
+    pager.appendChild(next);
+    panel.appendChild(pager);
   }
 
   function renderDashboard(response) {
@@ -348,9 +428,11 @@
       renderError();
       return;
     }
+    state.currentData = { response: response, data: data };
+    setHealth('ready', response);
     const rows = Array.isArray(data.lista) ? data.lista : [];
     if (!rows.length) {
-      renderEmpty();
+      renderEmpty(response);
       return;
     }
     setContentVisibility(true);
@@ -358,7 +440,12 @@
     renderFilters(data.filtros || {});
     renderKpis(data.kpis || {});
     renderCharts(data.graficos || {});
-    renderList(rows);
+    renderList(rows, data.paginacao);
+  }
+
+  function rerenderCurrentList() {
+    if (!state.currentData || state.currentData.response.pagina !== state.page) return;
+    renderList(state.currentData.data.lista, state.currentData.data.paginacao);
   }
 
   function initializeDashboard() {
@@ -367,6 +454,10 @@
         navigate(button.dataset.page);
       });
     });
+    if (window.matchMedia) {
+      const mobileQuery = window.matchMedia('(max-width: 720px)');
+      if (mobileQuery.addEventListener) mobileQuery.addEventListener('change', rerenderCurrentList);
+    }
     navigate(state.page);
   }
 

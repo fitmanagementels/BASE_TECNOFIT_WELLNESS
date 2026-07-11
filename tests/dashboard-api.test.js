@@ -196,10 +196,14 @@ test('obterDadosPaginaDashboard aplica filtros sem reduzir as opções disponív
   };
   const { gas } = carregarComPlanilha({ getSheetByName: nome => abas[nome] || null }, criarCache());
 
-  const resultado = gas.obterDadosPaginaDashboard('planos', { polo: 'POLO A', statusAluno: 'Ativo' });
+  const resultado = gas.obterDadosPaginaDashboard('planos', {
+    busca: 'ALUNO ATIVO A', polo: 'POLO A', statusAluno: 'Ativo', frequencia: '2X',
+    modalidade: 'MUSCULAÇÃO', statusContrato: 'Ativo'
+  });
 
   assert.deepEqual(JSON.parse(JSON.stringify(resultado.dados.filtros)), {
-    polos: ['POLO A', 'POLO B'], statusAlunos: ['Ativo', 'Inativo']
+    polos: ['POLO A', 'POLO B'], statusAlunos: ['Ativo', 'Inativo'],
+    frequencias: ['2X', '3X'], modalidades: ['CORRIDA', 'MUSCULAÇÃO'], statusContratos: ['Ativo']
   });
   assert.deepEqual(JSON.parse(JSON.stringify(resultado.dados.kpis)), {
     alunos: 1, contratos: 1, valor: 100, ticketMedio: 100
@@ -375,25 +379,78 @@ test('obterDadosPaginaDashboard oculta erro interno e não registra PII', () => 
   assert.equal(textoLog.includes('linha 2'), false);
 });
 
-test('obterDadosPaginaDashboard sanitiza falha ao desserializar o cache', () => {
+test('obterDadosPaginaDashboard trata JSON inválido do cache como miss', () => {
   const logs = [];
-  const gas = loadGas(FILES, {
-    SpreadsheetApp: { openById: () => assert.fail('não deveria abrir a planilha') },
-    CacheService: {
-      getScriptCache: () => ({
-        get: () => '{ALUNA SEGREDO 85999999999',
-        put: () => assert.fail('não deveria gravar cache')
-      })
-    },
-    console: { error: (...argumentos) => logs.push(argumentos) }
-  });
-
-  assert.throws(
-    () => gas.obterDadosPaginaDashboard('vencimentos', {}),
-    /^Error: Não foi possível carregar o dashboard\.$/
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const abas = {
+    BASE_ALUNOS: criarAba([Array.from(config.cabecalhos.alunos)]),
+    CONTRATOS: criarAba([Array.from(config.cabecalhos.contratos)]),
+    IMPORTACOES: criarAba([Array.from(config.cabecalhos.importacoes)])
+  };
+  const cache = { get: () => '{ALUNA SEGREDO 85999999999', put: () => {} };
+  const { gas, aberturas } = carregarComPlanilha(
+    { getSheetByName: nome => abas[nome] || null }, cache,
+    { console: { error: (...argumentos) => logs.push(argumentos) } }
   );
+
+  const resultado = gas.obterDadosPaginaDashboard('vencimentos', {});
+  assert.equal(resultado.ok, true);
+  assert.equal(aberturas(), 1);
   assert.equal(JSON.stringify(logs).includes('ALUNA SEGREDO'), false);
   assert.equal(JSON.stringify(logs).includes('85999999999'), false);
+});
+
+test('normaliza filtros, paginação e inclui tudo na chave de cache', () => {
+  const gas = loadGas(FILES);
+  const normalizados = gas.normalizarFiltrosDashboard_({
+    busca: '  Maria  ', polo: ' POLO A ', periodoDias: '90', paginaLista: '3', limite: '999',
+    frequencia: ' 2X ', modalidade: ' MUSCULAÇÃO ', statusContrato: ' Ativo ', situacao: ' ate7 ',
+    desconhecido: 'ignorar'
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(normalizados)), {
+    busca: 'Maria', polo: 'POLO A', periodoDias: '90', paginaLista: 3, limite: 100,
+    frequencia: '2X', modalidade: 'MUSCULAÇÃO', statusContrato: 'Ativo', situacao: 'ate7'
+  });
+  assert.notEqual(
+    gas.chaveCacheDashboard_('planos', normalizados),
+    gas.chaveCacheDashboard_('planos', { ...normalizados, paginaLista: 4 })
+  );
+});
+
+test('período selecionado fora da whitelist produz população vazia', () => {
+  const gas = loadGas(FILES);
+  const filtros = gas.normalizarFiltrosDashboard_({ periodoDias: '365' });
+  assert.equal(filtros.periodoDias, '__INVALIDO__');
+  const filtrada = gas.filtrarBaseDashboard_(
+    [{ id: '1', aluno: 'TESTE', status: 'Ativo' }],
+    [{ _chave_contrato: 'c1', id: '1', vencimento: new Date(2026, 6, 20) }],
+    filtros, new Date(2026, 6, 11), 'planos'
+  );
+  assert.deepEqual(filtrada.alunos, []);
+  assert.deepEqual(filtrada.contratos, []);
+});
+
+test('API pagina lista mantendo totais globais e opções originais completas', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const alunosRows = [Array.from(config.cabecalhos.alunos)];
+  const contratosRows = [Array.from(config.cabecalhos.contratos)];
+  for (let i = 1; i <= 3; i += 1) {
+    alunosRows.push([String(i), `ALUNO ${i}`, `850000000${i}`, 'Ativo', '', '', '', 'exec']);
+    contratosRows.push([`c${i}`, String(i), '', `${i}X`, i * 100, new Date(2026, 5, i), new Date(2026, 7, i), 'Ativo', `POLO ${i}`, `MOD ${i}`, 'exec']);
+  }
+  const abas = {
+    BASE_ALUNOS: criarAba(alunosRows), CONTRATOS: criarAba(contratosRows),
+    IMPORTACOES: criarAba([Array.from(config.cabecalhos.importacoes)])
+  };
+  const { gas } = carregarComPlanilha({ getSheetByName: nome => abas[nome] || null }, criarCache());
+  const resultado = gas.obterDadosPaginaDashboard('planos', { paginaLista: 2, limite: 1 });
+  assert.equal(resultado.dados.lista.length, 1);
+  assert.equal(resultado.dados.kpis.contratos, 3);
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado.dados.paginacao)), { pagina: 2, limite: 1, totalItens: 3, totalPaginas: 3 });
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado.dados.filtros.polos)), ['POLO 1', 'POLO 2', 'POLO 3']);
+  assert.equal(resultado.dados.filtros.frequencias.length, 3);
+  assert.equal(resultado.dados.filtros.modalidades.length, 3);
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado.dados.filtros.statusContratos)), ['Ativo']);
 });
 
 test('obterDadosPaginaDashboard devolve dados calculados quando a gravação do cache falha', () => {

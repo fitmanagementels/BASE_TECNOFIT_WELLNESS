@@ -89,6 +89,9 @@ test('valores de filtro desconhecidos produzem uma população vazia', () => {
   assert.deepEqual(Array.from(porPolo.contratos), []);
   assert.deepEqual(Array.from(porStatus.alunos), []);
   assert.deepEqual(Array.from(porStatus.contratos), []);
+  const situacaoIrrelevante = gas.filtrarBaseDashboard_(alunos, contratos, { situacao: 'desconhecida' }, hoje, 'planos');
+  assert.deepEqual(Array.from(situacaoIrrelevante.alunos), []);
+  assert.deepEqual(Array.from(situacaoIrrelevante.contratos), []);
 });
 
 test('ids herdados do protótipo preservam associação entre alunos e contratos', () => {
@@ -127,4 +130,66 @@ test('rótulos herdados do protótipo são contados como grupos próprios', () =
     assert.equal(polos[rotulo], 1);
     assert.equal(valores[rotulo], indice + 1);
   });
+});
+
+test('busca e filtros completos restringem a mesma população', () => {
+  const baseAlunos = alunos.concat({ id: 'ABC-3', aluno: 'MARIA SILVA', status: 'Inativo', data_ficha: '', data_avaliacao: '' });
+  const baseContratos = contratos.concat({
+    _chave_contrato: 'c4', id: 'ABC-3', contrato_x_sem: '5X', valor: 400,
+    inicio_corrente: new Date(2026, 6, 1), vencimento: new Date(2026, 8, 1),
+    status_contrato: 'Pendente', polo: 'POLO C', modalidade: 'NATAÇÃO'
+  });
+
+  const combinado = gas.filtrarBaseDashboard_(baseAlunos, baseContratos, {
+    busca: 'maria', statusAluno: 'Inativo', polo: 'POLO C', frequencia: '5X',
+    modalidade: 'NATAÇÃO', statusContrato: 'Pendente', periodoDias: '60'
+  }, hoje, 'planos');
+
+  assert.deepEqual(combinado.alunos.map(item => item.id), ['ABC-3']);
+  assert.deepEqual(combinado.contratos.map(item => item._chave_contrato), ['c4']);
+  assert.deepEqual(gas.filtrarBaseDashboard_(baseAlunos, baseContratos, { busca: 'abc-3' }, hoje, 'planos').alunos.map(item => item.id), ['ABC-3']);
+  assert.deepEqual(gas.filtrarBaseDashboard_(baseAlunos, baseContratos, { modalidade: 'DESCONHECIDA' }, hoje, 'planos').alunos, []);
+});
+
+test('situação é aplicada conforme a página e período limita vencimentos futuros', () => {
+  const vencidos = gas.filtrarBaseDashboard_(alunos, contratos, { situacao: 'vencido' }, hoje, 'vencimentos');
+  assert.deepEqual(vencidos.contratos.map(item => item._chave_contrato), ['c1']);
+  const fichasAusentes = gas.filtrarBaseDashboard_(alunos, contratos, { situacao: 'ausente' }, hoje, 'fichas');
+  assert.deepEqual(fichasAusentes.alunos.map(item => item.id), ['1']);
+  const trintaDias = gas.filtrarBaseDashboard_(alunos, contratos, { periodoDias: '30' }, hoje, 'planos');
+  assert.deepEqual(trintaDias.contratos.map(item => item._chave_contrato), ['c2', 'c3']);
+});
+
+test('DTOs expõem todos os gráficos e campos operacionais exigidos', () => {
+  const vencimentos = gas.montarPaginaVencimentos_(alunos, contratos, hoje);
+  assert.ok(vencimentos.graficos.porPolo);
+  assert.equal(vencimentos.lista[0].frequencia, '2X');
+
+  for (const pagina of [gas.montarPaginaFichas_(alunos, contratos, hoje), gas.montarPaginaAvaliacoes_(alunos, contratos, hoje)]) {
+    assert.ok(pagina.graficos.situacao);
+    assert.ok(pagina.graficos.faixas);
+    assert.ok(Array.isArray(pagina.graficos.coberturaPorPolo));
+  }
+
+  const planos = gas.montarPaginaPlanos_(alunos, contratos, hoje);
+  for (const campo of ['polos', 'frequencias', 'modalidades', 'status', 'valorPorPolo']) assert.ok(planos.graficos[campo]);
+  assert.deepEqual(
+    ['statusAluno', 'frequencia', 'modalidade', 'polo', 'inicioCorrente', 'vencimento', 'statusContrato', 'valor'].every(campo => Object.hasOwn(planos.lista[0], campo)),
+    true
+  );
+});
+
+test('paginação fatia só a lista e preserva KPIs e gráficos globais', () => {
+  const page = gas.montarPaginaPlanos_(alunos, contratos, hoje);
+  const paginada = gas.paginarPaginaDashboard_(page, 2, 1);
+  assert.equal(paginada.lista.length, 1);
+  assert.equal(paginada.lista[0].chave, 'c2');
+  assert.deepEqual(JSON.parse(JSON.stringify(paginada.kpis)), JSON.parse(JSON.stringify(page.kpis)));
+  assert.deepEqual(JSON.parse(JSON.stringify(paginada.graficos)), JSON.parse(JSON.stringify(page.graficos)));
+  assert.deepEqual(JSON.parse(JSON.stringify(paginada.paginacao)), { pagina: 2, limite: 1, totalItens: 3, totalPaginas: 3 });
+});
+
+test('planos mantém ordenação estável por vencimento e chave', () => {
+  const page = gas.montarPaginaPlanos_(alunos, [contratos[2], contratos[1], contratos[0]], hoje);
+  assert.deepEqual(page.lista.map(item => item.chave), ['c1', 'c2', 'c3']);
 });

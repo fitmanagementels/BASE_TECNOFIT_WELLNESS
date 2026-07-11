@@ -10,15 +10,21 @@ test('shell contém as quatro páginas e regiões acessíveis', () => {
     assert.equal(buttons.length, 2, `${page} deve existir uma vez em cada navegação`);
     assert.equal(buttons.every(button => /aria-label="[^"]+"/.test(button)), true, `${page} deve ter aria-label`);
   }
-  for (const id of ['navDesktop', 'navMobile', 'pageTitle', 'filters', 'kpiGrid', 'chartGrid', 'listPanel']) {
+  for (const id of ['navDesktop', 'navMobile', 'pageTitle', 'lastUpdate', 'importWarning', 'filters', 'kpiGrid', 'chartGrid', 'listPanel']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /<section\s+id="appState"[^>]*aria-live="polite"/);
   const dots = html.match(/●/g) || [];
   const hiddenDots = html.match(/<span aria-hidden="true">●<\/span>/g) || [];
   assert.equal(hiddenDots.length, dots.length, 'pontos decorativos devem ficar ocultos da árvore acessível');
-  assert.match(html, /class="header-status"[^>]*>\s*<span aria-hidden="true">●<\/span>\s*Dados disponíveis/);
+  assert.match(html, /id="lastUpdate"[^>]*role="status"[^>]*aria-live="polite"/);
+  assert.match(html, /id="importWarning"[^>]*role="alert"[^>]*aria-live="assertive"/);
   assert.doesNotMatch(html, /class="nav-meta"[^>]*>[^<]*●/);
+});
+
+test('Chart.js 4.4.7 usa integridade SRI e crossorigin', () => {
+  const html = fs.readFileSync('apps-script/Dashboard.html', 'utf8');
+  assert.match(html, /<script[^>]+src="<\?= CONFIG\.dashboard\.chartJsUrl \?>"[^>]+integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374\+odEv96n9tNC"[^>]+crossorigin="anonymous"/);
 });
 
 test('estilos definem breakpoints desktop e mobile da marca', () => {
@@ -97,7 +103,7 @@ test('helpers interpretam o envelope da API e classificam estados sem colisão d
     google: { script: { run: {} } }
   };
   vm.runInNewContext(source, context);
-  const dados = { lista: [{ aluno: 'Teste' }], kpis: {}, graficos: {}, filtros: {} };
+  const dados = { lista: [{ aluno: 'Teste' }], kpis: {}, graficos: {}, filtros: {}, paginacao: { pagina: 1, limite: 25, totalItens: 1, totalPaginas: 1 } };
   assert.equal(context.responseData({ ok: true, pagina: 'vencimentos', dados }), dados);
   assert.equal(context.statusClass('atualizada'), 'status status-success');
   assert.equal(context.statusClass('desatualizada'), 'status status-warning');
@@ -166,7 +172,10 @@ function nodeByText(node, text) {
 }
 
 function validResponse(page = 'vencimentos', overrides = {}) {
-  const filtros = { polos: ['POLO A', 'POLO B'], statusAlunos: ['Ativo', 'Inativo'] };
+  const filtros = {
+    polos: ['POLO A', 'POLO B'], statusAlunos: ['Ativo', 'Inativo'], frequencias: ['2X'],
+    modalidades: ['MUSCULAÇÃO'], statusContratos: ['Ativo']
+  };
   const fixtures = {
     vencimentos: {
       kpis: { vencidos: 1, ate7: 2, ate30: 3, valorAte30: 100 },
@@ -179,14 +188,27 @@ function validResponse(page = 'vencimentos', overrides = {}) {
       graficos: { situacao: { atualizada: 1 }, faixas: { '0–30 dias': 1 }, coberturaPorPolo: [{ polo: 'POLO A', cobertura: 75 }] },
       lista: [{ aluno: 'ALUNO FICHA', contato: '85987654321', polos: ['POLO A'], data: '11/07/2026', diasSemAtualizacao: 10, situacao: 'atualizada' }],
       filtros
+    },
+    avaliacoes: {
+      kpis: { atualizadas: 1, ausentes: 0, desatualizadas: 0, cobertura: 100 },
+      graficos: { situacao: { atualizada: 1 }, faixas: { '0–30 dias': 1 }, coberturaPorPolo: [{ polo: 'POLO A', cobertura: 100 }] },
+      lista: [{ aluno: 'ALUNO AVALIAÇÃO', contato: '85987654321', polos: ['POLO A'], data: '11/07/2026', diasSemAtualizacao: 0, situacao: 'atualizada' }],
+      filtros
+    },
+    planos: {
+      kpis: { alunos: 1, contratos: 1, valor: 100, ticketMedio: 100 },
+      graficos: { polos: { 'POLO A': 1 }, frequencias: { '2X': 1 }, modalidades: { MUSCULAÇÃO: 1 }, status: { Ativo: 1 }, valorPorPolo: { 'POLO A': 100 } },
+      lista: [{ aluno: 'ALUNO PLANO', statusAluno: 'Ativo', frequencia: '2X', modalidade: 'MUSCULAÇÃO', polo: 'POLO A', inicioCorrente: '01/07/2026', vencimento: '31/07/2026', statusContrato: 'Ativo', valor: 100 }],
+      filtros
     }
   };
   const dados = { ...(fixtures[page] || fixtures.vencimentos), ...overrides };
-  return { ok: true, pagina: page, atualizadoEm: '', avisoImportacao: '', dados };
+  dados.paginacao ||= { pagina: 1, limite: 25, totalItens: Array.isArray(dados.lista) ? dados.lista.length : 0, totalPaginas: 1 };
+  return { ok: true, pagina: page, atualizadoEm: '11/07/2026 08:05', avisoImportacao: '', dados };
 }
 
 function setupClient(options = {}) {
-  const ids = ['filters', 'kpiGrid', 'chartGrid', 'listPanel', 'appState', 'mainContent', 'pageTitle'];
+  const ids = ['filters', 'kpiGrid', 'chartGrid', 'listPanel', 'appState', 'mainContent', 'pageTitle', 'lastUpdate', 'importWarning'];
   const nodes = Object.fromEntries(ids.map(id => [id, new FakeNode(id === 'pageTitle' ? 'h1' : 'section')]));
   const pages = ['vencimentos', 'fichas', 'avaliacoes', 'planos'];
   const buttons = pages.flatMap(page => [0, 1].map(() => {
@@ -227,16 +249,21 @@ function setupClient(options = {}) {
   const source = fs.readFileSync('apps-script/DashboardClient.html', 'utf8')
     .replace(/^\s*<script>\s*/, '')
     .replace(/\s*<\/script>\s*$/, '') + '\nthis.__state = state;';
+  const mediaListeners = [];
+  const mediaQuery = {
+    matches: Boolean(options.mobile),
+    addEventListener(type, listener) { if (type === 'change') mediaListeners.push(listener); }
+  };
   const context = {
     document,
-    window: { matchMedia: () => ({ matches: false }) },
+    window: { matchMedia: () => mediaQuery },
     Intl,
     console,
     google: { script: { run: runner } }
   };
   if (!options.chartMissing) context.Chart = FakeChart;
   vm.runInNewContext(source, context);
-  return { context, nodes, buttons, documentListeners, requests, charts };
+  return { context, nodes, buttons, documentListeners, requests, charts, mediaQuery, mediaListeners };
 }
 
 function startClient(client) {
@@ -291,7 +318,7 @@ test('resposta stale não renderiza e mudança de filtro envia uma cópia', () =
     kpis: { vencidos: 99, ate7: 99, ate30: 99, valorAte30: 9900 },
     lista: [{ aluno: 'RESPOSTA ANTIGA', contato: '85999999999', polo: 'POLO A', vencimento: '01/01/2020', situacao: 'vencido', valor: 9900 }]
   }));
-  assert.equal(client.nodes.kpiGrid.children.length, 0);
+  assert.equal(client.nodes.kpiGrid.children.length, 4);
   assert.equal(client.nodes.appState.hidden, false);
   assert.ok(nodeByText(client.nodes.appState, 'Carregando dashboard…'));
   assert.equal(nodeByText(client.nodes.listPanel, 'RESPOSTA ANTIGA'), undefined);
@@ -338,7 +365,7 @@ test('Chart é destruído e falhas do CDN não impedem KPIs, lista e tabela aces
   const client = setupClient();
   startClient(client);
   client.requests[0].success(validResponse());
-  assert.equal(client.charts.length, 2);
+  assert.equal(client.charts.length, 3);
   const scroll = client.nodes.listPanel.children.find(child => child.className === 'table-scroll');
   assert.equal(scroll.getAttribute('tabindex'), '0');
   assert.match(scroll.getAttribute('aria-label'), /Detalhamento dos dados/);
@@ -372,4 +399,122 @@ test('envelopes inválidos exibem erro com retry em vez de estado vazio', () => 
     assert.ok(nodeByText(client.nodes.appState, 'Tentar novamente'));
     assert.equal(nodeByText(client.nodes.appState, 'Nenhum resultado para os filtros selecionados.'), undefined);
   });
+});
+
+test('health UI anuncia atualização e alerta sem alegar saúde nos demais estados', () => {
+  const client = setupClient();
+  startClient(client);
+  assert.equal(client.nodes.lastUpdate.textContent, 'Atualização indisponível durante o carregamento');
+  client.requests[0].success({ ...validResponse(), avisoImportacao: 'A última tentativa falhou. Exibindo a última base válida.' });
+  assert.match(client.nodes.lastUpdate.textContent, /11\/07\/2026 08:05/);
+  assert.equal(client.nodes.importWarning.textContent, 'A última tentativa falhou. Exibindo a última base válida.');
+  assert.equal(client.nodes.importWarning.getAttribute('role'), 'alert');
+  client.context.loadPage();
+  client.requests.at(-1).failure(new Error('falha'));
+  assert.equal(client.nodes.lastUpdate.textContent, 'Atualização indisponível');
+});
+
+test('estado vazio preserva fatos e aviso do envelope sem declarar saúde', () => {
+  const client = setupClient();
+  startClient(client);
+  client.requests[0].success({
+    ...validResponse('vencimentos', { lista: [], paginacao: { pagina: 1, limite: 25, totalItens: 0, totalPaginas: 0 } }),
+    avisoImportacao: 'Falha posterior; exibindo a última base válida.'
+  });
+  assert.match(client.nodes.lastUpdate.textContent, /11\/07\/2026 08:05/);
+  assert.equal(client.nodes.importWarning.textContent, 'Falha posterior; exibindo a última base válida.');
+  assert.equal(nodeByText(client.nodes.appState, 'Dados disponíveis'), undefined);
+});
+
+test('cliente renderiza busca, filtros completos e reseta página ao alterar filtro', () => {
+  const client = setupClient();
+  startClient(client);
+  client.requests[0].success(validResponse('vencimentos'));
+  const controls = descendants(client.nodes.filters).filter(node => node.name || node.getAttribute('name'));
+  const names = controls.map(node => node.name || node.getAttribute('name'));
+  for (const name of ['busca', 'polo', 'statusAluno', 'periodoDias', 'situacao', 'frequencia', 'modalidade', 'statusContrato']) {
+    assert.ok(names.includes(name), `filtro ${name}`);
+  }
+  client.context.__state.filters.paginaLista = 3;
+  const busca = controls.find(node => (node.name || node.getAttribute('name')) === 'busca');
+  busca.value = 'ALUNO';
+  busca.dispatch('change');
+  assert.equal(client.requests.at(-1).filters.paginaLista, undefined);
+  assert.equal(client.requests.at(-1).filters.busca, 'ALUNO');
+});
+
+test('cada gráfico tem resumo textual associado ao canvas', () => {
+  const client = setupClient();
+  startClient(client);
+  client.requests[0].success(validResponse());
+  const canvases = descendants(client.nodes.chartGrid).filter(node => node.tagName === 'CANVAS');
+  assert.ok(canvases.length >= 3);
+  canvases.forEach(canvas => {
+    const describedBy = canvas.getAttribute('aria-describedby');
+    assert.ok(describedBy);
+    assert.ok(descendants(client.nodes.chartGrid).some(node => node.id === describedBy && node.tagName === 'UL'));
+  });
+});
+
+test('cliente renderiza todos os gráficos e colunas exigidos em cada página', () => {
+  const expected = {
+    vencimentos: { charts: 3, columns: ['Aluno', 'Contato', 'Frequência', 'Polo', 'Vencimento', 'Situação', 'Valor'] },
+    fichas: { charts: 3, columns: ['Aluno', 'Contato', 'Polos', 'Última ficha', 'Dias sem atualização', 'Situação'] },
+    avaliacoes: { charts: 3, columns: ['Aluno', 'Contato', 'Polos', 'Última avaliação', 'Dias sem atualização', 'Situação'] },
+    planos: { charts: 5, columns: ['Aluno', 'Status do aluno', 'Frequência', 'Modalidade', 'Polo', 'Início corrente', 'Vencimento', 'Status do contrato', 'Valor'] }
+  };
+  const client = setupClient();
+  startClient(client);
+  for (const page of Object.keys(expected)) {
+    if (page !== 'vencimentos') client.buttons.find(button => button.dataset.page === page).dispatch('click');
+    client.requests.at(-1).success(validResponse(page));
+    assert.equal(descendants(client.nodes.chartGrid).filter(node => node.tagName === 'CANVAS').length, expected[page].charts, page);
+    const headings = descendants(client.nodes.listPanel).filter(node => node.tagName === 'TH').map(node => node.textContent);
+    assert.deepEqual(headings, expected[page].columns, page);
+  }
+});
+
+test('mobile nunca cria contato completo e breakpoint rerenderiza sem nova API', () => {
+  const client = setupClient({ mobile: true });
+  startClient(client);
+  client.requests[0].success(validResponse());
+  assert.equal(descendants(client.nodes.listPanel).some(node => node.tagName === 'TABLE'), false);
+  assert.equal(nodeByText(client.nodes.listPanel, '85987654321'), undefined);
+  assert.ok(nodeByText(client.nodes.listPanel, '•••••••••21'));
+  const requestCount = client.requests.length;
+  client.mediaQuery.matches = false;
+  client.mediaListeners[0]({ matches: false });
+  assert.equal(client.requests.length, requestCount);
+  assert.ok(descendants(client.nodes.listPanel).some(node => node.tagName === 'TABLE'));
+  assert.ok(nodeByText(client.nodes.listPanel, '85987654321'));
+  assert.equal(descendants(client.nodes.listPanel).some(node => node.className === 'mobile-cards'), false);
+});
+
+test('paginação exibe total global e controles com estados acessíveis', () => {
+  const client = setupClient();
+  startClient(client);
+  client.requests[0].success(validResponse('vencimentos', {
+    paginacao: { pagina: 2, limite: 25, totalItens: 60, totalPaginas: 3 }
+  }));
+  assert.ok(nodeByText(client.nodes.listPanel, '60 registros'));
+  assert.ok(nodeByText(client.nodes.listPanel, 'Página 2 de 3'));
+  const previous = nodeByText(client.nodes.listPanel, 'Anterior');
+  const next = nodeByText(client.nodes.listPanel, 'Próxima');
+  assert.equal(previous.disabled, false);
+  assert.equal(next.disabled, false);
+  next.dispatch('click');
+  assert.equal(client.requests.at(-1).filters.paginaLista, 3);
+  client.requests.at(-1).success(validResponse('vencimentos', {
+    paginacao: { pagina: 3, limite: 25, totalItens: 60, totalPaginas: 3 }
+  }));
+  assert.equal(nodeByText(client.nodes.listPanel, 'Próxima').disabled, true);
+  assert.equal(nodeByText(client.nodes.listPanel, 'Anterior').disabled, false);
+});
+
+test('carregamento renderiza skeletons de KPI, gráfico e lista', () => {
+  const client = setupClient();
+  startClient(client);
+  for (const id of ['kpiGrid', 'chartGrid', 'listPanel']) {
+    assert.ok(descendants(client.nodes[id]).some(node => node.classList.contains('skeleton')), id);
+  }
 });

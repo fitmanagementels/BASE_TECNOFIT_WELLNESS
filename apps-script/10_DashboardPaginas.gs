@@ -14,20 +14,43 @@ function opcoesDashboard_(linhas, campo) {
   });
 }
 
-function filtrarBaseDashboard_(alunos, contratos, filtros) {
+function filtrarBaseDashboard_(alunos, contratos, filtros, hoje, pagina) {
   filtros = filtros || {};
+  hoje = hoje || new Date();
+  var busca = String(filtros.busca || '').toLocaleLowerCase('pt-BR');
   var alunosFiltrados = (alunos || []).filter(function (aluno) {
-    return !filtros.statusAluno || String(aluno.status || '') === filtros.statusAluno;
+    var correspondeBusca = !busca || String(aluno.aluno || '').toLocaleLowerCase('pt-BR').indexOf(busca) !== -1 ||
+      String(aluno.id || '').toLocaleLowerCase('pt-BR').indexOf(busca) !== -1;
+    var correspondeSituacao = true;
+    if (filtros.situacao && (pagina === 'fichas' || pagina === 'avaliacoes')) {
+      var campo = pagina === 'fichas' ? 'data_ficha' : 'data_avaliacao';
+      var limite = pagina === 'fichas' ? CONFIG.dashboard.diasFicha : CONFIG.dashboard.diasAvaliacao;
+      correspondeSituacao = classificarAtualizacao_(aluno[campo], hoje, limite) === filtros.situacao;
+    }
+    return correspondeBusca && correspondeSituacao &&
+      (!filtros.statusAluno || String(aluno.status || '') === filtros.statusAluno);
   });
   var idsPermitidos = alunosFiltrados.reduce(function (acc, aluno) {
     acc[String(aluno.id)] = true;
     return acc;
   }, Object.create(null));
   var contratosFiltrados = (contratos || []).filter(function (contrato) {
+    var dias = diasEntreDashboard_(hoje, contrato.vencimento);
+    var correspondePeriodo = !filtros.periodoDias ||
+      (dias != null && dias >= 0 && dias <= Number(filtros.periodoDias));
+    var correspondeSituacao = !filtros.situacao || pagina === 'fichas' || pagina === 'avaliacoes';
+    if (filtros.situacao && pagina === 'vencimentos') {
+      correspondeSituacao = classificarVencimento_(contrato.vencimento, hoje) === filtros.situacao;
+    }
     return idsPermitidos[String(contrato.id)] &&
-      (!filtros.polo || String(contrato.polo || '') === filtros.polo);
+      correspondePeriodo && correspondeSituacao &&
+      (!filtros.polo || String(contrato.polo || '') === filtros.polo) &&
+      (!filtros.frequencia || String(contrato.contrato_x_sem || '') === filtros.frequencia) &&
+      (!filtros.modalidade || String(contrato.modalidade || '') === filtros.modalidade) &&
+      (!filtros.statusContrato || String(contrato.status_contrato || '') === filtros.statusContrato);
   });
-  if (filtros.polo) {
+  if (filtros.polo || filtros.periodoDias || filtros.frequencia || filtros.modalidade ||
+      filtros.statusContrato || (filtros.situacao && pagina !== 'fichas' && pagina !== 'avaliacoes')) {
     var idsComContrato = contratosFiltrados.reduce(function (acc, contrato) {
       acc[String(contrato.id)] = true;
       return acc;
@@ -114,6 +137,7 @@ function linhaContratoDashboard_(contrato, aluno, hoje) {
     frequencia: contrato.contrato_x_sem || '',
     modalidade: contrato.modalidade || '',
     polo: contrato.polo || 'Não informado',
+    inicioCorrente: formatarDataDashboard_(contrato.inicio_corrente),
     vencimento: formatarDataDashboard_(contrato.vencimento),
     diasParaVencer: diasEntreDashboard_(hoje, contrato.vencimento),
     situacao: classificarVencimento_(contrato.vencimento, hoje),
@@ -143,7 +167,11 @@ function montarPaginaVencimentos_(alunos, contratos, hoje) {
   });
   return {
     kpis: kpis,
-    graficos: { situacao: contarPorDashboard_(lista, 'situacao'), semanas: vencimentosPorSemanaDashboard_(lista, hoje) },
+    graficos: {
+      situacao: contarPorDashboard_(lista, 'situacao'),
+      semanas: vencimentosPorSemanaDashboard_(lista, hoje),
+      porPolo: contarPorDashboard_(lista, 'polo')
+    },
     lista: lista,
     filtros: {}
   };
@@ -189,12 +217,17 @@ function montarPaginaAvaliacoes_(alunos, contratos, hoje) {
   return montarPaginaAtualizacao_(alunos, contratos, hoje, 'data_avaliacao', CONFIG.dashboard.diasAvaliacao);
 }
 
-function montarPaginaPlanos_(alunos, contratos) {
+function montarPaginaPlanos_(alunos, contratos, hoje) {
   var unicos = unicosPor_(contratos, '_chave_contrato');
   var mapa = mapaAlunosDashboard_(alunos);
   var valor = unicos.reduce(function (soma, contrato) { return soma + (Number(contrato.valor) || 0); }, 0);
   var lista = unicos.map(function (contrato) {
-    return linhaContratoDashboard_(contrato, mapa[String(contrato.id)], new Date());
+    return linhaContratoDashboard_(contrato, mapa[String(contrato.id)], hoje || new Date());
+  }).sort(function (a, b) {
+    var da = paraDataDashboard_(a.vencimento);
+    var db = paraDataDashboard_(b.vencimento);
+    var diferenca = (da ? da.getTime() : Infinity) - (db ? db.getTime() : Infinity);
+    return diferenca || String(a.chave || '').localeCompare(String(b.chave || ''), 'pt-BR');
   });
   return {
     kpis: { alunos: unicosPor_(alunos, 'id').length, contratos: unicos.length, valor: valor, ticketMedio: unicos.length ? valor / unicos.length : 0 },
@@ -204,5 +237,18 @@ function montarPaginaPlanos_(alunos, contratos) {
       valorPorPolo: somarPorDashboard_(unicos, 'polo', 'valor')
     },
     lista: lista, filtros: {}
+  };
+}
+
+function paginarPaginaDashboard_(dados, pagina, limite) {
+  var totalItens = dados.lista.length;
+  var totalPaginas = totalItens ? Math.ceil(totalItens / limite) : 0;
+  var inicio = (pagina - 1) * limite;
+  return {
+    kpis: dados.kpis,
+    graficos: dados.graficos,
+    lista: dados.lista.slice(inicio, inicio + limite),
+    filtros: dados.filtros,
+    paginacao: { pagina: pagina, limite: limite, totalItens: totalItens, totalPaginas: totalPaginas }
   };
 }
