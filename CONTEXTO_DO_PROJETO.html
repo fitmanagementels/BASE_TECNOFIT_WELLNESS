@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contexto do Projeto — Base Central TecnoFit</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f2f6f8;
+      --panel: #ffffff;
+      --text: #20313d;
+      --muted: #687984;
+      --accent: #14324a;
+      --accent-2: #177245;
+      --warning: #9a5b00;
+      --border: #d4dfe5;
+      --code: #e7eff4;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f171d;
+        --panel: #17232b;
+        --text: #edf4f7;
+        --muted: #aab8c0;
+        --accent: #8ec5e8;
+        --accent-2: #76d7a5;
+        --warning: #ffc56d;
+        --border: #30424d;
+        --code: #243640;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    main { width: min(1120px, calc(100% - 28px)); margin: 30px auto 56px; }
+    header { margin-bottom: 22px; }
+    h1 { margin: 0 0 7px; color: var(--accent); font-size: clamp(1.65rem, 3vw, 2.3rem); }
+    h2, h3 { color: var(--accent); }
+    .meta, .muted { color: var(--muted); }
+    .notice {
+      margin: 18px 0;
+      padding: 13px 15px;
+      border-left: 4px solid var(--warning);
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--warning) 10%, var(--panel));
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .card, details {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 2px 10px color-mix(in srgb, var(--text) 5%, transparent);
+    }
+    .card strong { display: block; color: var(--accent-2); margin-bottom: 5px; }
+    details { margin: 12px 0; }
+    summary { cursor: pointer; color: var(--accent); font-weight: 750; font-size: 1.04rem; }
+    details[open] summary { margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: .92rem; }
+    th, td { border-bottom: 1px solid var(--border); padding: 8px; text-align: left; vertical-align: top; }
+    th { color: var(--accent); }
+    code { background: var(--code); padding: 2px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+    a { color: var(--accent); }
+    li + li { margin-top: 5px; }
+    .tag { display: inline-block; padding: 3px 8px; border-radius: 999px; background: var(--code); font-size: .8rem; }
+    .ok { color: var(--accent-2); font-weight: 700; }
+    .pending { color: var(--warning); font-weight: 700; }
+    footer { margin-top: 24px; color: var(--muted); font-size: .9rem; }
+    @media (max-width: 720px) {
+      table { display: block; overflow-x: auto; }
+      main { margin-top: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <span class="tag">Memória portátil canônica</span>
+      <h1>Base Central TecnoFit</h1>
+      <div class="meta">Última atualização: 11/07/2026 13:50 — America/Fortaleza</div>
+    </header>
+
+    <div class="notice"><strong>Atenção:</strong> o backend concluiu duas importações reais, mas o usuário ainda não validou se os campos foram migrados corretamente.</div>
+
+    <section class="grid" aria-label="Resumo rápido">
+      <div class="card"><strong>Objetivo</strong><span>Consolidar três relatórios TecnoFit em uma base mestre segura para operação e futuro dashboard.</span></div>
+      <div class="card"><strong>Etapa atual</strong><span>Estabilização e validação do backend manual instalado.</span></div>
+      <div class="card"><strong>Onde parou</strong><span>Duas importações remotas com sucesso; qualidade dos dados ainda não conferida.</span></div>
+      <div class="card"><strong>Próxima ação</strong><span>Validar o lote 2026-07-10 r01 e decidir se haverá histórico analítico.</span></div>
+    </section>
+
+    <details open>
+      <summary>Resumo executivo</summary>
+      <ul>
+        <li>Backend Apps Script modular instalado na planilha mestre e acionado por <code>TecnoFit &gt; Abrir painel &gt; Atualizar base</code>.</li>
+        <li>Importa <code>vencimentos</code>, <code>fichas</code> e <code>avaliacao_fisica</code> da pasta <code>01_ENTRADA</code>.</li>
+        <li>Valida, transforma, substitui o snapshot atual, registra auditoria e arquiva os relatórios.</li>
+        <li>Importações <code>2026-07-08 r01</code> e <code>2026-07-10 r01</code> confirmadas como <span class="ok">SUCESSO</span>.</li>
+        <li>Dashboard, gatilhos e histórico analítico permanecem fora da fase atual.</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>Objetivo, usuários e critérios de sucesso</summary>
+      <ul>
+        <li><strong>Objetivo:</strong> criar uma fonte central atualizável para monitoramento de clientes e futuro dashboard.</li>
+        <li><strong>Operador:</strong> proprietário da planilha, que executa a atualização.</li>
+        <li><strong>Administrador:</strong> envia os três relatórios para a pasta de entrada.</li>
+        <li><strong>Sucesso:</strong> lote completo reconhecido, contratos múltiplos preservados, três bases atualizadas, auditoria criada e arquivos arquivados sem atualização parcial.</li>
+      </ul>
+    </details>
+
+    <details open>
+      <summary>Estado atual e onde parou</summary>
+      <table>
+        <thead><tr><th>Item</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr><td>Backend</td><td class="ok">Instalado e operacional</td></tr>
+          <tr><td>01_ENTRADA</td><td>Vazia</td></tr>
+          <tr><td>02_PROCESSADOS/2026</td><td>Pastas 2026-07-08 e 2026-07-10</td></tr>
+          <tr><td>03_REJEITADOS</td><td>Vazia</td></tr>
+          <tr><td>IMPORTACOES</td><td>6 registros, todos SUCESSO</td></tr>
+          <tr><td>Qualidade da migração</td><td class="pending">Ainda não validada pelo usuário</td></tr>
+        </tbody>
+      </table>
+      <p>A próxima retomada deve começar pela conferência do conteúdo consolidado, não pelo dashboard.</p>
+    </details>
+
+    <details>
+      <summary>Lotes processados</summary>
+      <table>
+        <thead><tr><th>Referência</th><th>Revisão</th><th>Vencimentos</th><th>Fichas</th><th>Avaliações</th><th>Avisos</th></tr></thead>
+        <tbody>
+          <tr><td>2026-07-08</td><td>r01</td><td>339</td><td>1456</td><td>923</td><td>88 sem ficha; 111 sem avaliação; 3 contratos sem padrão</td></tr>
+          <tr><td>2026-07-10</td><td>r01</td><td>339</td><td>1456</td><td>942</td><td>88 sem ficha; 87 sem avaliação; 3 contratos sem padrão</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">Esses números comprovam processamento, não a exatidão de cada campo migrado.</p>
+    </details>
+
+    <details>
+      <summary>Histórico relevante</summary>
+      <table>
+        <thead><tr><th>Data</th><th>Mudança</th><th>Impacto</th></tr></thead>
+        <tbody>
+          <tr><td>08–10/07/2026</td><td>Mapeamento dos relatórios e desenho da base</td><td>ID tornou-se a integração; vencimentos define a população atual</td></tr>
+          <tr><td>10/07/2026</td><td>Backend desenvolvido com TDD</td><td>Parser, transformação, rollback, auditoria e painel disponíveis</td></tr>
+          <tr><td>10/07/2026</td><td>Validação local com dados reais</td><td>330 alunos e 339 contratos confirmados para o primeiro conjunto</td></tr>
+          <tr><td>11/07/2026</td><td>Instalação e duas execuções remotas</td><td>Fluxo operacional real confirmado</td></tr>
+          <tr><td>11/07/2026</td><td>Pacote de contexto criado</td><td>Continuidade entre máquinas e IAs</td></tr>
+        </tbody>
+      </table>
+      <p><strong>Controle de versão:</strong> não existe repositório Git nesta pasta.</p>
+    </details>
+
+    <details open>
+      <summary>Memória de decisões</summary>
+      <table>
+        <thead><tr><th>Decisão</th><th>Por quê</th><th>Impacto</th><th>Retomada</th></tr></thead>
+        <tbody>
+          <tr><td>Uma linha por aluno e uma por contrato</td><td>IDs podem ter vários contratos</td><td>Evita perda de polos e valores</td><td>Contar alunos por ID distinto</td></tr>
+          <tr><td>Visão mestre por contrato</td><td>Preserva todos os contratos</td><td>IDs podem repetir</td><td>Usar a chave técnica na coluna M</td></tr>
+          <tr><td>Snapshot substitutivo</td><td>Foco inicial no estado atual</td><td>Dados antigos saem das três abas</td><td>Recuperar dos processados ou criar histórico</td></tr>
+          <tr><td>Rollback em erro</td><td>Proteger a última base válida</td><td>Atualização é tratada como unidade</td><td>Ver <code>07_ImportacaoService.gs</code></td></tr>
+          <tr><td>Arquivos XLS lidos como HTML</td><td>Esse é o formato real exportado</td><td>Não converter antes do upload</td><td>Ver parser e fixtures</td></tr>
+          <tr><td>Revisão obrigatória</td><td>Evitar reprocessamento</td><td>Correções usam r02, r03...</td><td>Consultar IMPORTACOES</td></tr>
+          <tr><td>Instalação manual</td><td>Fase simples, sem clasp</td><td>Risco de divergência local/remoto</td><td>Comparar arquivos após mudanças</td></tr>
+        </tbody>
+      </table>
+    </details>
+
+    <details>
+      <summary>Informações importantes do chat</summary>
+      <ul>
+        <li>O usuário confirmou duas atualizações operacionais corretas, mas adiou a conferência da migração.</li>
+        <li>Uma atualização bem-sucedida apaga o snapshot anterior das três abas e grava somente o lote novo.</li>
+        <li>O backup é temporário e serve apenas para rollback durante a execução.</li>
+        <li>O histórico preservado hoje é composto por <code>IMPORTACOES</code> e arquivos em <code>02_PROCESSADOS</code>.</li>
+        <li>Não expor dados pessoais em documentação, testes ou prompts de continuidade.</li>
+        <li>Atualizar este HTML e o Markdown após cada grande passo.</li>
+      </ul>
+    </details>
+
+    <details>
+      <summary>Etapa atual e arquitetura de dados</summary>
+      <ul>
+        <li><code>BASE_ALUNOS</code>: uma linha por ID; contato/ficha e avaliação mais recentes.</li>
+        <li><code>CONTRATOS</code>: uma linha por contrato, com texto integral, frequência, valor, datas, status e polo.</li>
+        <li><code>VISAO_MESTRE</code>: junção por contrato; chave técnica oculta na coluna M.</li>
+        <li><code>IMPORTACOES</code>: log append-only com uma linha por arquivo.</li>
+        <li><code>inicio_plano</code>: vazio nesta fase.</li>
+      </ul>
+    </details>
+
+    <details open>
+      <summary>Próximos passos</summary>
+      <ol>
+        <li>Validar contagens, IDs, contratos múltiplos, contatos, datas, valores e polos do lote 2026-07-10 r01.</li>
+        <li>Comparar uma amostra controlada entre relatórios processados e visão mestre.</li>
+        <li>Decidir se o dashboard precisa de snapshot atual ou histórico semanal.</li>
+        <li>Atualizar a situação atual do <code>LEIA-ME.md</code>.</li>
+        <li>Inicializar Git ou outra sincronização confiável entre máquinas.</li>
+        <li>Somente depois especificar o dashboard.</li>
+      </ol>
+    </details>
+
+    <details>
+      <summary>Arquivos e recursos importantes</summary>
+      <ul>
+        <li><a href="CONTEXTO_DO_PROJETO.md">CONTEXTO_DO_PROJETO.md</a> — fonte canônica.</li>
+        <li><a href="LEIA-ME.md">LEIA-ME.md</a> — arquitetura e rotina operacional.</li>
+        <li><a href="apps-script/INSTRUCOES_INSTALACAO.md">Instruções de instalação</a>.</li>
+        <li><code>apps-script/03_Transformacao.gs</code> — regras de consolidação.</li>
+        <li><code>apps-script/04_PlanilhaRepositorio.gs</code> — substituição e backup.</li>
+        <li><code>apps-script/07_ImportacaoService.gs</code> — fluxo transacional.</li>
+        <li><code>tests/</code> — testes sintéticos sem dados pessoais.</li>
+        <li><a href="https://drive.google.com/drive/folders/1t7U0mAzejc98pvq5foknWKIADa9YBcuj">Pasta principal no Drive</a>.</li>
+        <li><a href="https://docs.google.com/spreadsheets/d/1I63DuNBk1mR-U5gNe9EvGhSu-QryqXxfVrG0RC0vtfM/edit">Planilha mestre</a>.</li>
+      </ul>
+    </details>
+
+    <details open>
+      <summary>Riscos, bloqueios e pendências</summary>
+      <h3>Riscos</h3>
+      <ul>
+        <li>Conteúdo migrado ainda não auditado.</li>
+        <li>Sem histórico analítico nas abas atuais.</li>
+        <li>Possível divergência entre código local e Apps Script remoto.</li>
+        <li>Projeto sem Git.</li>
+        <li>Dados pessoais exigem permissões restritas.</li>
+      </ul>
+      <h3>Bloqueio de produto</h3>
+      <p>Não iniciar o dashboard antes da validação mínima da base.</p>
+      <h3>Lacunas</h3>
+      <p>Métricas do dashboard, estratégia histórica, método de validação e política formal de retenção ainda precisam ser definidos.</p>
+    </details>
+
+    <details open>
+      <summary>Como retomar em outra máquina</summary>
+      <ol>
+        <li>Copiar a pasta completa do projeto.</li>
+        <li>Ler primeiro <code>CONTEXTO_DO_PROJETO.md</code>.</li>
+        <li>Ler <code>LEIA-ME.md</code> e os três módulos centrais: transformação, planilha e serviço.</li>
+        <li>Verificar o estado remoto de <code>IMPORTACOES</code> e <code>01_ENTRADA</code>.</li>
+        <li>Carregar Node 24 com <code>nvm use</code> e executar <code>npm test</code>.</li>
+        <li>Continuar pela validação da migração.</li>
+        <li>Atualizar os dois artefatos de contexto no próximo marco.</li>
+      </ol>
+    </details>
+
+    <details open>
+      <summary>Contexto para outro chat ou IA</summary>
+      <p><strong>Objetivo:</strong> consolidar três relatórios TecnoFit em uma base mestre segura e atualizável para um futuro dashboard.</p>
+      <p><strong>Estado:</strong> backend Apps Script instalado; dois lotes remotos com sucesso; migração ainda não auditada pelo usuário.</p>
+      <p><strong>Decisões fixadas:</strong> uma linha por aluno, uma por contrato, visão por contrato, snapshot substitutivo, arquivos processados como histórico bruto, revisão obrigatória e rollback em erro.</p>
+      <p><strong>Próxima ação:</strong> validar o lote 2026-07-10 r01 e decidir se haverá histórico analítico.</p>
+      <p><strong>Confirmar antes de agir:</strong> métricas do dashboard, necessidade de histórico, método de validação e retenção dos processados.</p>
+    </details>
+
+    <footer>Fonte de verdade: <code>CONTEXTO_DO_PROJETO.md</code>. Regenerar este HTML após cada grande marco.</footer>
+  </main>
+</body>
+</html>

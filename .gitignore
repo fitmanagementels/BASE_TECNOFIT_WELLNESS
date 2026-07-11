@@ -1,0 +1,8 @@
+node_modules/
+.superpowers/
+.clasp.json
+.clasprc.json
+.env
+coverage/
+*.log
+.worktrees/
