@@ -10,7 +10,7 @@ test('shell contém as quatro páginas e regiões acessíveis', () => {
     assert.equal(buttons.length, 2, `${page} deve existir uma vez em cada navegação`);
     assert.equal(buttons.every(button => /aria-label="[^"]+"/.test(button)), true, `${page} deve ter aria-label`);
   }
-  for (const id of ['navDesktop', 'navMobile', 'pageTitle', 'lastUpdate', 'importWarning', 'filters', 'kpiGrid', 'chartGrid', 'listPanel']) {
+  for (const id of ['navDesktop', 'navMobile', 'pageTitle', 'lastUpdate', 'importWarning', 'filters', 'kpiGrid', 'chartGrid', 'listPanel', 'detailDialog', 'detailTitle', 'detailContent', 'detailClose']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /<section\s+id="appState"[^>]*aria-live="polite"/);
@@ -121,6 +121,8 @@ class FakeNode {
     this.className = '';
     this.textContent = '';
     this.value = '';
+    this.disabled = false;
+    this.open = false;
     this.classList = {
       toggle: (name, active) => {
         const classes = new Set(this.className.split(/\s+/).filter(Boolean));
@@ -158,9 +160,13 @@ class FakeNode {
     (this.listeners[type] ||= []).push(listener);
   }
 
-  dispatch(type) {
-    (this.listeners[type] || []).forEach(listener => listener({ target: this }));
+  dispatch(type, event = {}) {
+    const payload = { target: this, preventDefault() {}, ...event };
+    (this.listeners[type] || []).forEach(listener => listener(payload));
   }
+
+  showModal() { this.open = true; }
+  close() { this.open = false; this.dispatch('close'); }
 }
 
 function descendants(node) {
@@ -208,7 +214,7 @@ function validResponse(page = 'vencimentos', overrides = {}) {
 }
 
 function setupClient(options = {}) {
-  const ids = ['filters', 'kpiGrid', 'chartGrid', 'listPanel', 'appState', 'mainContent', 'pageTitle', 'lastUpdate', 'importWarning'];
+  const ids = ['filters', 'kpiGrid', 'chartGrid', 'listPanel', 'appState', 'mainContent', 'pageTitle', 'lastUpdate', 'importWarning', 'detailDialog', 'detailTitle', 'detailContent', 'detailClose'];
   const nodes = Object.fromEntries(ids.map(id => [id, new FakeNode(id === 'pageTitle' ? 'h1' : 'section')]));
   const pages = ['vencimentos', 'fichas', 'avaliacoes', 'planos'];
   const buttons = pages.flatMap(page => [0, 1].map(() => {
@@ -218,13 +224,19 @@ function setupClient(options = {}) {
   }));
   const documentListeners = {};
   const document = {
-    createElement: tag => new FakeNode(tag),
+    activeElement: null,
+    createElement(tag) {
+      const node = new FakeNode(tag);
+      node.focus = () => { document.activeElement = node; };
+      return node;
+    },
     getElementById: id => nodes[id],
     querySelectorAll: selector => selector === '[data-page]' ? buttons : [],
     addEventListener(type, listener) {
       (documentListeners[type] ||= []).push(listener);
     }
   };
+  Object.values(nodes).forEach(node => { node.focus = () => { document.activeElement = node; }; });
   const requests = [];
   let successHandler;
   let failureHandler;
@@ -263,7 +275,7 @@ function setupClient(options = {}) {
   };
   if (!options.chartMissing) context.Chart = FakeChart;
   vm.runInNewContext(source, context);
-  return { context, nodes, buttons, documentListeners, requests, charts, mediaQuery, mediaListeners };
+  return { context, document, nodes, buttons, documentListeners, requests, charts, mediaQuery, mediaListeners };
 }
 
 function startClient(client) {
@@ -443,6 +455,17 @@ test('cliente renderiza busca, filtros completos e reseta página ao alterar fil
   assert.equal(client.requests.at(-1).filters.busca, 'ALUNO');
 });
 
+test('situações usam rótulos amigáveis e preservam values técnicos', () => {
+  const client = setupClient();
+  startClient(client);
+  client.requests[0].success(validResponse());
+  const situation = descendants(client.nodes.filters).find(node => node.name === 'situacao');
+  const options = situation.children.map(option => [option.value, option.textContent]);
+  assert.ok(options.some(([value, label]) => value === 'ate7' && label === 'Até 7 dias'));
+  assert.ok(options.some(([value, label]) => value === 'ate30' && label === 'De 8 a 30 dias'));
+  assert.ok(options.some(([value, label]) => value === 'semData' && label === 'Sem data'));
+});
+
 test('cada gráfico tem resumo textual associado ao canvas', () => {
   const client = setupClient();
   startClient(client);
@@ -458,9 +481,9 @@ test('cada gráfico tem resumo textual associado ao canvas', () => {
 
 test('cliente renderiza todos os gráficos e colunas exigidos em cada página', () => {
   const expected = {
-    vencimentos: { charts: 3, columns: ['Aluno', 'Contato', 'Frequência', 'Polo', 'Vencimento', 'Situação', 'Valor'] },
-    fichas: { charts: 3, columns: ['Aluno', 'Contato', 'Polos', 'Última ficha', 'Dias sem atualização', 'Situação'] },
-    avaliacoes: { charts: 3, columns: ['Aluno', 'Contato', 'Polos', 'Última avaliação', 'Dias sem atualização', 'Situação'] },
+    vencimentos: { charts: 3, columns: ['Aluno', 'Contato', 'Frequência', 'Polo', 'Vencimento', 'Situação', 'Valor', 'Detalhes'] },
+    fichas: { charts: 3, columns: ['Aluno', 'Contato', 'Polos', 'Última ficha', 'Dias sem atualização', 'Situação', 'Detalhes'] },
+    avaliacoes: { charts: 3, columns: ['Aluno', 'Contato', 'Polos', 'Última avaliação', 'Dias sem atualização', 'Situação', 'Detalhes'] },
     planos: { charts: 5, columns: ['Aluno', 'Status do aluno', 'Frequência', 'Modalidade', 'Polo', 'Início corrente', 'Vencimento', 'Status do contrato', 'Valor'] }
   };
   const client = setupClient();
@@ -472,6 +495,17 @@ test('cliente renderiza todos os gráficos e colunas exigidos em cada página', 
     const headings = descendants(client.nodes.listPanel).filter(node => node.tagName === 'TH').map(node => node.textContent);
     assert.deepEqual(headings, expected[page].columns, page);
   }
+});
+
+test('resumos de gráficos formatam cobertura como percentual e valor como moeda', () => {
+  const client = setupClient();
+  startClient(client);
+  client.buttons.find(button => button.dataset.page === 'avaliacoes').dispatch('click');
+  client.requests.at(-1).success(validResponse('avaliacoes'));
+  assert.ok(nodeByText(client.nodes.chartGrid, 'POLO A: 100%'));
+  client.buttons.find(button => button.dataset.page === 'planos').dispatch('click');
+  client.requests.at(-1).success(validResponse('planos'));
+  assert.match(nodeByText(client.nodes.chartGrid, 'POLO A: R$ 100,00').textContent, /R\$/);
 });
 
 test('mobile nunca cria contato completo e breakpoint rerenderiza sem nova API', () => {
@@ -488,6 +522,29 @@ test('mobile nunca cria contato completo e breakpoint rerenderiza sem nova API',
   assert.ok(descendants(client.nodes.listPanel).some(node => node.tagName === 'TABLE'));
   assert.ok(nodeByText(client.nodes.listPanel, '85987654321'));
   assert.equal(descendants(client.nodes.listPanel).some(node => node.className === 'mobile-cards'), false);
+});
+
+test('detalhes móveis revelam contato apenas em dialog acessível e restauram foco', () => {
+  const client = setupClient({ mobile: true });
+  startClient(client);
+  client.requests[0].success(validResponse());
+  assert.equal(nodeByText(client.nodes.listPanel, '85987654321'), undefined);
+  const trigger = nodeByText(client.nodes.listPanel, 'Ver detalhes');
+  assert.ok(trigger);
+  trigger.dispatch('click');
+  assert.equal(client.nodes.detailDialog.open, true);
+  assert.ok(nodeByText(client.nodes.detailContent, 'ALUNO TESTE'));
+  assert.ok(nodeByText(client.nodes.detailContent, '85987654321'));
+  assert.equal(client.document.activeElement, client.nodes.detailClose);
+  client.nodes.detailClose.dispatch('click');
+  assert.equal(client.nodes.detailDialog.open, false);
+  assert.equal(nodeByText(client.nodes.detailContent, '85987654321'), undefined);
+  assert.equal(client.document.activeElement, trigger);
+
+  trigger.dispatch('click');
+  client.nodes.detailDialog.dispatch('keydown', { key: 'Escape' });
+  assert.equal(client.nodes.detailDialog.open, false);
+  assert.equal(client.document.activeElement, trigger);
 });
 
 test('paginação exibe total global e controles com estados acessíveis', () => {

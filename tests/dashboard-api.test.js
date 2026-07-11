@@ -208,7 +208,7 @@ test('obterDadosPaginaDashboard aplica filtros sem reduzir as opções disponív
   assert.deepEqual(JSON.parse(JSON.stringify(resultado.dados.kpis)), {
     alunos: 1, contratos: 1, valor: 100, ticketMedio: 100
   });
-  assert.deepEqual(resultado.dados.lista.map(item => item.id), ['1']);
+  assert.deepEqual(resultado.dados.lista.map(item => item.aluno), ['ALUNO ATIVO A']);
 });
 
 test('última tentativa com erro posterior ao sucesso gera aviso genérico sem mensagem bruta', () => {

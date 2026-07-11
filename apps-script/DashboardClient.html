@@ -31,9 +31,9 @@
 
   const chartMaps = {
     vencimentos: [['situacao', 'Situação dos vencimentos', 'doughnut'], ['semanas', 'Vencimentos nas próximas semanas', 'bar'], ['porPolo', 'Vencimentos por polo', 'bar']],
-    fichas: [['situacao', 'Situação das fichas', 'doughnut'], ['faixas', 'Faixas de idade das fichas', 'bar'], ['coberturaPorPolo', 'Cobertura de fichas por polo', 'bar']],
-    avaliacoes: [['situacao', 'Situação das avaliações', 'doughnut'], ['faixas', 'Faixas de idade das avaliações', 'bar'], ['coberturaPorPolo', 'Cobertura de avaliações por polo', 'bar']],
-    planos: [['polos', 'Contratos por polo', 'doughnut'], ['frequencias', 'Contratos por frequência', 'bar'], ['modalidades', 'Contratos por modalidade', 'bar'], ['status', 'Contratos por status', 'bar'], ['valorPorPolo', 'Valor contratado por polo', 'bar']]
+    fichas: [['situacao', 'Situação das fichas', 'doughnut'], ['faixas', 'Faixas de idade das fichas', 'bar'], ['coberturaPorPolo', 'Cobertura de fichas por polo', 'bar', 'percent']],
+    avaliacoes: [['situacao', 'Situação das avaliações', 'doughnut'], ['faixas', 'Faixas de idade das avaliações', 'bar'], ['coberturaPorPolo', 'Cobertura de avaliações por polo', 'bar', 'percent']],
+    planos: [['polos', 'Contratos por polo', 'doughnut'], ['frequencias', 'Contratos por frequência', 'bar'], ['modalidades', 'Contratos por modalidade', 'bar'], ['status', 'Contratos por status', 'bar'], ['valorPorPolo', 'Valor contratado por polo', 'bar', 'money']]
   };
 
   const chartColors = ['#dfff22', '#9daa29', '#505a25', '#ffb84d', '#ff6b5f'];
@@ -197,8 +197,15 @@
     const container = document.getElementById('filters');
     clearNode(container);
     const situations = state.page === 'vencimentos'
-      ? ['vencido', 'ate7', 'ate30', 'futuro', 'semData']
-      : (state.page === 'fichas' || state.page === 'avaliacoes' ? ['ausente', 'desatualizada', 'atualizada'] : []);
+      ? [
+        { value: 'vencido', label: 'Vencido' }, { value: 'ate7', label: 'Até 7 dias' },
+        { value: 'ate30', label: 'De 8 a 30 dias' }, { value: 'futuro', label: 'Após 30 dias' },
+        { value: 'semData', label: 'Sem data' }
+      ]
+      : (state.page === 'fichas' || state.page === 'avaliacoes' ? [
+        { value: 'ausente', label: 'Ausente' }, { value: 'desatualizada', label: 'Desatualizada' },
+        { value: 'atualizada', label: 'Atualizada' }
+      ] : []);
     const definitions = [
       { key: 'polo', source: 'polos', label: 'Polo' },
       { key: 'statusAluno', source: 'statusAlunos', label: 'Status do aluno' },
@@ -229,8 +236,10 @@
       all.value = '';
       select.appendChild(all);
       values.forEach(function (value) {
-        const option = el('option', '', value);
-        option.value = String(value);
+        const optionValue = value && typeof value === 'object' ? value.value : value;
+        const optionLabel = value && typeof value === 'object' ? value.label : value;
+        const option = el('option', '', optionLabel);
+        option.value = String(optionValue);
         select.appendChild(option);
       });
       select.value = state.filters[definition.key] || '';
@@ -290,7 +299,9 @@
       summary.id = 'chart-summary-' + state.page + '-' + definition[0];
       canvas.setAttribute('aria-describedby', summary.id);
       data.labels.forEach(function (label, index) {
-        summary.appendChild(el('li', '', label + ': ' + number(data.values[index])));
+        var formatted = definition[3] === 'percent' ? percent(data.values[index])
+          : definition[3] === 'money' ? money(data.values[index]) : number(data.values[index]);
+        summary.appendChild(el('li', '', label + ': ' + formatted));
       });
       frame.appendChild(canvas);
       card.appendChild(frame);
@@ -345,6 +356,43 @@
     return valueText(row[definition[0]], definition[2]);
   }
 
+  let detailRestoreFocus = null;
+
+  function detailFields(row) {
+    const fields = [['aluno', 'Aluno'], ['contato', 'Contato']];
+    (listColumns[state.page] || []).forEach(function (definition) {
+      if (definition[0] !== 'aluno' && definition[0] !== 'contato') fields.push([definition[0], definition[1], definition[2]]);
+    });
+    return fields;
+  }
+
+  function openDetails(row, trigger) {
+    const dialog = document.getElementById('detailDialog');
+    const content = document.getElementById('detailContent');
+    clearNode(content);
+    const list = el('dl', 'detail-list');
+    detailFields(row).forEach(function (definition) {
+      list.appendChild(el('dt', 'card-subtitle', definition[1]));
+      list.appendChild(el('dd', '', valueText(row[definition[0]], definition[2])));
+    });
+    content.appendChild(list);
+    detailRestoreFocus = trigger;
+    dialog.showModal();
+    document.getElementById('detailClose').focus();
+  }
+
+  function closeDetails() {
+    const dialog = document.getElementById('detailDialog');
+    if (dialog.open) dialog.close();
+  }
+
+  function detailButton(row) {
+    const button = el('button', 'filter-control detail-button', 'Ver detalhes');
+    button.type = 'button';
+    button.addEventListener('click', function () { openDetails(row, button); });
+    return button;
+  }
+
   function renderList(rows, pagination) {
     const panel = document.getElementById('listPanel');
     clearNode(panel);
@@ -367,6 +415,12 @@
       th.scope = 'col';
       headingRow.appendChild(th);
     });
+    const hasDetails = rows.some(function (row) { return Boolean(row.contato); });
+    if (hasDetails) {
+      const th = el('th', '', 'Detalhes');
+      th.scope = 'col';
+      headingRow.appendChild(th);
+    }
     thead.appendChild(headingRow);
     table.appendChild(thead);
     const tbody = el('tbody');
@@ -380,6 +434,11 @@
         else td.textContent = text;
         tr.appendChild(td);
       });
+      if (hasDetails) {
+        const detailsCell = el('td');
+        if (row.contato) detailsCell.appendChild(detailButton(row));
+        tr.appendChild(detailsCell);
+      }
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
@@ -395,6 +454,7 @@
         if (definition[2] === 'status') card.appendChild(el('span', statusClass(text), text));
         else card.appendChild(el('strong', '', text));
       });
+      if (row.contato) card.appendChild(detailButton(row));
       mobileCards.appendChild(card);
     });
     panel.appendChild(mobileCards);
@@ -429,6 +489,10 @@
       return;
     }
     state.currentData = { response: response, data: data };
+    if (state.filters.paginaLista && state.filters.paginaLista !== data.paginacao.pagina) {
+      state.filters.paginaLista = data.paginacao.pagina;
+      state.filtersByPage[state.page] = Object.assign({}, state.filters);
+    }
     setHealth('ready', response);
     const rows = Array.isArray(data.lista) ? data.lista : [];
     if (!rows.length) {
@@ -458,6 +522,19 @@
       const mobileQuery = window.matchMedia('(max-width: 720px)');
       if (mobileQuery.addEventListener) mobileQuery.addEventListener('change', rerenderCurrentList);
     }
+    const detailDialog = document.getElementById('detailDialog');
+    document.getElementById('detailClose').addEventListener('click', closeDetails);
+    detailDialog.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeDetails();
+      }
+    });
+    detailDialog.addEventListener('close', function () {
+      clearNode(document.getElementById('detailContent'));
+      if (detailRestoreFocus && detailRestoreFocus.focus) detailRestoreFocus.focus();
+      detailRestoreFocus = null;
+    });
     navigate(state.page);
   }
 

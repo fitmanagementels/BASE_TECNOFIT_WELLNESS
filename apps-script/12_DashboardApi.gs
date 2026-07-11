@@ -10,7 +10,7 @@ function hashTextoDashboard_(texto) {
 }
 
 function chaveCacheDashboard_(pagina, filtros) {
-  var prefixo = 'dashboard:v1:' + pagina + ':';
+  var prefixo = 'dashboard:v2:' + pagina + ':';
   var serializado = JSON.stringify(filtros || {});
   var chave = prefixo + serializado;
   if (chave.length <= 250) return chave;

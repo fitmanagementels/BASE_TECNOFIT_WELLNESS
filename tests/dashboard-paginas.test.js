@@ -183,7 +183,7 @@ test('paginação fatia só a lista e preserva KPIs e gráficos globais', () => 
   const page = gas.montarPaginaPlanos_(alunos, contratos, hoje);
   const paginada = gas.paginarPaginaDashboard_(page, 2, 1);
   assert.equal(paginada.lista.length, 1);
-  assert.equal(paginada.lista[0].chave, 'c2');
+  assert.equal(paginada.lista[0].vencimento, '18/07/2026');
   assert.deepEqual(JSON.parse(JSON.stringify(paginada.kpis)), JSON.parse(JSON.stringify(page.kpis)));
   assert.deepEqual(JSON.parse(JSON.stringify(paginada.graficos)), JSON.parse(JSON.stringify(page.graficos)));
   assert.deepEqual(JSON.parse(JSON.stringify(paginada.paginacao)), { pagina: 2, limite: 1, totalItens: 3, totalPaginas: 3 });
@@ -191,5 +191,39 @@ test('paginação fatia só a lista e preserva KPIs e gráficos globais', () => 
 
 test('planos mantém ordenação estável por vencimento e chave', () => {
   const page = gas.montarPaginaPlanos_(alunos, [contratos[2], contratos[1], contratos[0]], hoje);
-  assert.deepEqual(page.lista.map(item => item.chave), ['c1', 'c2', 'c3']);
+  assert.deepEqual(page.lista.map(item => item.vencimento), ['10/07/2026', '18/07/2026', '01/08/2026']);
+});
+
+test('ordenação total gera a mesma paginação para ordens físicas diferentes', () => {
+  const mesmosVencimentos = [
+    { _chave_contrato: 'z', id: '1', vencimento: new Date(2026, 6, 20), polo: 'P', valor: 1 },
+    { _chave_contrato: 'a', id: '2', vencimento: new Date(2026, 6, 20), polo: 'P', valor: 1 }
+  ];
+  const vencA = gas.paginarPaginaDashboard_(gas.montarPaginaVencimentos_(alunos, mesmosVencimentos, hoje), 1, 1);
+  const vencB = gas.paginarPaginaDashboard_(gas.montarPaginaVencimentos_(alunos, [...mesmosVencimentos].reverse(), hoje), 1, 1);
+  assert.deepEqual(vencA.lista.map(item => item.chave), ['a']);
+  assert.deepEqual(vencB.lista.map(item => item.chave), ['a']);
+
+  const alunosEmpatados = alunos.map(item => ({ ...item, data_ficha: '' }));
+  const fichasA = gas.paginarPaginaDashboard_(gas.montarPaginaFichas_(alunosEmpatados, contratos, hoje), 1, 1);
+  const fichasB = gas.paginarPaginaDashboard_(gas.montarPaginaFichas_([...alunosEmpatados].reverse(), contratos, hoje), 1, 1);
+  assert.deepEqual(fichasA.lista.map(item => item.id), ['1']);
+  assert.deepEqual(fichasB.lista.map(item => item.id), ['1']);
+});
+
+test('paginação limita página solicitada ao total sem alterar filtros', () => {
+  const page = gas.montarPaginaPlanos_(alunos, contratos, hoje);
+  page.filtros = { polos: ['POLO A'] };
+  const paginada = gas.paginarPaginaDashboard_(page, 99, 2);
+  assert.equal(paginada.paginacao.pagina, 2);
+  assert.deepEqual(paginada.lista.map(item => item.aluno), ['ALUNO B']);
+  assert.deepEqual(paginada.filtros, { polos: ['POLO A'] });
+});
+
+test('DTO de planos expõe somente campos consumidos pela interface', () => {
+  const row = gas.montarPaginaPlanos_(alunos, contratos, hoje).lista[0];
+  assert.deepEqual(Object.keys(row).sort(), [
+    'aluno', 'frequencia', 'inicioCorrente', 'modalidade', 'polo',
+    'statusAluno', 'statusContrato', 'valor', 'vencimento'
+  ].sort());
 });

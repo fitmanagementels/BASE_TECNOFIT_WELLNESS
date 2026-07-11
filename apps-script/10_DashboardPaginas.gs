@@ -154,7 +154,7 @@ function montarPaginaVencimentos_(alunos, contratos, hoje) {
   }).sort(function (a, b) {
     var da = a.diasParaVencer == null ? 999999 : a.diasParaVencer;
     var db = b.diasParaVencer == null ? 999999 : b.diasParaVencer;
-    return da - db;
+    return da - db || String(a.chave || '').localeCompare(String(b.chave || ''), 'pt-BR');
   });
   var kpis = { vencidos: 0, ate7: 0, ate30: 0, valorAte30: 0 };
   lista.forEach(function (linha) {
@@ -188,7 +188,9 @@ function montarPaginaAtualizacao_(alunos, contratos, hoje, campo, limiteDias) {
     };
   }).sort(function (a, b) {
     var peso = { ausente: 0, desatualizada: 1, atualizada: 2 };
-    return peso[a.situacao] - peso[b.situacao] || (b.diasSemAtualizacao || 0) - (a.diasSemAtualizacao || 0);
+    return peso[a.situacao] - peso[b.situacao] ||
+      (b.diasSemAtualizacao || 0) - (a.diasSemAtualizacao || 0) ||
+      String(a.id || '').localeCompare(String(b.id || ''), 'pt-BR');
   });
   var contagem = contarPorDashboard_(lista, 'situacao');
   var total = lista.length;
@@ -222,12 +224,28 @@ function montarPaginaPlanos_(alunos, contratos, hoje) {
   var mapa = mapaAlunosDashboard_(alunos);
   var valor = unicos.reduce(function (soma, contrato) { return soma + (Number(contrato.valor) || 0); }, 0);
   var lista = unicos.map(function (contrato) {
-    return linhaContratoDashboard_(contrato, mapa[String(contrato.id)], hoje || new Date());
+    var aluno = mapa[String(contrato.id)];
+    return {
+      chaveOrdenacao: String(contrato._chave_contrato || ''),
+      linha: {
+        aluno: aluno ? aluno.aluno : '',
+        statusAluno: aluno ? aluno.status : '',
+        frequencia: contrato.contrato_x_sem || '',
+        modalidade: contrato.modalidade || '',
+        polo: contrato.polo || 'Não informado',
+        inicioCorrente: formatarDataDashboard_(contrato.inicio_corrente),
+        vencimento: formatarDataDashboard_(contrato.vencimento),
+        statusContrato: contrato.status_contrato || '',
+        valor: Number(contrato.valor) || 0
+      }
+    };
   }).sort(function (a, b) {
-    var da = paraDataDashboard_(a.vencimento);
-    var db = paraDataDashboard_(b.vencimento);
+    var da = paraDataDashboard_(a.linha.vencimento);
+    var db = paraDataDashboard_(b.linha.vencimento);
     var diferenca = (da ? da.getTime() : Infinity) - (db ? db.getTime() : Infinity);
-    return diferenca || String(a.chave || '').localeCompare(String(b.chave || ''), 'pt-BR');
+    return diferenca || a.chaveOrdenacao.localeCompare(b.chaveOrdenacao, 'pt-BR');
+  }).map(function (item) {
+    return item.linha;
   });
   return {
     kpis: { alunos: unicosPor_(alunos, 'id').length, contratos: unicos.length, valor: valor, ticketMedio: unicos.length ? valor / unicos.length : 0 },
@@ -243,6 +261,7 @@ function montarPaginaPlanos_(alunos, contratos, hoje) {
 function paginarPaginaDashboard_(dados, pagina, limite) {
   var totalItens = dados.lista.length;
   var totalPaginas = totalItens ? Math.ceil(totalItens / limite) : 0;
+  pagina = totalPaginas ? Math.min(pagina, totalPaginas) : 1;
   var inicio = (pagina - 1) * limite;
   return {
     kpis: dados.kpis,
