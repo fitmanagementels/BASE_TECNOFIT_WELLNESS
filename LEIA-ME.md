@@ -15,7 +15,7 @@ Este projeto consolida três relatórios exportados pelo sistema TecnoFit em uma
 - `fichas`: fonte dos contatos e das datas das fichas;
 - `avaliacao_fisica`: fonte das datas das avaliações físicas.
 
-A base central servirá como fonte para um futuro dashboard em Google Apps Script. O processo deve ser repetível, auditável e seguro: um arquivo semanal inválido não pode apagar ou corromper a última base válida.
+A base central é a fonte do dashboard implementado em Google Apps Script. O processo deve ser repetível, auditável e seguro: um arquivo semanal inválido não pode apagar ou corromper a última base válida.
 
 ## 2. Estrutura no Google Drive
 
@@ -125,7 +125,7 @@ O texto completo deve permanecer em `contrato_completo`, mesmo quando partes del
 
 ### 3.3 `VISAO_MESTRE`
 
-É a visão consolidada que será consumida inicialmente pelo dashboard. Ela contém uma linha por contrato; por isso, IDs com vários contratos aparecem em várias linhas.
+É a visão consolidada consumida pelo dashboard. Ela contém uma linha por contrato; por isso, IDs com vários contratos aparecem em várias linhas.
 
 | Coluna | Campo | Origem ou regra |
 |---|---|---|
@@ -401,23 +401,23 @@ A validação operacional com dados reais também permanece pendente. Ela só de
 - `apps-script/INSTRUCOES_INSTALACAO.md`: procedimento completo de instalação e primeira execução.
 - `tests/`: testes automatizados com dados fictícios.
 
-## 16. Dashboard de gestão aprovado
+## 16. Dashboard de gestão implementado
 
 ### 16.1 Objetivo e identidade visual
 
-O dashboard terá foco principal em desktop e uso ocasional no celular. Cada página combinará indicadores e gráficos com uma lista operacional de alunos que precisam de atenção.
+O dashboard prioriza o uso em desktop e também se adapta ao uso ocasional no celular. Cada página combina indicadores e gráficos com uma lista operacional de alunos que precisam de atenção.
 
-A interface seguirá a identidade visual da XSTEAM: fundo preto ou grafite, textos brancos de alto contraste, verde-limão como cor principal de destaque e ação, tipografia forte, cartões escuros e gráficos objetivos.
+A interface segue a identidade visual da XSTEAM: fundo preto ou grafite, textos brancos de alto contraste, verde-limão como cor principal de destaque e ação, tipografia forte, cartões escuros e gráficos objetivos.
 
 ### 16.2 Arquitetura e navegação
 
-O dashboard será uma aplicação web única e modular em Google Apps Script. As quatro páginas serão carregadas internamente, sem recarregar toda a aplicação.
+O dashboard é uma aplicação web única e modular em Google Apps Script. As quatro páginas são carregadas internamente, sem recarregar toda a aplicação.
 
 - desktop: menu lateral, indicadores em grade, gráficos e tabela operacional;
 - tablet: menu lateral reduzido e grade em duas colunas;
 - celular: navegação inferior, indicadores roláveis, filtros compactos, gráficos empilhados e listas em cartões.
 
-As páginas serão:
+As páginas são:
 
 1. `Vencimentos`;
 2. `Fichas prescritas`;
@@ -460,8 +460,8 @@ As páginas serão:
 - `CONTRATOS`: detalhes de modalidade, polo, frequência, status e valor;
 - `IMPORTACOES`: data, estado e mensagens da última atualização.
 
-Indicadores de alunos usarão contagem distinta de `id`. Indicadores financeiros e de contratos usarão `_chave_contrato` distinta para evitar duplicidades.
+Indicadores de alunos usam contagem distinta de `id`. Indicadores financeiros e de contratos usam `_chave_contrato` distinta para evitar duplicidades.
 
-Os limites de 30 dias para fichas e 90 dias para avaliações serão configurações centralizadas. O dashboard exibirá estados próprios de carregamento, ausência de resultados e erro. Se uma importação falhar, continuará apresentando a última base válida e sinalizará a falha.
+Os limites de 30 dias para fichas e 90 dias para avaliações são configurações centralizadas. O dashboard exibe estados próprios de carregamento, ausência de resultados e erro. Quando uma importação falha, o dashboard continua apresentando a última base válida e sinaliza a falha.
 
 A especificação completa está em `docs/superpowers/specs/2026-07-11-dashboard-xsteam-design.md`.
