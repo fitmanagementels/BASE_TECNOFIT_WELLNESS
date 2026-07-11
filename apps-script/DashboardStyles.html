@@ -96,6 +96,7 @@
   .nav-list { display: grid; gap: var(--space-2); }
 
   .nav-button {
+    position: relative;
     width: 100%;
     min-height: 44px;
     padding: 0 var(--space-3);
@@ -125,6 +126,28 @@
     font-weight: 750;
   }
 
+  .nav-button::after {
+    content: attr(aria-label);
+    position: absolute;
+    left: calc(100% + var(--space-3));
+    top: 50%;
+    z-index: 30;
+    padding: var(--space-2) var(--space-3);
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate(4px, -50%);
+    transition: opacity 120ms ease, transform 120ms ease, visibility 120ms ease;
+  }
+
   .nav-icon {
     width: 28px;
     font: 700 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -137,8 +160,6 @@
     color: var(--muted);
     font-size: 12px;
   }
-
-  .nav-meta span { color: var(--success); }
 
   .workspace { min-width: 0; }
 
@@ -208,7 +229,7 @@
   }
 
   .filter-control {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 var(--space-3);
     color: var(--text);
     border: 1px solid var(--line);
@@ -311,7 +332,13 @@
     border-bottom: 1px solid var(--line);
   }
 
-  .table-scroll { overflow-x: auto; }
+  .table-scroll {
+    max-height: min(560px, 65vh);
+    overflow-x: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
 
   .data-table {
     width: 100%;
@@ -437,9 +464,17 @@
     .nav-button { justify-content: center; padding-inline: var(--space-2); }
     .nav-icon { width: auto; }
     .nav-meta { padding-inline: 0; text-align: center; font-size: 0; }
-    .nav-meta span { font-size: 12px; }
     .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .chart-grid { grid-template-columns: minmax(0, 1.3fr) minmax(260px, .8fr); }
+  }
+
+  @media (min-width: 721px) and (max-width: 1050px) {
+    .nav-button:hover::after,
+    .nav-button:focus-visible::after {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(0, -50%);
+    }
   }
 
   @media (max-width: 720px) {
@@ -448,7 +483,10 @@
     .app-header { min-height: 78px; padding: var(--space-3) var(--space-4); }
     #pageTitle { font-size: 20px; }
     .header-status { max-width: 132px; overflow: hidden; text-overflow: ellipsis; }
-    .content { padding: 22px 16px 100px; }
+    .content {
+      padding: 22px 16px;
+      padding-bottom: calc(92px + env(safe-area-inset-bottom));
+    }
     .filters { align-items: stretch; }
     .filter-field { flex: 1 1 145px; }
     .filter-control { width: 100%; }
