@@ -6,6 +6,39 @@ function contarPorDashboard_(linhas, campo) {
   }, Object.create(null));
 }
 
+function opcoesDashboard_(linhas, campo) {
+  return Array.from(new Set((linhas || []).map(function (linha) {
+    return String(linha[campo] || '').trim();
+  }).filter(Boolean))).sort(function (a, b) {
+    return a.localeCompare(b, 'pt-BR');
+  });
+}
+
+function filtrarBaseDashboard_(alunos, contratos, filtros) {
+  filtros = filtros || {};
+  var alunosFiltrados = (alunos || []).filter(function (aluno) {
+    return !filtros.statusAluno || String(aluno.status || '') === filtros.statusAluno;
+  });
+  var idsPermitidos = alunosFiltrados.reduce(function (acc, aluno) {
+    acc[String(aluno.id)] = true;
+    return acc;
+  }, Object.create(null));
+  var contratosFiltrados = (contratos || []).filter(function (contrato) {
+    return idsPermitidos[String(contrato.id)] &&
+      (!filtros.polo || String(contrato.polo || '') === filtros.polo);
+  });
+  if (filtros.polo) {
+    var idsComContrato = contratosFiltrados.reduce(function (acc, contrato) {
+      acc[String(contrato.id)] = true;
+      return acc;
+    }, Object.create(null));
+    alunosFiltrados = alunosFiltrados.filter(function (aluno) {
+      return idsComContrato[String(aluno.id)];
+    });
+  }
+  return { alunos: alunosFiltrados, contratos: contratosFiltrados };
+}
+
 function mapaAlunosDashboard_(alunos) {
   return unicosPor_(alunos, 'id').reduce(function (acc, aluno) {
     acc[String(aluno.id)] = aluno;

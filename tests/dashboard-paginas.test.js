@@ -44,6 +44,53 @@ test('planos calcula alunos, contratos, valor e ticket sem duplicar', () => {
   assert.deepEqual(JSON.parse(JSON.stringify(page.graficos.valorPorPolo)), { 'POLO A': 400, 'POLO B': 200 });
 });
 
+test('opções de filtro são únicas e ordenadas em pt-BR', () => {
+  const polos = gas.opcoesDashboard_(
+    [{ polo: 'POLO B' }, { polo: ' POLO A ' }, { polo: 'POLO B' }, { polo: '' }],
+    'polo'
+  );
+  const statusAlunos = gas.opcoesDashboard_(
+    [{ status: 'Inativo' }, { status: 'Ativo' }, { status: 'Ativo' }],
+    'status'
+  );
+
+  assert.deepEqual(Array.from(polos), ['POLO A', 'POLO B']);
+  assert.deepEqual(Array.from(statusAlunos), ['Ativo', 'Inativo']);
+});
+
+test('filtros restringem alunos e contratos pela interseção', () => {
+  const base = {
+    alunos: alunos.concat({ id: '3', aluno: 'ALUNO C', status: 'Inativo' }),
+    contratos: contratos.concat({
+      _chave_contrato: 'c4', id: '3', polo: 'POLO B', valor: 400
+    })
+  };
+
+  const polo = gas.filtrarBaseDashboard_(base.alunos, base.contratos, { polo: 'POLO A' });
+  assert.deepEqual(Array.from(polo.alunos, aluno => aluno.id), ['1', '2']);
+  assert.deepEqual(Array.from(polo.contratos, contrato => contrato._chave_contrato), ['c1', 'c3']);
+
+  const status = gas.filtrarBaseDashboard_(base.alunos, base.contratos, { statusAluno: 'Inativo' });
+  assert.deepEqual(Array.from(status.alunos, aluno => aluno.id), ['3']);
+  assert.deepEqual(Array.from(status.contratos, contrato => contrato._chave_contrato), ['c4']);
+
+  const intersecao = gas.filtrarBaseDashboard_(base.alunos, base.contratos, {
+    polo: 'POLO A', statusAluno: 'Inativo'
+  });
+  assert.deepEqual(Array.from(intersecao.alunos), []);
+  assert.deepEqual(Array.from(intersecao.contratos), []);
+});
+
+test('valores de filtro desconhecidos produzem uma população vazia', () => {
+  const porPolo = gas.filtrarBaseDashboard_(alunos, contratos, { polo: 'POLO INEXISTENTE' });
+  const porStatus = gas.filtrarBaseDashboard_(alunos, contratos, { statusAluno: 'Desconhecido' });
+
+  assert.deepEqual(Array.from(porPolo.alunos), []);
+  assert.deepEqual(Array.from(porPolo.contratos), []);
+  assert.deepEqual(Array.from(porStatus.alunos), []);
+  assert.deepEqual(Array.from(porStatus.contratos), []);
+});
+
 test('ids herdados do protótipo preservam associação entre alunos e contratos', () => {
   const ids = ['toString', 'constructor', '__proto__'];
   const alunosEspeciais = ids.map((id, indice) => ({

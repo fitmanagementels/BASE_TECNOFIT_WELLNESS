@@ -34,7 +34,8 @@ function camposNumericosDashboardValidos_(objeto, campos) {
 function dadosCacheDashboardValidos_(dados, pagina) {
   if (!objetoDashboardValido_(dados) || !objetoDashboardValido_(dados.kpis) ||
       !objetoDashboardValido_(dados.graficos) || !Array.isArray(dados.lista) ||
-      !objetoDashboardValido_(dados.filtros)) return false;
+      !objetoDashboardValido_(dados.filtros) || !Array.isArray(dados.filtros.polos) ||
+      !Array.isArray(dados.filtros.statusAlunos)) return false;
 
   if (pagina === 'vencimentos') {
     return camposNumericosDashboardValidos_(dados.kpis, ['vencidos', 'ate7', 'ate30', 'valorAte30']) &&
@@ -52,6 +53,15 @@ function dadosCacheDashboardValidos_(dados, pagina) {
     objetoDashboardValido_(dados.graficos.modalidades) &&
     objetoDashboardValido_(dados.graficos.status) &&
     objetoDashboardValido_(dados.graficos.valorPorPolo);
+}
+
+function dataAvisoImportacaoDashboard_(valor) {
+  var texto = String(valor || '').trim();
+  var brasileira = /^(\d{2}\/\d{2}\/\d{4})/.exec(texto);
+  if (brasileira) return brasileira[1];
+  var iso = /^(\d{4}-\d{2}-\d{2})/.exec(texto);
+  if (iso) return formatarDataDashboard_(iso[1]);
+  return formatarDataDashboard_(valor) || texto;
 }
 
 function respostaCacheDashboardValida_(resposta, pagina) {
@@ -83,12 +93,23 @@ function obterDadosPaginaDashboard(pagina, filtros) {
     }
     var base = lerBaseDashboard_();
     var hoje = new Date();
-    var dados = construtores[pagina](base.alunos, base.contratos, hoje);
+    var opcoes = {
+      polos: opcoesDashboard_(base.contratos, 'polo'),
+      statusAlunos: opcoesDashboard_(base.alunos, 'status')
+    };
+    var filtrada = filtrarBaseDashboard_(base.alunos, base.contratos, filtros);
+    var dados = construtores[pagina](filtrada.alunos, filtrada.contratos, hoje);
+    dados.filtros = opcoes;
+    var aviso = base.ultimaTentativa && base.ultimaTentativa.status === 'ERRO'
+      ? 'A última tentativa de atualização falhou em ' +
+        dataAvisoImportacaoDashboard_(base.ultimaTentativa.concluidaEm || base.ultimaTentativa.dataReferencia) +
+        '. Exibindo a última base válida.'
+      : '';
     var resposta = {
       ok: true,
       pagina: pagina,
       atualizadoEm: base.ultimaImportacao ? base.ultimaImportacao.concluidaEm : '',
-      avisoImportacao: '',
+      avisoImportacao: aviso,
       dados: dados
     };
     try {

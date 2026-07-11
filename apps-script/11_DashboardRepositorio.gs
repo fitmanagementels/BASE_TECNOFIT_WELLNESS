@@ -58,11 +58,29 @@ function obterUltimaImportacaoDashboard_(planilha) {
   return null;
 }
 
+function obterUltimoRegistroImportacaoDashboard_(planilha) {
+  var aba = planilha
+    ? planilha.getSheetByName(CONFIG.abas.importacoes)
+    : obterAbaImportacoes_();
+  if (!aba) throw new Error('Aba necessária não encontrada.');
+  var ultimaLinha = aba.getLastRow();
+  if (ultimaLinha < 2) return null;
+  var linha = aba.getRange(
+    ultimaLinha, 1, 1, CONFIG.cabecalhos.importacoes.length
+  ).getDisplayValues()[0];
+  return {
+    concluidaEm: linha[2],
+    dataReferencia: linha[6],
+    status: linha[11]
+  };
+}
+
 function lerBaseDashboard_() {
   var planilha = obterPlanilhaMestre_();
   return {
     alunos: lerTabelaDashboardDaPlanilha_(planilha, CONFIG.abas.alunos, CONFIG.cabecalhos.alunos),
     contratos: lerTabelaDashboardDaPlanilha_(planilha, CONFIG.abas.contratos, CONFIG.cabecalhos.contratos),
-    ultimaImportacao: obterUltimaImportacaoDashboard_(planilha)
+    ultimaImportacao: obterUltimaImportacaoDashboard_(planilha),
+    ultimaTentativa: obterUltimoRegistroImportacaoDashboard_(planilha)
   };
 }

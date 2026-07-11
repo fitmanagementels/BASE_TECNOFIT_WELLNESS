@@ -176,6 +176,85 @@ test('obterDadosPaginaDashboard despacha a página e reutiliza resposta JSON do 
   assert.throws(() => gas.obterDadosPaginaDashboard('toString', {}), /^Error: Página inválida\.$/);
 });
 
+test('obterDadosPaginaDashboard aplica filtros sem reduzir as opções disponíveis', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const abas = {
+    BASE_ALUNOS: criarAba([
+      Array.from(config.cabecalhos.alunos),
+      ['1', 'ALUNO ATIVO A', '8500000001', 'Ativo', '', '', '', 'exec-1'],
+      ['2', 'ALUNO INATIVO A', '8500000002', 'Inativo', '', '', '', 'exec-1'],
+      ['3', 'ALUNO ATIVO B', '8500000003', 'Ativo', '', '', '', 'exec-1']
+    ]),
+    CONTRATOS: criarAba([
+      Array.from(config.cabecalhos.contratos),
+      ['c1', '1', '', '2X', 100, '', '', 'Ativo', 'POLO A', 'MUSCULAÇÃO', 'exec-1'],
+      ['c2', '2', '', '2X', 200, '', '', 'Ativo', 'POLO A', 'MUSCULAÇÃO', 'exec-1'],
+      ['c3', '3', '', '3X', 300, '', '', 'Ativo', 'POLO B', 'CORRIDA', 'exec-1']
+    ]),
+    IMPORTACOES: criarAba([Array.from(config.cabecalhos.importacoes)])
+  };
+  const { gas } = carregarComPlanilha({ getSheetByName: nome => abas[nome] || null }, criarCache());
+
+  const resultado = gas.obterDadosPaginaDashboard('planos', { polo: 'POLO A', statusAluno: 'Ativo' });
+
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado.dados.filtros)), {
+    polos: ['POLO A', 'POLO B'], statusAlunos: ['Ativo', 'Inativo']
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado.dados.kpis)), {
+    alunos: 1, contratos: 1, valor: 100, ticketMedio: 100
+  });
+  assert.deepEqual(resultado.dados.lista.map(item => item.id), ['1']);
+});
+
+test('última tentativa com erro posterior ao sucesso gera aviso genérico sem mensagem bruta', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const linha = (id, fim, tipo, status, mensagem) => [
+    id, '11/07/2026 08:00', fim, tipo, 'arquivo.html', 'drive-id', '11/07/2026',
+    'r1', '1', '1', '0', status, mensagem
+  ];
+  const abas = {
+    BASE_ALUNOS: criarAba([Array.from(config.cabecalhos.alunos)]),
+    CONTRATOS: criarAba([Array.from(config.cabecalhos.contratos)]),
+    IMPORTACOES: criarAba([
+      Array.from(config.cabecalhos.importacoes),
+      linha('exec-ok', '11/07/2026 08:05', 'vencimentos', 'SUCESSO', 'OK'),
+      linha('exec-ok', '11/07/2026 08:05', 'fichas', 'SUCESSO', 'OK'),
+      linha('exec-ok', '11/07/2026 08:05', 'avaliacao_fisica', 'SUCESSO', 'OK'),
+      linha('exec-erro', '12/07/2026 09:15', 'vencimentos', 'ERRO', 'ALUNA SEGREDO 85999999999'),
+      linha('exec-erro', '12/07/2026 09:15', 'fichas', 'ERRO', 'ALUNA SEGREDO 85999999999'),
+      linha('exec-erro', '12/07/2026 09:15', 'avaliacao_fisica', 'ERRO', 'ALUNA SEGREDO 85999999999')
+    ])
+  };
+  const { gas, aberturas } = carregarComPlanilha({ getSheetByName: nome => abas[nome] || null }, criarCache());
+
+  const resultado = gas.obterDadosPaginaDashboard('planos', {});
+
+  assert.equal(resultado.atualizadoEm, '11/07/2026 08:05');
+  assert.match(resultado.avisoImportacao, /12\/07\/2026/);
+  assert.match(resultado.avisoImportacao, /última base válida/i);
+  assert.equal(resultado.avisoImportacao.includes('ALUNA SEGREDO'), false);
+  assert.equal(resultado.avisoImportacao.includes('85999999999'), false);
+  assert.equal(aberturas(), 1);
+});
+
+test('sucesso mais recente não gera aviso de importação', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const abas = {
+    BASE_ALUNOS: criarAba([Array.from(config.cabecalhos.alunos)]),
+    CONTRATOS: criarAba([Array.from(config.cabecalhos.contratos)]),
+    IMPORTACOES: criarAba([
+      Array.from(config.cabecalhos.importacoes),
+      ['exec-erro', '', '11/07/2026 08:05', 'vencimentos', '', '', '11/07/2026', 'r1', '', '', '', 'ERRO', 'segredo'],
+      ['exec-ok', '', '12/07/2026 09:15', 'avaliacao_fisica', '', '', '12/07/2026', 'r2', '', '', '', 'SUCESSO', 'OK']
+    ])
+  };
+  const { gas } = carregarComPlanilha({ getSheetByName: nome => abas[nome] || null }, criarCache());
+
+  const resultado = gas.obterDadosPaginaDashboard('planos', {});
+
+  assert.equal(resultado.avisoImportacao, '');
+});
+
 test('obterDadosPaginaDashboard ignora cache JSON válido fora do contrato e recalcula', () => {
   const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
   const formatosInvalidos = [
