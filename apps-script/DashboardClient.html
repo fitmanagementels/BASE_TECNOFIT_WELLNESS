@@ -38,6 +38,22 @@
 
   const chartColors = ['#dfff22', '#9daa29', '#505a25', '#ffb84d', '#ff6b5f'];
 
+  const situationLabels = {
+    vencido: 'Vencido',
+    ate7: 'Até 7 dias',
+    ate30: 'De 8 a 30 dias',
+    futuro: 'Após 30 dias',
+    semData: 'Sem data',
+    ausente: 'Ausente',
+    desatualizada: 'Desatualizada',
+    atualizada: 'Atualizada'
+  };
+
+  function situationLabel(value) {
+    const technical = String(value == null ? '' : value);
+    return situationLabels[technical] || technical;
+  }
+
   function el(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -196,16 +212,13 @@
   function renderFilters(options) {
     const container = document.getElementById('filters');
     clearNode(container);
-    const situations = state.page === 'vencimentos'
-      ? [
-        { value: 'vencido', label: 'Vencido' }, { value: 'ate7', label: 'Até 7 dias' },
-        { value: 'ate30', label: 'De 8 a 30 dias' }, { value: 'futuro', label: 'Após 30 dias' },
-        { value: 'semData', label: 'Sem data' }
-      ]
-      : (state.page === 'fichas' || state.page === 'avaliacoes' ? [
-        { value: 'ausente', label: 'Ausente' }, { value: 'desatualizada', label: 'Desatualizada' },
-        { value: 'atualizada', label: 'Atualizada' }
-      ] : []);
+    const situationValues = state.page === 'vencimentos'
+      ? ['vencido', 'ate7', 'ate30', 'futuro', 'semData']
+      : (state.page === 'fichas' || state.page === 'avaliacoes'
+        ? ['ausente', 'desatualizada', 'atualizada'] : []);
+    const situations = situationValues.map(function (value) {
+      return { value: value, label: situationLabel(value) };
+    });
     const definitions = [
       { key: 'polo', source: 'polos', label: 'Polo' },
       { key: 'statusAluno', source: 'statusAlunos', label: 'Status do aluno' },
@@ -278,7 +291,10 @@
       };
     }
     const keys = source && typeof source === 'object' ? Object.keys(source) : [];
-    return { labels: keys, values: keys.map(function (key) { return Number(source[key]) || 0; }) };
+    return {
+      labels: keys.map(situationLabel),
+      values: keys.map(function (key) { return Number(source[key]) || 0; })
+    };
   }
 
   function renderCharts(graphs) {
@@ -353,10 +369,12 @@
 
   function cellText(row, definition, mobile) {
     if (mobile && definition[0] === 'contato') return maskContact(row[definition[0]]);
+    if (definition[2] === 'status') return situationLabel(row[definition[0]]);
     return valueText(row[definition[0]], definition[2]);
   }
 
   let detailRestoreFocus = null;
+  let detailFallbackFocus = null;
 
   function detailFields(row) {
     const fields = [['aluno', 'Aluno'], ['contato', 'Contato']];
@@ -373,10 +391,12 @@
     const list = el('dl', 'detail-list');
     detailFields(row).forEach(function (definition) {
       list.appendChild(el('dt', 'card-subtitle', definition[1]));
-      list.appendChild(el('dd', '', valueText(row[definition[0]], definition[2])));
+      list.appendChild(el('dd', '', definition[2] === 'status'
+        ? situationLabel(row[definition[0]]) : valueText(row[definition[0]], definition[2])));
     });
     content.appendChild(list);
     detailRestoreFocus = trigger;
+    detailFallbackFocus = null;
     dialog.showModal();
     document.getElementById('detailClose').focus();
   }
@@ -509,6 +529,12 @@
 
   function rerenderCurrentList() {
     if (!state.currentData || state.currentData.response.pagina !== state.page) return;
+    const dialog = document.getElementById('detailDialog');
+    if (dialog.open) {
+      detailRestoreFocus = null;
+      detailFallbackFocus = document.getElementById('mainContent');
+      closeDetails();
+    }
     renderList(state.currentData.data.lista, state.currentData.data.paginacao);
   }
 
@@ -532,8 +558,11 @@
     });
     detailDialog.addEventListener('close', function () {
       clearNode(document.getElementById('detailContent'));
-      if (detailRestoreFocus && detailRestoreFocus.focus) detailRestoreFocus.focus();
+      const fallback = detailFallbackFocus || document.getElementById('mainContent');
+      if (detailRestoreFocus && detailRestoreFocus.isConnected && detailRestoreFocus.focus) detailRestoreFocus.focus();
+      else if (fallback && fallback.focus) fallback.focus();
       detailRestoreFocus = null;
+      detailFallbackFocus = null;
     });
     navigate(state.page);
   }

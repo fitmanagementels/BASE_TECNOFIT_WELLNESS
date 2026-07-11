@@ -140,6 +140,7 @@ class FakeNode {
   }
 
   replaceChildren(...children) {
+    this.children.forEach(child => { child.parentNode = null; });
     this.children = [];
     children.forEach(child => this.appendChild(child));
   }
@@ -167,6 +168,10 @@ class FakeNode {
 
   showModal() { this.open = true; }
   close() { this.open = false; this.dispatch('close'); }
+
+  get isConnected() {
+    return Boolean(this._connected || (this.parentNode && this.parentNode.isConnected));
+  }
 }
 
 function descendants(node) {
@@ -185,7 +190,7 @@ function validResponse(page = 'vencimentos', overrides = {}) {
   const fixtures = {
     vencimentos: {
       kpis: { vencidos: 1, ate7: 2, ate30: 3, valorAte30: 100 },
-      graficos: { situacao: { vencido: 1 }, semanas: [{ label: 'Semana 1', valor: 1 }] },
+      graficos: { situacao: { ate7: 1 }, semanas: [{ label: 'Semana 1', valor: 1 }] },
       lista: [{ aluno: 'ALUNO TESTE', contato: '85987654321', polo: 'POLO A', vencimento: '11/07/2026', situacao: 'ate7', valor: 100 }],
       filtros
     },
@@ -216,6 +221,7 @@ function validResponse(page = 'vencimentos', overrides = {}) {
 function setupClient(options = {}) {
   const ids = ['filters', 'kpiGrid', 'chartGrid', 'listPanel', 'appState', 'mainContent', 'pageTitle', 'lastUpdate', 'importWarning', 'detailDialog', 'detailTitle', 'detailContent', 'detailClose'];
   const nodes = Object.fromEntries(ids.map(id => [id, new FakeNode(id === 'pageTitle' ? 'h1' : 'section')]));
+  Object.values(nodes).forEach(node => { node._connected = true; });
   const pages = ['vencimentos', 'fichas', 'avaliacoes', 'planos'];
   const buttons = pages.flatMap(page => [0, 1].map(() => {
     const button = new FakeNode('button');
@@ -464,6 +470,10 @@ test('situações usam rótulos amigáveis e preservam values técnicos', () => 
   assert.ok(options.some(([value, label]) => value === 'ate7' && label === 'Até 7 dias'));
   assert.ok(options.some(([value, label]) => value === 'ate30' && label === 'De 8 a 30 dias'));
   assert.ok(options.some(([value, label]) => value === 'semData' && label === 'Sem data'));
+  assert.ok(nodeByText(client.nodes.listPanel, 'Até 7 dias'));
+  assert.ok(nodeByText(client.nodes.chartGrid, 'Até 7 dias: 1'));
+  assert.equal(client.charts[0].config.data.labels.includes('Até 7 dias'), true);
+  assert.equal(nodeByText(client.nodes.listPanel, 'ate7'), undefined);
 });
 
 test('cada gráfico tem resumo textual associado ao canvas', () => {
@@ -545,6 +555,23 @@ test('detalhes móveis revelam contato apenas em dialog acessível e restauram f
   client.nodes.detailDialog.dispatch('keydown', { key: 'Escape' });
   assert.equal(client.nodes.detailDialog.open, false);
   assert.equal(client.document.activeElement, trigger);
+});
+
+test('resize com diálogo aberto fecha, limpa e usa fallback de foco antes de trocar a lista', () => {
+  const client = setupClient({ mobile: true });
+  startClient(client);
+  client.requests[0].success(validResponse());
+  nodeByText(client.nodes.listPanel, 'Ver detalhes').dispatch('click');
+  assert.equal(client.nodes.detailDialog.open, true);
+  assert.ok(nodeByText(client.nodes.detailContent, '85987654321'));
+
+  client.mediaQuery.matches = false;
+  client.mediaListeners[0]({ matches: false });
+
+  assert.equal(client.nodes.detailDialog.open, false);
+  assert.equal(nodeByText(client.nodes.detailContent, '85987654321'), undefined);
+  assert.equal(client.document.activeElement, client.nodes.mainContent);
+  assert.ok(descendants(client.nodes.listPanel).some(node => node.tagName === 'TABLE'));
 });
 
 test('paginação exibe total global e controles com estados acessíveis', () => {
