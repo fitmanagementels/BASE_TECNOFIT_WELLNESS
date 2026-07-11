@@ -55,13 +55,39 @@ function dadosCacheDashboardValidos_(dados, pagina) {
     objetoDashboardValido_(dados.graficos.valorPorPolo);
 }
 
+function formatarPartesDataAvisoDashboard_(ano, mes, dia, hora, minuto, segundo) {
+  ano = Number(ano);
+  mes = Number(mes);
+  dia = Number(dia);
+  if (hora != null && (Number(hora) < 0 || Number(hora) > 23)) return '';
+  if (minuto != null && (Number(minuto) < 0 || Number(minuto) > 59)) return '';
+  if (segundo != null && (Number(segundo) < 0 || Number(segundo) > 59)) return '';
+  var data = new Date(ano, mes - 1, dia, 12);
+  if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) return '';
+  return String(dia).padStart(2, '0') + '/' +
+    String(mes).padStart(2, '0') + '/' + String(ano);
+}
+
 function dataAvisoImportacaoDashboard_(valor) {
-  var texto = String(valor || '').trim();
-  var brasileira = /^(\d{2}\/\d{2}\/\d{4})/.exec(texto);
-  if (brasileira) return brasileira[1];
-  var iso = /^(\d{4}-\d{2}-\d{2})/.exec(texto);
-  if (iso) return formatarDataDashboard_(iso[1]);
-  return formatarDataDashboard_(valor) || texto;
+  if (Object.prototype.toString.call(valor) === '[object Date]' && !isNaN(valor.getTime())) {
+    return formatarPartesDataAvisoDashboard_(
+      valor.getFullYear(), valor.getMonth() + 1, valor.getDate()
+    );
+  }
+  var texto = String(valor == null ? '' : valor).trim();
+  var brasileira = /^(\d{2})\/(\d{2})\/(\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(texto);
+  if (brasileira) {
+    return formatarPartesDataAvisoDashboard_(
+      brasileira[3], brasileira[2], brasileira[1], brasileira[4], brasileira[5], brasileira[6]
+    );
+  }
+  var iso = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/.exec(texto);
+  if (iso) {
+    return formatarPartesDataAvisoDashboard_(
+      iso[1], iso[2], iso[3], iso[4], iso[5], iso[6]
+    );
+  }
+  return '';
 }
 
 function respostaCacheDashboardValida_(resposta, pagina) {
@@ -100,9 +126,14 @@ function obterDadosPaginaDashboard(pagina, filtros) {
     var filtrada = filtrarBaseDashboard_(base.alunos, base.contratos, filtros);
     var dados = construtores[pagina](filtrada.alunos, filtrada.contratos, hoje);
     dados.filtros = opcoes;
-    var aviso = base.ultimaTentativa && base.ultimaTentativa.status === 'ERRO'
-      ? 'A última tentativa de atualização falhou em ' +
-        dataAvisoImportacaoDashboard_(base.ultimaTentativa.concluidaEm || base.ultimaTentativa.dataReferencia) +
+    var erroPosterior = base.ultimaImportacao && base.ultimaTentativa &&
+      base.ultimaTentativa.status === 'ERRO' &&
+      base.ultimaTentativa.linha > base.ultimaImportacao.linha;
+    var dataAviso = erroPosterior
+      ? dataAvisoImportacaoDashboard_(base.ultimaTentativa.concluidaEm || base.ultimaTentativa.dataReferencia)
+      : '';
+    var aviso = erroPosterior
+      ? 'A última tentativa de atualização falhou' + (dataAviso ? ' em ' + dataAviso : '') +
         '. Exibindo a última base válida.'
       : '';
     var resposta = {

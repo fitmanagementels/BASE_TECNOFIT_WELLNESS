@@ -138,6 +138,7 @@ test('obterUltimaImportacaoDashboard_ encontra a última SUCESSO em leitura reve
 
   assert.equal(resultado.execucaoId, 'mais-recente');
   assert.equal(resultado.concluidaEm, 'fim-mais-recente');
+  assert.equal(resultado.linha, 151);
   assert.equal(aba.leiturasDataRange(), 0);
   assert.ok(aba.chamadas.slice(1).every(chamada => chamada[2] <= 200));
 });
@@ -235,6 +236,62 @@ test('última tentativa com erro posterior ao sucesso gera aviso genérico sem m
   assert.equal(resultado.avisoImportacao.includes('ALUNA SEGREDO'), false);
   assert.equal(resultado.avisoImportacao.includes('85999999999'), false);
   assert.equal(aberturas(), 1);
+});
+
+test('histórico apenas com erros não anuncia uma base válida inexistente', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const abas = {
+    BASE_ALUNOS: criarAba([Array.from(config.cabecalhos.alunos)]),
+    CONTRATOS: criarAba([Array.from(config.cabecalhos.contratos)]),
+    IMPORTACOES: criarAba([
+      Array.from(config.cabecalhos.importacoes),
+      ['exec-erro', '', '12/07/2026 09:15', 'vencimentos', '', '', '12/07/2026', 'r1', '', '', '', 'ERRO', 'falha']
+    ])
+  };
+  const { gas } = carregarComPlanilha({ getSheetByName: nome => abas[nome] || null }, criarCache());
+
+  const resultado = gas.obterDadosPaginaDashboard('planos', {});
+
+  assert.equal(resultado.atualizadoEm, '');
+  assert.equal(resultado.avisoImportacao, '');
+});
+
+test('data inválida com PII não aparece na resposta nem nos logs', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const pii = 'ALUNA SEGREDO 85999999999';
+  const logs = [];
+  const abas = {
+    BASE_ALUNOS: criarAba([Array.from(config.cabecalhos.alunos)]),
+    CONTRATOS: criarAba([Array.from(config.cabecalhos.contratos)]),
+    IMPORTACOES: criarAba([
+      Array.from(config.cabecalhos.importacoes),
+      ['exec-ok', '', '11/07/2026 08:05', 'vencimentos', '', '', '11/07/2026', 'r1', '', '', '', 'SUCESSO', 'OK'],
+      ['exec-erro', '', pii, 'vencimentos', '', '', pii, 'r2', '', '', '', 'ERRO', pii]
+    ])
+  };
+  const { gas } = carregarComPlanilha(
+    { getSheetByName: nome => abas[nome] || null },
+    criarCache(),
+    { console: { error: (...argumentos) => logs.push(argumentos) } }
+  );
+
+  const resultado = gas.obterDadosPaginaDashboard('planos', {});
+
+  assert.equal(resultado.avisoImportacao, 'A última tentativa de atualização falhou. Exibindo a última base válida.');
+  assert.equal(JSON.stringify(resultado).includes(pii), false);
+  assert.equal(JSON.stringify(logs).includes(pii), false);
+});
+
+test('dataAvisoImportacaoDashboard_ aceita somente formatos conhecidos e válidos', () => {
+  const gas = loadGas(FILES);
+
+  assert.equal(gas.dataAvisoImportacaoDashboard_(new Date(2026, 6, 12, 9, 15)), '12/07/2026');
+  assert.equal(gas.dataAvisoImportacaoDashboard_('12/07/2026'), '12/07/2026');
+  assert.equal(gas.dataAvisoImportacaoDashboard_('12/07/2026 09:15'), '12/07/2026');
+  assert.equal(gas.dataAvisoImportacaoDashboard_('2026-07-12'), '12/07/2026');
+  assert.equal(gas.dataAvisoImportacaoDashboard_('2026-07-12T09:15:00Z'), '12/07/2026');
+  assert.equal(gas.dataAvisoImportacaoDashboard_('31/02/2026'), '');
+  assert.equal(gas.dataAvisoImportacaoDashboard_('ALUNA SEGREDO 85999999999'), '');
 });
 
 test('sucesso mais recente não gera aviso de importação', () => {

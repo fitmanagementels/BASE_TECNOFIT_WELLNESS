@@ -49,7 +49,8 @@ function obterUltimaImportacaoDashboard_(planilha) {
           execucaoId: valores[indice][0],
           concluidaEm: valores[indice][2],
           dataReferencia: valores[indice][6],
-          revisao: valores[indice][7]
+          revisao: valores[indice][7],
+          linha: inicio + indice
         };
       }
     }
@@ -71,7 +72,8 @@ function obterUltimoRegistroImportacaoDashboard_(planilha) {
   return {
     concluidaEm: linha[2],
     dataReferencia: linha[6],
-    status: linha[11]
+    status: linha[11],
+    linha: ultimaLinha
   };
 }
 
