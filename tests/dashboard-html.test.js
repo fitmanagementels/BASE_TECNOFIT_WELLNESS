@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const vm = require('node:vm');
 
 test('shell contém as quatro páginas e regiões acessíveis', () => {
   const html = fs.readFileSync('apps-script/DashboardComponents.html', 'utf8');
@@ -35,4 +36,68 @@ test('navegação compacta mantém tooltip textual em hover e foco', () => {
   assert.match(css, /@media\s*\(min-width:\s*721px\)\s*and\s*\(max-width:\s*1050px\)/);
   assert.match(css, /\.nav-button::after\s*\{[^}]*content:\s*attr\(aria-label\)/s);
   assert.match(css, /\.nav-button:hover::after[^{]*\.nav-button:focus-visible::after\s*\{[^}]*opacity:\s*1/s);
+});
+
+test('cliente usa Apps Script, Chart.js e renderização segura de texto', () => {
+  const client = fs.readFileSync('apps-script/DashboardClient.html', 'utf8');
+  assert.match(client, /withSuccessHandler/);
+  assert.match(client, /withFailureHandler/);
+  assert.match(client, /obterDadosPaginaDashboard/);
+  assert.match(client, /\bChart\b/);
+  assert.match(client, /textContent/);
+  assert.doesNotMatch(client, /innerHTML\s*=/);
+});
+
+test('cliente declara os contratos de navegação, concorrência e acessibilidade', () => {
+  const client = fs.readFileSync('apps-script/DashboardClient.html', 'utf8');
+  assert.match(client, /DOMContentLoaded/);
+  assert.match(client, /filtersByPage/);
+  assert.match(client, /requestId/);
+  assert.match(client, /chart\.destroy\(\)/);
+  assert.match(client, /typeof Chart/);
+  assert.match(client, /prefers-reduced-motion/);
+  assert.match(client, /aria-current/);
+  assert.match(client, /table-scroll/);
+  assert.match(client, /tabindex/);
+  assert.match(client, /Detalhamento dos dados/);
+  assert.match(client, /Não foi possível carregar esta página\./);
+  assert.match(client, /Nenhum resultado para os filtros selecionados\./);
+  assert.match(client, /Tentar novamente/);
+  assert.match(client, /Limpar filtros/);
+  assert.match(client, /replace\(\/\\d\(\?=\\d\{2\}\)\/g,\s*['"]•['"]\)/);
+});
+
+test('helpers puros formatam valores e mascaram contatos', () => {
+  const source = fs.readFileSync('apps-script/DashboardClient.html', 'utf8')
+    .replace(/^\s*<script>\s*/, '')
+    .replace(/\s*<\/script>\s*$/, '');
+  const context = {
+    document: { createElement: () => ({}) },
+    Intl,
+    console,
+    google: { script: { run: {} } }
+  };
+  vm.runInNewContext(source, context);
+  assert.equal(context.number(1234), '1.234');
+  assert.match(context.money(1234.5), /^R\$\s?1\.234,50$/);
+  assert.equal(context.percent(92.5), '92,5%');
+  assert.equal(context.maskContact('(85) 98765-4321'), '(85) •••65-••21');
+});
+
+test('helpers interpretam o envelope da API e classificam estados sem colisão de substring', () => {
+  const source = fs.readFileSync('apps-script/DashboardClient.html', 'utf8')
+    .replace(/^\s*<script>\s*/, '')
+    .replace(/\s*<\/script>\s*$/, '');
+  const context = {
+    document: { createElement: () => ({}) },
+    Intl,
+    console,
+    google: { script: { run: {} } }
+  };
+  vm.runInNewContext(source, context);
+  const dados = { lista: [{ aluno: 'Teste' }], kpis: {}, graficos: {}, filtros: {} };
+  assert.equal(context.responseData({ ok: true, pagina: 'vencimentos', dados }), dados);
+  assert.equal(context.statusClass('atualizada'), 'status status-success');
+  assert.equal(context.statusClass('desatualizada'), 'status status-warning');
+  assert.equal(context.statusClass('inativo'), 'status status-warning');
 });

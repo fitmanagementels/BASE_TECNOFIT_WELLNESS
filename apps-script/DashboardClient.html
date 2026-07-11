@@ -1,0 +1,367 @@
+<script>
+  const state = {
+    page: 'vencimentos',
+    filters: {},
+    filtersByPage: {},
+    charts: [],
+    requestId: 0
+  };
+
+  const pageLabels = {
+    vencimentos: 'Vencimentos dos alunos',
+    fichas: 'Fichas prescritas',
+    avaliacoes: 'Avaliações físicas',
+    planos: 'Planos dos alunos'
+  };
+
+  const kpiMaps = {
+    vencimentos: [['vencidos', 'Vencidos', 'number'], ['ate7', 'Vencem em 7 dias', 'number'], ['ate30', 'Vencem em 30 dias', 'number'], ['valorAte30', 'Valor a renovar', 'money']],
+    fichas: [['atualizadas', 'Com ficha atualizada', 'number'], ['ausentes', 'Sem ficha', 'number'], ['desatualizadas', 'Ficha desatualizada', 'number'], ['cobertura', 'Cobertura', 'percent']],
+    avaliacoes: [['atualizadas', 'Com avaliação atualizada', 'number'], ['ausentes', 'Sem avaliação', 'number'], ['desatualizadas', 'Avaliação desatualizada', 'number'], ['cobertura', 'Cobertura', 'percent']],
+    planos: [['alunos', 'Alunos distintos', 'number'], ['contratos', 'Contratos', 'number'], ['valor', 'Valor contratado', 'money'], ['ticketMedio', 'Ticket médio', 'money']]
+  };
+
+  const listColumns = {
+    vencimentos: [['aluno', 'Aluno'], ['contato', 'Contato'], ['polo', 'Polo'], ['vencimento', 'Vencimento'], ['situacao', 'Situação', 'status'], ['valor', 'Valor', 'money']],
+    fichas: [['aluno', 'Aluno'], ['contato', 'Contato'], ['polos', 'Polos', 'list'], ['data', 'Última ficha'], ['diasSemAtualizacao', 'Dias sem atualização', 'number'], ['situacao', 'Situação', 'status']],
+    avaliacoes: [['aluno', 'Aluno'], ['contato', 'Contato'], ['polos', 'Polos', 'list'], ['data', 'Última avaliação'], ['diasSemAtualizacao', 'Dias sem atualização', 'number'], ['situacao', 'Situação', 'status']],
+    planos: [['aluno', 'Aluno'], ['contato', 'Contato'], ['polo', 'Polo'], ['modalidade', 'Modalidade'], ['frequencia', 'Frequência'], ['statusContrato', 'Status', 'status'], ['valor', 'Valor', 'money']]
+  };
+
+  const chartMaps = {
+    vencimentos: [['situacao', 'Situação dos vencimentos', 'doughnut'], ['semanas', 'Vencimentos nas próximas semanas', 'bar']],
+    fichas: [['situacao', 'Situação das fichas', 'doughnut'], ['faixas', 'Tempo desde a atualização', 'bar']],
+    avaliacoes: [['situacao', 'Situação das avaliações', 'doughnut'], ['coberturaPorPolo', 'Cobertura por polo', 'bar']],
+    planos: [['polos', 'Contratos por polo', 'doughnut'], ['valorPorPolo', 'Valor contratado por polo', 'bar']]
+  };
+
+  const chartColors = ['#dfff22', '#9daa29', '#505a25', '#ffb84d', '#ff6b5f'];
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = String(text);
+    return node;
+  }
+
+  function clearNode(node) {
+    node.replaceChildren();
+  }
+
+  function destroyCharts() {
+    state.charts.forEach(function (chart) {
+      chart.destroy();
+    });
+    state.charts = [];
+  }
+
+  function money(value) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
+  }
+
+  function number(value) {
+    return new Intl.NumberFormat('pt-BR').format(Number(value) || 0);
+  }
+
+  function percent(value) {
+    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(Number(value) || 0) + '%';
+  }
+
+  function maskContact(contact) {
+    return String(contact || '').replace(/\d(?=\d{2})/g, '•');
+  }
+
+  function responseData(response) {
+    return response && response.ok === true && response.dados && typeof response.dados === 'object'
+      ? response.dados
+      : {};
+  }
+
+  function valueText(value, type) {
+    if (type === 'money') return money(value);
+    if (type === 'number') return value == null || value === '' ? '—' : number(value);
+    if (type === 'percent') return percent(value);
+    if (type === 'list') return Array.isArray(value) ? value.join(', ') : String(value || '—');
+    return value == null || value === '' ? '—' : String(value);
+  }
+
+  function setContentVisibility(showContent) {
+    ['filters', 'kpiGrid', 'chartGrid', 'listPanel'].forEach(function (id) {
+      document.getElementById(id).hidden = !showContent;
+    });
+    document.getElementById('appState').hidden = showContent;
+  }
+
+  function showState(kind, message, actionLabel, action) {
+    destroyCharts();
+    setContentVisibility(false);
+    const appState = document.getElementById('appState');
+    clearNode(appState);
+    appState.className = kind === 'error' ? 'app-state error' : 'app-state';
+    appState.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+    if (kind === 'loading') appState.appendChild(el('div', 'spinner'));
+    appState.appendChild(el('p', '', message));
+    if (actionLabel) {
+      const button = el('button', 'filter-control', actionLabel);
+      button.type = 'button';
+      button.addEventListener('click', action);
+      appState.appendChild(button);
+    }
+    const main = document.getElementById('mainContent');
+    main.setAttribute('aria-busy', kind === 'loading' ? 'true' : 'false');
+  }
+
+  function navigate(page) {
+    if (!Object.prototype.hasOwnProperty.call(pageLabels, page)) return;
+    state.page = page;
+    state.filters = Object.assign({}, state.filtersByPage[page] || {});
+    document.querySelectorAll('[data-page]').forEach(function (button) {
+      const active = button.dataset.page === page;
+      button.classList.toggle('active', active);
+      if (active) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    });
+    document.getElementById('pageTitle').textContent = pageLabels[page];
+    loadPage();
+  }
+
+  function loadPage() {
+    const requestId = ++state.requestId;
+    const requestedPage = state.page;
+    const requestedFilters = Object.assign({}, state.filters);
+    showState('loading', 'Carregando dashboard…');
+    google.script.run
+      .withSuccessHandler(function (response) {
+        if (requestId !== state.requestId || requestedPage !== state.page) return;
+        renderDashboard(response);
+      })
+      .withFailureHandler(function (error) {
+        if (requestId !== state.requestId || requestedPage !== state.page) return;
+        renderError(error);
+      })
+      .obterDadosPaginaDashboard(requestedPage, requestedFilters);
+  }
+
+  function renderError() {
+    showState('error', 'Não foi possível carregar esta página.', 'Tentar novamente', loadPage);
+  }
+
+  function clearFilters() {
+    state.filtersByPage[state.page] = {};
+    state.filters = {};
+    loadPage();
+  }
+
+  function renderEmpty() {
+    showState('empty', 'Nenhum resultado para os filtros selecionados.', 'Limpar filtros', clearFilters);
+  }
+
+  function renderFilters(options) {
+    const container = document.getElementById('filters');
+    clearNode(container);
+    const definitions = [
+      { key: 'polo', source: 'polos', label: 'Polo' },
+      { key: 'statusAluno', source: 'statusAlunos', label: 'Status do aluno' }
+    ];
+    definitions.forEach(function (definition) {
+      const values = options && Array.isArray(options[definition.source]) ? options[definition.source] : [];
+      if (!values.length) return;
+      const field = el('div', 'filter-field');
+      const id = 'filter-' + definition.key;
+      const label = el('label', '', definition.label);
+      label.htmlFor = id;
+      const select = el('select', 'filter-control');
+      select.id = id;
+      select.name = definition.key;
+      const all = el('option', '', 'Todos');
+      all.value = '';
+      select.appendChild(all);
+      values.forEach(function (value) {
+        const option = el('option', '', value);
+        option.value = String(value);
+        select.appendChild(option);
+      });
+      select.value = state.filters[definition.key] || '';
+      select.addEventListener('change', function () {
+        const next = Object.assign({}, state.filters);
+        if (select.value) next[definition.key] = select.value;
+        else delete next[definition.key];
+        state.filters = next;
+        state.filtersByPage[state.page] = Object.assign({}, next);
+        loadPage();
+      });
+      field.appendChild(label);
+      field.appendChild(select);
+      container.appendChild(field);
+    });
+  }
+
+  function renderKpis(kpis) {
+    const grid = document.getElementById('kpiGrid');
+    clearNode(grid);
+    (kpiMaps[state.page] || []).forEach(function (definition) {
+      const card = el('article', 'card kpi-card');
+      card.appendChild(el('p', 'kpi-label', definition[1]));
+      card.appendChild(el('p', 'kpi-value', valueText(kpis && kpis[definition[0]], definition[2])));
+      grid.appendChild(card);
+    });
+  }
+
+  function chartValues(source) {
+    if (Array.isArray(source)) {
+      return {
+        labels: source.map(function (item) { return String(item.label || item.polo || 'Não informado'); }),
+        values: source.map(function (item) { return Number(item.valor != null ? item.valor : item.cobertura) || 0; })
+      };
+    }
+    const keys = source && typeof source === 'object' ? Object.keys(source) : [];
+    return { labels: keys, values: keys.map(function (key) { return Number(source[key]) || 0; }) };
+  }
+
+  function renderCharts(graphs) {
+    const grid = document.getElementById('chartGrid');
+    clearNode(grid);
+    destroyCharts();
+    (chartMaps[state.page] || []).forEach(function (definition) {
+      const card = el('article', 'card chart-card');
+      const header = el('div', 'card-header');
+      header.appendChild(el('h2', 'card-title', definition[1]));
+      card.appendChild(header);
+      const frame = el('div', 'chart-frame');
+      const canvas = el('canvas');
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label', definition[1]);
+      frame.appendChild(canvas);
+      card.appendChild(frame);
+      grid.appendChild(card);
+
+      if (typeof Chart === 'undefined') {
+        frame.replaceChildren(el('p', 'card-subtitle', 'Gráfico indisponível. Consulte os indicadores e a lista abaixo.'));
+        return;
+      }
+      const data = chartValues(graphs && graphs[definition[0]]);
+      const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const isCircular = definition[2] === 'doughnut';
+      try {
+        const chart = new Chart(canvas, {
+          type: definition[2],
+          data: {
+            labels: data.labels,
+            datasets: [{
+              data: data.values,
+              backgroundColor: isCircular ? chartColors : '#dfff22',
+              borderColor: isCircular ? '#111313' : '#dfff22',
+              borderWidth: isCircular ? 2 : 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: reducedMotion ? false : undefined,
+            plugins: { legend: { labels: { color: '#f5f7f7' } } },
+            scales: isCircular ? {} : {
+              x: { ticks: { color: '#969d9d' }, grid: { color: '#292c2c' } },
+              y: { beginAtZero: true, ticks: { color: '#969d9d' }, grid: { color: '#292c2c' } }
+            }
+          }
+        });
+        state.charts.push(chart);
+      } catch (error) {
+        frame.replaceChildren(el('p', 'card-subtitle', 'Gráfico indisponível. Consulte os indicadores e a lista abaixo.'));
+      }
+    });
+  }
+
+  function statusClass(value) {
+    const normalized = String(value || '').toLowerCase();
+    if (normalized === 'atualizada' || normalized === 'ativo') return 'status status-success';
+    if (normalized === 'vencido' || normalized === 'ausente') return 'status status-danger';
+    return 'status status-warning';
+  }
+
+  function cellText(row, definition, mobile) {
+    if (mobile && definition[0] === 'contato') return maskContact(row[definition[0]]);
+    return valueText(row[definition[0]], definition[2]);
+  }
+
+  function renderList(rows) {
+    const panel = document.getElementById('listPanel');
+    clearNode(panel);
+    const header = el('div', 'list-header');
+    header.appendChild(el('h2', 'card-title', 'Detalhamento'));
+    header.appendChild(el('span', 'card-subtitle', number(rows.length) + ' registros'));
+    panel.appendChild(header);
+
+    const columns = listColumns[state.page] || [];
+    const scroll = el('div', 'table-scroll');
+    scroll.setAttribute('tabindex', '0');
+    scroll.setAttribute('aria-label', 'Detalhamento dos dados; role para ver todas as colunas');
+    const table = el('table', 'data-table');
+    const thead = el('thead');
+    const headingRow = el('tr');
+    columns.forEach(function (definition) {
+      const th = el('th', definition[2] === 'money' || definition[2] === 'number' ? 'numeric' : '', definition[1]);
+      th.scope = 'col';
+      headingRow.appendChild(th);
+    });
+    thead.appendChild(headingRow);
+    table.appendChild(thead);
+    const tbody = el('tbody');
+    rows.forEach(function (row) {
+      const tr = el('tr');
+      columns.forEach(function (definition) {
+        const numeric = definition[2] === 'money' || definition[2] === 'number';
+        const td = el('td', numeric ? 'numeric' : '');
+        const text = cellText(row, definition, false);
+        if (definition[2] === 'status') td.appendChild(el('span', statusClass(text), text));
+        else td.textContent = text;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    scroll.appendChild(table);
+    panel.appendChild(scroll);
+
+    const mobileCards = el('div', 'mobile-cards');
+    rows.forEach(function (row) {
+      const card = el('article', 'mobile-data-row');
+      columns.forEach(function (definition) {
+        card.appendChild(el('span', 'card-subtitle', definition[1]));
+        const text = cellText(row, definition, true);
+        if (definition[2] === 'status') card.appendChild(el('span', statusClass(text), text));
+        else card.appendChild(el('strong', '', text));
+      });
+      mobileCards.appendChild(card);
+    });
+    panel.appendChild(mobileCards);
+  }
+
+  function renderDashboard(response) {
+    const data = responseData(response);
+    const rows = Array.isArray(data.lista) ? data.lista : [];
+    if (!rows.length) {
+      renderEmpty();
+      return;
+    }
+    setContentVisibility(true);
+    document.getElementById('mainContent').setAttribute('aria-busy', 'false');
+    renderFilters(data.filtros || {});
+    renderKpis(data.kpis || {});
+    renderCharts(data.graficos || {});
+    renderList(rows);
+  }
+
+  function initializeDashboard() {
+    document.querySelectorAll('[data-page]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        navigate(button.dataset.page);
+      });
+    });
+    navigate(state.page);
+  }
+
+  if (document.addEventListener) {
+    document.addEventListener('DOMContentLoaded', initializeDashboard);
+  }
+</script>
