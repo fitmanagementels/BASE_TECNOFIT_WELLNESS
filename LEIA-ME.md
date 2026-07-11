@@ -389,7 +389,9 @@ Não compartilhar publicamente os relatórios, pois eles contêm dados pessoais.
 
 O código-fonte da automação manual do Google Apps Script está disponível em `apps-script/`, acompanhado por testes e instruções de instalação. O backend ainda precisa ser copiado para o editor Apps Script vinculado à planilha e autorizado pela conta proprietária antes da primeira importação real.
 
-O dashboard teve sua direção funcional e visual aprovada e será a próxima frente de planejamento. Gatilhos agendados e atualizações automáticas permanecem fora da fase atual. Não substituir manualmente as abas definitivas.
+O dashboard de gestão está implementado localmente em `apps-script/`, incluindo métricas, páginas, repositório, API e os quatro arquivos HTML da interface. Os testes automatizados locais estão passando. A implantação externa não foi realizada nesta etapa: ainda é necessário copiar o código para o projeto Apps Script vinculado à planilha, publicar o aplicativo da web com acesso restrito aos usuários autorizados e verificar visualmente a URL `/exec` em desktop, tablet e celular.
+
+A validação operacional com dados reais também permanece pendente. Ela só deve ser executada quando os três exports semanais autorizados estiverem disponíveis em uma pasta temporária, sem copiar dados de alunos para o repositório ou para relatórios. Até a implantação e essas verificações serem concluídas, o dashboard deve ser tratado como implementado e verificado por testes locais, mas ainda não homologado no ambiente real. Gatilhos agendados e atualizações automáticas permanecem fora da fase atual. Não substituir manualmente as abas definitivas.
 
 ## 15. Arquivos do backend
 

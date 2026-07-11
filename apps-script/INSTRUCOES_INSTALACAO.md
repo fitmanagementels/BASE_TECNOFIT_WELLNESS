@@ -142,4 +142,82 @@ Quando o lote for reconhecido, mas algum dado for inválido, os arquivos serão 
 
 Quando um arquivo desta pasta for alterado, copie novamente seu conteúdo integral para o arquivo de mesmo nome no editor Apps Script. Salve o projeto e recarregue a planilha.
 
-Não crie gatilhos agendados e não implante o projeto como aplicativo da web nesta fase.
+Não crie gatilhos agendados. O dashboard deve ser publicado somente como aplicativo da web e com acesso restrito às pessoas autorizadas no Google Workspace, conforme o procedimento abaixo.
+
+## 11. Publicação do dashboard
+
+Antes de publicar, conclua a instalação dos arquivos `00_Config.gs` a `08_Main.gs`, de `Sidebar.html` e de `appsscript.json` descrita nas seções anteriores. Depois:
+
+1. No editor Apps Script vinculado à planilha mestre, clique em **+ > Script** e crie, sem digitar a extensão `.gs`, os arquivos `09_DashboardMetricas`, `10_DashboardPaginas`, `11_DashboardRepositorio` e `12_DashboardApi`.
+2. Copie integralmente o conteúdo dos arquivos locais para os arquivos de mesmo nome no editor:
+
+   ```text
+   apps-script/09_DashboardMetricas.gs
+   apps-script/10_DashboardPaginas.gs
+   apps-script/11_DashboardRepositorio.gs
+   apps-script/12_DashboardApi.gs
+   ```
+
+3. Clique em **+ > HTML** e crie os quatro arquivos abaixo, sem digitar a extensão `.html` no campo de nome:
+
+   ```text
+   Dashboard
+   DashboardClient
+   DashboardComponents
+   DashboardStyles
+   ```
+
+4. Copie integralmente o conteúdo dos quatro arquivos locais correspondentes:
+
+   ```text
+   apps-script/Dashboard.html
+   apps-script/DashboardClient.html
+   apps-script/DashboardComponents.html
+   apps-script/DashboardStyles.html
+   ```
+
+5. Clique em **Salvar projeto**.
+6. Acesse **Implantar > Nova implantação**.
+7. Em **Selecionar tipo**, escolha **Aplicativo da Web**.
+8. Informe uma descrição que identifique a versão publicada.
+9. Em **Executar como**, selecione a conta proprietária do projeto e da planilha mestre.
+10. Em **Quem pode acessar**, selecione somente a opção que restrinja o aplicativo aos usuários pretendidos do Google Workspace. Não permita acesso público ou anônimo.
+11. Clique em **Implantar**, revise os escopos solicitados e conclua a autorização com a conta proprietária.
+12. Copie a URL implantada que termina em `/exec`. Não use a URL de teste terminada em `/dev` na operação diária.
+13. Abra a URL `/exec` em um navegador de desktop e em um navegador de celular, autenticado em cada caso com um usuário autorizado.
+
+Quando o código do dashboard mudar, crie uma nova versão em **Implantar > Gerenciar implantações**, atualize a implantação existente e repita a verificação abaixo.
+
+## 12. Checklist de aceitação do dashboard
+
+- [ ] A página abre sem solicitar acesso público à planilha.
+- [ ] As quatro áreas abrem no desktop e no celular.
+- [ ] A data da última importação aparece corretamente.
+- [ ] Um aluno com vários contratos conta uma vez em indicadores de alunos.
+- [ ] O mesmo contrato não duplica valores.
+- [ ] Vencimentos de 7 e 30 dias conferem com uma amostra manual.
+- [ ] Fichas sem data aparecem como ausentes; fichas com mais de 30 dias, como desatualizadas.
+- [ ] Avaliações sem data aparecem como ausentes; avaliações com mais de 90 dias, como desatualizadas.
+- [ ] Busca e filtros atualizam cartões, gráficos e lista.
+- [ ] Telefones ficam parcialmente ocultos nos cartões do celular.
+- [ ] Nenhuma mensagem de erro exibe nomes ou contatos.
+
+## 13. Verificação visual após a publicação
+
+Com a URL `/exec` implantada e um usuário autorizado, verifique o dashboard nestas dimensões de viewport:
+
+- `1440 × 900`: menu lateral, grade de indicadores, gráficos, listas, foco visível e estados de carregamento, vazio e erro;
+- `1024 × 768`: adaptação do menu lateral, grade em duas colunas, empilhamento dos gráficos e rolagem dos indicadores;
+- `390 × 844`: transição do menu lateral para a navegação inferior, cartões móveis, indicadores com rolagem horizontal e gráficos empilhados.
+
+Nas três dimensões, teste também a navegação por teclado, a preferência de movimento reduzido, a busca, os filtros e a ausência de dados pessoais nas mensagens de erro. Registre a data, o navegador, o usuário de teste autorizado e o resultado de cada item do checklist. A verificação visual real não pode ser concluída apenas com os arquivos locais: ela requer a implantação autorizada e a leitura controlada da planilha mestre.
+
+## 14. Validação com exports autorizados
+
+Antes da publicação operacional, coloque temporariamente os três exports semanais autorizados — `vencimentos`, `fichas` e `avaliacao_fisica` — em `/tmp/tecnofit-validacao` e execute:
+
+```bash
+npm run validate:real -- --dir /tmp/tecnofit-validacao
+```
+
+A validação deve terminar sem erros e não deve modificar a planilha mestre. Execute-a somente quando os três arquivos autorizados estiverem presentes. Por privacidade, não copie esses exports para o repositório, não registre no relatório nomes, contatos ou outras linhas de dados e apague a cópia temporária ao final. Se os três arquivos não estiverem disponíveis, registre a validação operacional como pendente; não substitua os dados reais por fixtures para declarar esse item concluído.
