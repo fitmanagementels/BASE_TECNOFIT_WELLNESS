@@ -166,13 +166,22 @@ function nodeByText(node, text) {
 }
 
 function validResponse(page = 'vencimentos', overrides = {}) {
-  const dados = {
-    kpis: { vencidos: 1, ate7: 2, ate30: 3, valorAte30: 100 },
-    graficos: { situacao: { vencido: 1 }, semanas: [{ label: 'Semana 1', valor: 1 }] },
-    lista: [{ aluno: 'ALUNO TESTE', contato: '85987654321', polo: 'POLO A', vencimento: '11/07/2026', situacao: 'ate7', valor: 100 }],
-    filtros: { polos: ['POLO A', 'POLO B'], statusAlunos: ['Ativo', 'Inativo'] },
-    ...overrides
+  const filtros = { polos: ['POLO A', 'POLO B'], statusAlunos: ['Ativo', 'Inativo'] };
+  const fixtures = {
+    vencimentos: {
+      kpis: { vencidos: 1, ate7: 2, ate30: 3, valorAte30: 100 },
+      graficos: { situacao: { vencido: 1 }, semanas: [{ label: 'Semana 1', valor: 1 }] },
+      lista: [{ aluno: 'ALUNO TESTE', contato: '85987654321', polo: 'POLO A', vencimento: '11/07/2026', situacao: 'ate7', valor: 100 }],
+      filtros
+    },
+    fichas: {
+      kpis: { atualizadas: 1, ausentes: 2, desatualizadas: 3, cobertura: 75 },
+      graficos: { situacao: { atualizada: 1 }, faixas: { '0–30 dias': 1 }, coberturaPorPolo: [{ polo: 'POLO A', cobertura: 75 }] },
+      lista: [{ aluno: 'ALUNO FICHA', contato: '85987654321', polos: ['POLO A'], data: '11/07/2026', diasSemAtualizacao: 10, situacao: 'atualizada' }],
+      filtros
+    }
   };
+  const dados = { ...(fixtures[page] || fixtures.vencimentos), ...overrides };
   return { ok: true, pagina: page, atualizadoEm: '', avisoImportacao: '', dados };
 }
 
@@ -253,6 +262,8 @@ test('navegação sincroniza as duas navs e preserva filtros independentes por p
   polo.dispatch('change');
   client.buttons.find(button => button.dataset.page === 'fichas').dispatch('click');
   client.requests.at(-1).success(validResponse('fichas'));
+  assert.equal(client.nodes.kpiGrid.children[0].children[1].textContent, '1');
+  assert.ok(nodeByText(client.nodes.listPanel, 'ALUNO FICHA'));
   const statusAluno = client.nodes.filters.children[1].children[1];
   statusAluno.value = 'Ativo';
   statusAluno.dispatch('change');
@@ -270,14 +281,28 @@ test('navegação sincroniza as duas navs e preserva filtros independentes por p
 test('resposta stale não renderiza e mudança de filtro envia uma cópia', () => {
   const client = setupClient();
   startClient(client);
-  const first = client.requests[0];
-  client.context.navigate('fichas');
-  first.success(validResponse());
-  assert.equal(client.nodes.kpiGrid.children.length, 0);
+  const stale = client.requests[0];
+  client.context.loadPage();
+  const current = client.requests[1];
+  assert.equal(stale.page, 'vencimentos');
+  assert.equal(current.page, 'vencimentos');
 
-  client.context.navigate('vencimentos');
-  const current = client.requests.at(-1);
-  current.success(validResponse());
+  stale.success(validResponse('vencimentos', {
+    kpis: { vencidos: 99, ate7: 99, ate30: 99, valorAte30: 9900 },
+    lista: [{ aluno: 'RESPOSTA ANTIGA', contato: '85999999999', polo: 'POLO A', vencimento: '01/01/2020', situacao: 'vencido', valor: 9900 }]
+  }));
+  assert.equal(client.nodes.kpiGrid.children.length, 0);
+  assert.equal(client.nodes.appState.hidden, false);
+  assert.ok(nodeByText(client.nodes.appState, 'Carregando dashboard…'));
+  assert.equal(nodeByText(client.nodes.listPanel, 'RESPOSTA ANTIGA'), undefined);
+
+  current.success(validResponse('vencimentos', {
+    kpis: { vencidos: 7, ate7: 2, ate30: 3, valorAte30: 100 },
+    lista: [{ aluno: 'RESPOSTA ATUAL', contato: '85987654321', polo: 'POLO B', vencimento: '11/07/2026', situacao: 'ate7', valor: 100 }]
+  }));
+  assert.equal(client.nodes.kpiGrid.children[0].children[1].textContent, '7');
+  assert.ok(nodeByText(client.nodes.listPanel, 'RESPOSTA ATUAL'));
+  assert.equal(nodeByText(client.nodes.listPanel, 'RESPOSTA ANTIGA'), undefined);
   const polo = client.nodes.filters.children[0].children[1];
   polo.value = 'POLO B';
   polo.dispatch('change');
@@ -326,6 +351,7 @@ test('Chart é destruído e falhas do CDN não impedem KPIs, lista e tabela aces
     fallback.requests[0].success(validResponse());
     assert.equal(fallback.nodes.kpiGrid.children.length, 4);
     assert.ok(fallback.nodes.listPanel.children.some(child => child.className === 'table-scroll'));
+    assert.ok(nodeByText(fallback.nodes.chartGrid, 'Gráfico indisponível. Consulte os indicadores e a lista abaixo.'));
   }
 });
 
