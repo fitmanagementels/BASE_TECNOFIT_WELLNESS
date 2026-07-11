@@ -1,0 +1,68 @@
+<aside id="navDesktop" class="desktop-nav" aria-label="Navegação principal">
+  <div class="brand" aria-label="XSTEAM Dashboard">
+    <span class="brand-mark" aria-hidden="true">XS</span>
+    <span class="brand-copy">XSTEAM</span>
+  </div>
+
+  <nav class="nav-list" aria-label="Páginas do dashboard">
+    <button class="nav-button active" type="button" data-page="vencimentos" aria-current="page">
+      <span class="nav-icon" aria-hidden="true">01</span>
+      <span class="nav-label">Vencimentos</span>
+    </button>
+    <button class="nav-button" type="button" data-page="fichas">
+      <span class="nav-icon" aria-hidden="true">02</span>
+      <span class="nav-label">Fichas</span>
+    </button>
+    <button class="nav-button" type="button" data-page="avaliacoes">
+      <span class="nav-icon" aria-hidden="true">03</span>
+      <span class="nav-label">Avaliações</span>
+    </button>
+    <button class="nav-button" type="button" data-page="planos">
+      <span class="nav-icon" aria-hidden="true">04</span>
+      <span class="nav-label">Planos</span>
+    </button>
+  </nav>
+
+  <p class="nav-meta"><span aria-hidden="true">●</span> Painel operacional</p>
+</aside>
+
+<div class="workspace">
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Visão operacional</p>
+      <h1 id="pageTitle">Vencimentos</h1>
+    </div>
+    <p class="header-status"><span aria-hidden="true">●</span> Dados do painel</p>
+  </header>
+
+  <main id="mainContent" class="content" tabindex="-1">
+    <section id="filters" class="filters" aria-label="Filtros da página"></section>
+    <section id="kpiGrid" class="kpi-grid" aria-label="Indicadores principais"></section>
+    <section id="chartGrid" class="chart-grid" aria-label="Gráficos do período"></section>
+    <section id="listPanel" class="list-panel" aria-label="Detalhamento dos dados"></section>
+
+    <section id="appState" class="app-state" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Carregando dashboard…</p>
+    </section>
+  </main>
+</div>
+
+<nav id="navMobile" class="mobile-nav" aria-label="Navegação principal">
+  <button class="mobile-nav-button active" type="button" data-page="vencimentos" aria-current="page">
+    <span class="mobile-nav-icon" aria-hidden="true">01</span>
+    <span>Vencimentos</span>
+  </button>
+  <button class="mobile-nav-button" type="button" data-page="fichas">
+    <span class="mobile-nav-icon" aria-hidden="true">02</span>
+    <span>Fichas</span>
+  </button>
+  <button class="mobile-nav-button" type="button" data-page="avaliacoes">
+    <span class="mobile-nav-icon" aria-hidden="true">03</span>
+    <span>Avaliações</span>
+  </button>
+  <button class="mobile-nav-button" type="button" data-page="planos">
+    <span class="mobile-nav-icon" aria-hidden="true">04</span>
+    <span>Planos</span>
+  </button>
+</nav>
