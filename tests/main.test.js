@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const { loadGas } = require('./helpers/load-gas');
 
 function setup() {
@@ -15,9 +16,24 @@ function setup() {
   const gas = loadGas(['apps-script/08_Main.gs'], {
     SpreadsheetApp: { getUi: () => ui },
     HtmlService: {
-      createTemplateFromFile: () => ({
-        evaluate: () => ({ setTitle(title) { this.title = title; return this; } })
-      })
+      XFrameOptionsMode: { DEFAULT: 'DEFAULT' },
+      createTemplateFromFile(name) {
+        calls.push(['template', name]);
+        return {
+          evaluate: () => ({
+            setTitle(title) { this.title = title; return this; },
+            setXFrameOptionsMode(mode) { this.xFrameOptionsMode = mode; return this; },
+            addMetaTag(name, content) { this[name] = content; return this; }
+          })
+        };
+      },
+      createHtmlOutputFromFile(name) {
+        calls.push(['html-output', name]);
+        return { getContent: () => `<p>${name}</p>` };
+      }
+    },
+    ScriptApp: {
+      getService: () => ({ getUrl: () => 'https://script.google.com/mock' })
     },
     garantirEstruturaPlanilha: () => calls.push(['ensure']),
     inspecionarPastaEntrada: () => ({ ready: true, lote: { dataReferencia: '2026-07-08' }, erros: [] }),
@@ -40,7 +56,37 @@ test('onOpen cria menu TecnoFit com ação para abrir o painel', () => {
 test('abrirPainel renderiza Sidebar com título', () => {
   const { gas, calls } = setup();
   gas.abrirPainel();
-  assert.deepEqual(calls, [['sidebar', 'TecnoFit — Atualização']]);
+  assert.deepEqual(calls, [
+    ['template', 'Sidebar'],
+    ['sidebar', 'TecnoFit — Atualização']
+  ]);
+});
+
+test('doGet monta a web app do dashboard', () => {
+  const { gas, calls } = setup();
+  const output = gas.doGet();
+  assert.equal(output.title, 'XSTEAM — Gestão');
+  assert.equal(output.viewport, 'width=device-width, initial-scale=1');
+  assert.equal(calls.some(call => call[0] === 'template' && call[1] === 'Dashboard'), true);
+});
+
+test('incluirArquivo_ retorna o conteúdo da parcial', () => {
+  const { gas, calls } = setup();
+  assert.equal(gas.incluirArquivo_('DashboardStyles'), '<p>DashboardStyles</p>');
+  assert.deepEqual(calls, [['html-output', 'DashboardStyles']]);
+});
+
+test('obterUrlDashboard retorna a URL publicada', () => {
+  const { gas } = setup();
+  assert.equal(gas.obterUrlDashboard(), 'https://script.google.com/mock');
+});
+
+test('Dashboard compõe as parciais e carrega Chart.js pela configuração', () => {
+  const html = fs.readFileSync('apps-script/Dashboard.html', 'utf8');
+  assert.match(html, /incluirArquivo_\('DashboardStyles'\)/);
+  assert.match(html, /CONFIG\.dashboard\.chartJsUrl/);
+  assert.match(html, /incluirArquivo_\('DashboardComponents'\)/);
+  assert.match(html, /incluirArquivo_\('DashboardClient'\)/);
 });
 
 test('obterStatusImportacao combina lote e última execução', () => {

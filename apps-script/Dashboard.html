@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <?!= incluirArquivo_('DashboardStyles'); ?>
+    <script src="<?= CONFIG.dashboard.chartJsUrl ?>" defer></script>
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <?!= incluirArquivo_('DashboardComponents'); ?>
+    </div>
+    <?!= incluirArquivo_('DashboardClient'); ?>
+  </body>
+</html>
