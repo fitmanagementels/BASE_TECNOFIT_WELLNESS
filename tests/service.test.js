@@ -54,3 +54,24 @@ test('libera o lock quando a geração do ID de execução falha', () => {
   assert.throws(() => gas.executarImportacaoComDependencias_(deps), /UUID indisponível/);
   assert.deepEqual(deps.calls, ['release']);
 });
+
+test('remove o POP reservado antes de agrupar os arquivos da importação', () => {
+  let arquivosAgrupados = null;
+  const deps = dependencies({
+    descobrirArquivos: () => [
+      { nome: 'LEIA-ME_POP_01_ENTRADA.pdf' },
+      { nome: 'fichas_2026-07-08_r01.xls' },
+      { nome: 'vencimentos_2026-07-08_r01.xls' },
+      { nome: 'avaliacao_fisica_2026-07-08_r01.xls' }
+    ],
+    filtrarArquivosEntrada: (arquivos) => arquivos.filter((arquivo) => arquivo.nome !== 'LEIA-ME_POP_01_ENTRADA.pdf'),
+    agruparLote: (arquivos) => {
+      arquivosAgrupados = arquivos;
+      return { dataReferencia: '2026-07-08', revisao: '01', arquivosPorTipo: {}, arquivos: [] };
+    }
+  });
+
+  gas.executarImportacaoComDependencias_(deps);
+
+  assert.equal(arquivosAgrupados.length, 3);
+});

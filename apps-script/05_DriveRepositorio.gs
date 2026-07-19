@@ -64,6 +64,14 @@ function agruparLote(arquivos) {
   };
 }
 
+var NOME_POP_ENTRADA = 'leia-me_pop_01_entrada.pdf';
+
+function filtrarArquivosOperacionaisEntrada_(arquivos) {
+  return arquivos.filter(function (arquivo) {
+    return String(arquivo.nome || '').toLowerCase() !== NOME_POP_ENTRADA;
+  });
+}
+
 function listarArquivosEntrada() {
   var iterator = DriveApp.getFolderById(CONFIG.pastaEntradaId).getFiles();
   var arquivos = [];
@@ -121,7 +129,7 @@ function moverLoteParaRejeitados(lote) {
 }
 
 function inspecionarPastaEntrada() {
-  var arquivos = listarArquivosEntrada();
+  var arquivos = filtrarArquivosOperacionaisEntrada_(listarArquivosEntrada());
   if (!arquivos.length) {
     return { ready: false, lote: null, erros: ['A pasta 01_ENTRADA está vazia.'] };
   }

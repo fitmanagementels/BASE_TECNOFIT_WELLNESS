@@ -11,6 +11,9 @@ function executarImportacaoComDependencias_(deps) {
   try {
     execucaoId = deps.gerarExecucaoId();
     arquivos = deps.descobrirArquivos();
+    if (deps.filtrarArquivosEntrada) {
+      arquivos = deps.filtrarArquivosEntrada(arquivos);
+    }
     lote = deps.agruparLote(arquivos);
     deps.verificarReprocessamento(lote);
     referenciasLog = deps.iniciarLog(lote.arquivos, execucaoId);
@@ -92,6 +95,7 @@ function criarDependenciasImportacao_() {
     adquirirLock: adquirirLockImportacao_,
     gerarExecucaoId: function () { return Utilities.getUuid(); },
     descobrirArquivos: listarArquivosEntrada,
+    filtrarArquivosEntrada: filtrarArquivosOperacionaisEntrada_,
     agruparLote: agruparLote,
     enriquecerArquivos: enriquecerArquivosReconhecidos_,
     verificarReprocessamento: verificarLoteJaRegistrado,

@@ -45,3 +45,21 @@ test('rejeita arquivo extra e tipo repetido', () => {
     file('avaliacao_fisica_2026-07-08_r01.xls')
   ]), /Tipo repetido/);
 });
+
+test('ignora apenas o POP reservado ao validar o lote de entrada', () => {
+  const lote = gas.agruparLote(gas.filtrarArquivosOperacionaisEntrada_([
+    file('LEIA-ME_POP_01_ENTRADA.pdf'),
+    file('fichas_2026-07-19_r01.xls'),
+    file('vencimentos_2026-07-19_r01.xls'),
+    file('avaliacao_fisica_2026-07-19_r01.xls')
+  ]));
+
+  assert.equal(lote.arquivos.length, 3);
+  assert.throws(() => gas.agruparLote(gas.filtrarArquivosOperacionaisEntrada_([
+    file('leia-me_pop_01_entrada.pdf'),
+    file('notas.txt'),
+    file('fichas_2026-07-19_r01.xls'),
+    file('vencimentos_2026-07-19_r01.xls'),
+    file('avaliacao_fisica_2026-07-19_r01.xls')
+  ])), /Arquivo inválido/);
+});
