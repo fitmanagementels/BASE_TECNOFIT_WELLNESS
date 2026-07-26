@@ -212,6 +212,14 @@ fichas_AAAA-MM-DD_rNN.xls
 avaliacao_fisica_AAAA-MM-DD_rNN.xls
 ```
 
+Também são aceitos arquivos com a extensão `.xlsx`:
+
+```text
+vencimentos_AAAA-MM-DD_rNN.xlsx
+fichas_AAAA-MM-DD_rNN.xlsx
+avaliacao_fisica_AAAA-MM-DD_rNN.xlsx
+```
+
 Exemplo:
 
 ```text
@@ -229,7 +237,7 @@ Regras recomendadas para quem prepara os arquivos:
 - os três arquivos do lote devem ter a mesma data e revisão;
 - não usar nomes como `novo`, `final`, `final2`, `corrigido` ou `atualizado`.
 
-O backend aceita, na entrada, datas separadas por hífen ou sublinhado. Por exemplo, `fichas_2026-07-08_r01.xls` e `fichas_2026_07_08_r01.xls` são reconhecidos. Ao arquivar o lote, o backend normaliza o nome para o padrão com hífens.
+O backend aceita, na entrada, datas separadas por hífen ou sublinhado e as extensões `.xls` ou `.xlsx`. Por exemplo, `fichas_2026-07-08_r01.xls`, `fichas_2026_07_08_r01.xls` e `fichas_2026-07-08_r01.xlsx` são reconhecidos. Ao arquivar o lote, o backend normaliza o nome para o padrão com hífens e corrige a extensão quando ela não corresponder ao conteúdo real do arquivo.
 
 ### 4.1 Arquivos corrigidos
 
@@ -247,7 +255,7 @@ Não misturar `r01` e `r02` no mesmo lote.
 
 ## 5. Preservação dos arquivos de origem
 
-Os arquivos atuais têm extensão `.xls`, mas internamente são tabelas HTML exportadas pelo sistema. Eles devem ser enviados exatamente como foram recebidos.
+Os relatórios do TecnoFit podem ser tabelas HTML de Excel com extensão `.xls` ou arquivos Excel modernos `.xlsx`. Eles devem ser enviados exatamente como foram recebidos; a automação identifica o formato pelo conteúdo, e não apenas pelo nome.
 
 Não fazer antes do upload:
 

@@ -43,6 +43,15 @@ test('restaura dados e rejeita lote quando falha após substituição', () => {
   assert.deepEqual(deps.calls, ['check', 'log-start', 'backup', 'replace', 'restore', 'rejected', 'log-ERRO', 'release']);
 });
 
+test('não substitui a base quando a leitura XLSX falha', () => {
+  const deps = dependencies({
+    lerTabelas: () => { throw new Error('XLSX inválido: nenhuma worksheet encontrada.'); }
+  });
+
+  assert.throws(() => gas.executarImportacaoComDependencias_(deps), /XLSX inválido/);
+  assert.deepEqual(deps.calls, ['check', 'log-start', 'rejected', 'log-ERRO', 'release']);
+});
+
 test('interrompe quando não consegue obter lock', () => {
   const deps = dependencies({ adquirirLock: () => { throw new Error('Já existe uma importação'); } });
   assert.throws(() => gas.executarImportacaoComDependencias_(deps), /Já existe uma importação/);

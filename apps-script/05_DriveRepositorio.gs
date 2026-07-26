@@ -102,8 +102,20 @@ function lerTabelasDoLote(lote) {
   var resultado = { contagens: {} };
   CONFIG.tiposObrigatorios.forEach(function (tipo) {
     var entrada = lote.arquivosPorTipo[tipo];
-    var html = entrada.arquivo.getBlob().getDataAsString('UTF-8');
-    var linhas = tabelaParaObjetos(parseTabelaHtml(html), CABECALHOS_ORIGEM[tipo]);
+    var blob = entrada.arquivo.getBlob();
+    var formato = detectarFormatoArquivo(blob);
+    entrada.nomeCanonico = entrada.tipo + '_' + lote.dataReferencia + '_r' + lote.revisao + '.' + formato.extensaoCanonica;
+    var linhasBrutas;
+    if (formato.formato === 'xlsx') {
+      linhasBrutas = parseTabelaXlsx(blob);
+    } else {
+      var html = blob.getDataAsString('UTF-8');
+      if (!/<table\b/i.test(html)) {
+        throw new Error('Formato de arquivo inválido: esperado XLS HTML ou XLSX.');
+      }
+      linhasBrutas = parseTabelaHtml(html);
+    }
+    var linhas = tabelaParaObjetos(linhasBrutas, CABECALHOS_ORIGEM[tipo]);
     resultado[tipo] = linhas;
     resultado.contagens[tipo] = {
       lidas: linhas.length,

@@ -23,6 +23,7 @@ No editor Apps Script, clique no botão **+** ao lado de Arquivos e escolha **Sc
 00_Config
 01_Normalizacao
 02_ParserHtml
+02_ParserXlsx
 03_Transformacao
 04_PlanilhaRepositorio
 05_DriveRepositorio
@@ -37,6 +38,7 @@ Para cada nome, copie todo o conteúdo do arquivo correspondente desta pasta:
 apps-script/00_Config.gs
 apps-script/01_Normalizacao.gs
 apps-script/02_ParserHtml.gs
+apps-script/02_ParserXlsx.gs
 apps-script/03_Transformacao.gs
 apps-script/04_PlanilhaRepositorio.gs
 apps-script/05_DriveRepositorio.gs
@@ -90,12 +92,12 @@ Somente a conta responsável pela atualização deve operar o painel nesta prime
 Antes de clicar no botão, confirme que `01_ENTRADA` contém somente:
 
 ```text
-vencimentos_2026_07_08_r01.xls
-fichas_2026_07_08_r01.xls
-avaliacao_fisica_2026_07_08_r01.xls
+vencimentos_2026_07_08_r01.xls ou vencimentos_2026_07_08_r01.xlsx
+fichas_2026_07_08_r01.xls ou fichas_2026_07_08_r01.xlsx
+avaliacao_fisica_2026_07_08_r01.xls ou avaliacao_fisica_2026_07_08_r01.xlsx
 ```
 
-O backend também aceita hífens na data. Depois:
+O backend também aceita hífens na data. Ele identifica o formato interno do arquivo: relatórios HTML de Excel continuam sendo lidos como `.xls` e arquivos Excel modernos são lidos como `.xlsx`, mesmo se o nome recebido estiver com a extensão trocada. Ao arquivar, a extensão será corrigida para refletir o formato real. Depois:
 
 1. Abra **TecnoFit > Abrir painel**.
 2. Confirme que aparece **Pronto para importar**.
