@@ -11,18 +11,28 @@ function validarPartesData_(ano, mes, dia, nomeArquivo) {
 
 function parseNomeArquivo(nome) {
   var texto = String(nome || '');
-  var match = /^(vencimentos|fichas|avaliacao_fisica)_(\d{4})[-_](\d{2})[-_](\d{2})_r(\d{2})\.xls$/i.exec(texto);
+  var match = /^(vencimentos|fichas|avaliacao_fisica)_(\d{4})[-_](\d{2})[-_](\d{2})_r(\d{2})\.(xls|xlsx)$/i.exec(texto);
   if (!match) throw new Error('Arquivo inválido: ' + texto);
 
   var tipo = match[1].toLowerCase();
   validarPartesData_(match[2], match[3], match[4], texto);
   var dataReferencia = match[2] + '-' + match[3] + '-' + match[4];
+  var extensaoRecebida = match[6].toLowerCase();
   return {
     tipo: tipo,
     dataReferencia: dataReferencia,
     revisao: match[5],
-    nomeCanonico: tipo + '_' + dataReferencia + '_r' + match[5] + '.xls'
+    extensaoRecebida: extensaoRecebida,
+    nomeCanonico: tipo + '_' + dataReferencia + '_r' + match[5] + '.' + extensaoRecebida
   };
+}
+
+function detectarFormatoArquivo(blob) {
+  var bytes = blob.getBytes();
+  if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04) {
+    return { formato: 'xlsx', extensaoCanonica: 'xlsx' };
+  }
+  return { formato: 'html', extensaoCanonica: 'xls' };
 }
 
 function agruparLote(arquivos) {
