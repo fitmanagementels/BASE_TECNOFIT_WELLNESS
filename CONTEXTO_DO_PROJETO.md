@@ -1,218 +1,134 @@
 # Contexto do Projeto — Base Central TecnoFit
 
-Última atualização: **11/07/2026 13:50 (America/Fortaleza, UTC-03:00)**
+Última atualização: **26/07/2026 (America/Fortaleza, UTC-03:00)**
 
-> Este é o artefato canônico de memória portátil do projeto. Atualizá-lo, junto com `CONTEXTO_DO_PROJETO.html`, após cada grande marco.
+> Memória portátil canônica. Atualizar este arquivo e `CONTEXTO_DO_PROJETO.html` após cada grande marco.
 
 ## Resumo executivo
 
-- O projeto consolida três relatórios semanais do TecnoFit (`vencimentos`, `fichas` e `avaliacao_fisica`) em uma planilha mestre no Google Sheets.
-- O backend Google Apps Script está implementado, foi copiado para a planilha mestre e é acionado manualmente pelo menu `TecnoFit > Abrir painel > Atualizar base`.
-- O fluxo valida o lote, cria auditoria, substitui as três bases atuais, arquiva os arquivos processados e restaura a base anterior em caso de falha.
-- Duas importações remotas foram confirmadas como `SUCESSO`: referências `2026-07-08 r01` e `2026-07-10 r01`.
-- A planilha trabalha como **snapshot atual**: `BASE_ALUNOS`, `CONTRATOS` e `VISAO_MESTRE` são integralmente substituídas a cada sucesso.
-- O histórico operacional permanece em `IMPORTACOES`; os relatórios originais permanecem em `02_PROCESSADOS`.
-- A exatidão da migração dos dados ainda não foi conferida pelo usuário. O funcionamento do fluxo foi confirmado, mas a qualidade do conteúdo consolidado continua pendente de validação.
-- Dashboard, gatilhos agendados e tabela histórica analítica ainda não foram implementados.
+- O projeto consolida `vencimentos`, `fichas` e `avaliacao_fisica` do TecnoFit em uma planilha mestre do Google Sheets.
+- O backend Apps Script é acionado manualmente por **TecnoFit > Abrir painel > Atualizar base**.
+- As abas `BASE_ALUNOS`, `CONTRATOS` e `VISAO_MESTRE` são um snapshot do lote vigente; `IMPORTACOES` é append-only e os arquivos brutos ficam no Drive.
+- As importações remotas `2026-07-08 r01` e `2026-07-10 r01` foram bem-sucedidas. A exatidão de todos os campos ainda não foi auditada pelo usuário.
+- Em 20/07, dois lotes foram rejeitados antes de alterar a base porque um arquivo XLSX real foi tratado como HTML por ter nome `.xls`.
+- O código local agora aceita HTML/XLS legado e XLSX real, detectando o formato pelo conteúdo e corrigindo a extensão ao arquivar. A atualização ainda precisa ser copiada ao Apps Script remoto e validada com um lote novo.
 
 ## Objetivo do projeto
 
-- **Objetivo principal:** centralizar dados essenciais de clientes para acompanhamento operacional e servir de fonte confiável para um futuro dashboard em Apps Script.
-- **Resultado esperado:** uma base mestre atualizável semanalmente por botão, com rastreabilidade dos lotes e proteção contra atualizações parciais.
-- **Usuário principal:** proprietário/operador da base, responsável por executar a atualização e monitorar clientes.
-- **Usuário secundário:** administrador que exporta e envia os três relatórios para `01_ENTRADA`.
-- **Critérios de sucesso atuais:** reconhecer um lote completo, consolidar por ID, preservar contratos múltiplos, atualizar as abas, registrar três linhas de auditoria e arquivar os arquivos sem corromper a última base válida.
+- **Objetivo principal:** manter uma base de clientes atualizável semanalmente, segura e auditável, como fonte de um dashboard futuro.
+- **Usuários:** administrador que entrega os relatórios em `01_ENTRADA` e operador que executa a importação na planilha mestre.
+- **Critérios atuais:** lote completo com mesma data/revisão, contratos múltiplos preservados, nenhuma atualização parcial e arquivos arquivados com auditoria.
 
 ## Estado atual
 
-- **Etapa atual:** estabilização e validação do backend manual já instalado.
-- **Status geral:** operacional; duas execuções remotas concluídas com sucesso.
-- **Última ação relevante:** processamento do lote `2026-07-10 r01` em 11/07/2026.
-- **Onde parou:** o fluxo técnico funcionou, mas o usuário decidiu não conferir ainda se todos os dados migraram corretamente.
-- **Próxima decisão necessária:** definir como e quando validar a qualidade da consolidação antes de iniciar o dashboard.
-- **O que falta para continuar:** validar amostras e totais na planilha; depois decidir se o dashboard precisa de histórico temporal ou somente do snapshot atual.
-
-### Estado remoto observado em 11/07/2026
-
-| Item | Estado observado |
-|---|---|
-| Planilha mestre | Quatro abas existentes: `BASE_ALUNOS`, `CONTRATOS`, `VISAO_MESTRE`, `IMPORTACOES` |
-| `01_ENTRADA` | Vazia após as duas atualizações |
-| `02_PROCESSADOS/2026` | Pastas `2026-07-08` e `2026-07-10` |
-| `03_REJEITADOS` | Vazia |
-| Auditoria | 6 registros, três por lote, todos `SUCESSO` |
-| Validação do conteúdo pelo usuário | Ainda não realizada |
-
-### Lotes processados
-
-| Referência | Revisão | Vencimentos | Fichas | Avaliações | Resultado/avisos |
-|---|---:|---:|---:|---:|---|
-| 2026-07-08 | r01 | 339 | 1456 | 923 | Sucesso; 88 sem ficha, 111 sem avaliação, 3 contratos sem frequência/polo identificáveis |
-| 2026-07-10 | r01 | 339 | 1456 | 942 | Sucesso; 88 sem ficha, 87 sem avaliação, 3 contratos sem frequência/polo identificáveis |
-
-Os números acima vêm da aba remota `IMPORTACOES`. Eles provam que o processamento terminou, não que cada campo consolidado está correto.
+- **Etapa:** implantação do suporte a XLSX e validação operacional do novo leitor.
+- **Código local:** implementado e testado em `main`.
+- **Código remoto:** a confirmar; o usuário deve criar `02_ParserXlsx` e atualizar `05_DriveRepositorio` no editor Apps Script.
+- **Base remota:** permanece na última atualização bem-sucedida de `2026-07-10 r01` até uma nova importação concluir.
+- **Lote mais recente observado:** o print de 26/07 mostrou três relatórios `2026-07-25 r01` em `01_ENTRADA`; confirmar em `IMPORTACOES` se essa revisão já foi registrada antes de executar.
+- **Pendência prioritária:** instalar a atualização e testar com uma revisão não registrada (`r01` se ausente no log; caso contrário, `r02`).
 
 ## Histórico relevante
 
-| Data | Mudança | Impacto |
+| Data/commit | Mudança | Impacto |
 |---|---|---|
-| 08–10/07/2026 | Levantamento das três planilhas e desenho da base central | Definiu o ID como integração e `vencimentos` como população principal |
-| 10/07/2026 | Estrutura do Drive e planilha mestre criada | Estabeleceu entrada, processados, rejeitados e documentação |
-| 10/07/2026 | Backend Apps Script desenvolvido localmente com TDD | Criou parser HTML/XLS, transformação, auditoria, rollback, menu e painel lateral |
-| 10/07/2026 | Validação local com os arquivos reais | Confirmou 330 alunos, 339 contratos, 339 linhas na visão e 3 chaves distintas para o ID de teste com contratos múltiplos |
-| 11/07/2026 | Backend instalado manualmente na planilha mestre | Tornou o fluxo utilizável pelo menu e painel lateral |
-| 11/07/2026 | Dois lotes processados com sucesso | Confirmou operação real, arquivamento e auditoria; conteúdo ainda não auditado pelo usuário |
-| 11/07/2026 | Criado pacote portátil de contexto | Permite retomar o projeto em outra máquina, chat ou IA |
-
-Não há histórico Git: a pasta atual **não é um repositório Git**.
+| 10/07/2026 | Backend inicial de importação HTML/XLS criado e instalado | Base central, auditoria, rollback e painel manual passaram a funcionar |
+| 11/07/2026 | Lotes `2026-07-08 r01` e `2026-07-10 r01` concluídos | Primeiro uso operacional confirmado |
+| 20/07/2026 | Lotes `2026-07-20 r01` e `r02` rejeitados | Base preservada; revelou XLSX real sob extensão `.xls` |
+| `e46878a` / `3b2f3b4` | Design e plano de suporte a XLSX | Definiu leitura nativa via `Utilities.unzip`, sem serviço externo |
+| `54397ed` | Reconhecimento de nomes e assinatura ZIP | Aceita `.xls`/`.xlsx` e detecta XLSX pelo conteúdo |
+| `dcf356f` | Leitor OOXML/XLSX | Lê strings compartilhadas, texto inline, números e datas serializadas |
+| `cab21a5` | Roteamento seguro e documentação | Mantém HTML antigo, corrige extensão ao arquivar e protege a base em falhas |
 
 ## Decisões tomadas
 
-- Usar `vencimentos` como fonte da população atual de alunos, pois contém os contratos que determinam a visão operacional.
-- Manter uma linha por ID em `BASE_ALUNOS` e uma linha por contrato em `CONTRATOS`, evitando perda de contratos simultâneos.
-- Gerar `VISAO_MESTRE` com uma linha por contrato; IDs podem se repetir e métricas de alunos devem usar IDs distintos.
-- Obter contato e data da ficha em `fichas`; usar a ficha válida mais recente quando houver repetição.
-- Obter a data de avaliação mais recente em `avaliacao_fisica`.
-- Manter `inicio_plano` vazio nesta fase; `inicio_corrente` vem de `vencimentos`.
-- Separar frequência e polo do contrato completo, preservando também o texto integral em `CONTRATOS`.
-- Usar uma chave técnica `ID|CONTRATO_NORMALIZADO|INICIO_CORRENTE` para distinguir contratos.
-- Atualizar manualmente por menu + painel lateral. Não usar gatilho agendado nesta fase.
-- Aceitar `_` ou `-` nas datas dos nomes de entrada e arquivar sempre com hífens.
-- Substituir integralmente as três abas gerenciadas a cada lote; não mesclar registros antigos.
-- Preservar o histórico operacional em `IMPORTACOES` e os arquivos brutos em `02_PROCESSADOS`.
-- Operar inicialmente somente pela conta proprietária; o administrador apenas envia arquivos.
-- Instalar manualmente os módulos no editor Apps Script; `clasp` não é usado no fluxo atual.
+- `vencimentos` define a população atual; `fichas` define contato/data de ficha e `avaliacao_fisica` define data de avaliação.
+- Uma linha por aluno em `BASE_ALUNOS`; uma por contrato em `CONTRATOS` e `VISAO_MESTRE`.
+- Snapshot atual é substituído por inteiro somente após a leitura/validação do lote completo; registros antigos não contaminam as análises normais.
+- O status de um aluno que desaparece deve futuramente ser tratado como **ausente do lote**, fora da base atual; a camada histórica ainda não foi implementada.
+- O formato interno do arquivo é a autoridade: ZIP/OOXML usa leitor XLSX; HTML usa leitor legado. A extensão recebida pode estar incorreta.
+- Arquivo XLSX nomeado `.xls` é aceito e arquivado como `.xlsx`; HTML nomeado `.xlsx` é arquivado como `.xls`.
+- Correções de lote exigem revisão maior porque qualquer tentativa registrada bloqueia a mesma combinação data/revisão.
+- Não usar `clasp`, gatilhos ou conversão temporária para Google Sheets nesta fase.
+- A pasta principal `main` deve ser a única cópia oficial. A consolidação do worktree de dashboard ainda está pendente.
 
 ## Memória de decisões e justificativas
 
-| Decisão | Por que foi tomada | Onde impacta | Como verificar/retomar |
+| Decisão | Por que | Onde impacta | Como retomar |
 |---|---|---|---|
-| Duas camadas: alunos e contratos | Alguns IDs têm mais de um contrato; selecionar apenas um perderia valor e polo | `03_Transformacao.gs`, abas `BASE_ALUNOS` e `CONTRATOS` | Verificar IDs repetidos em `VISAO_MESTRE` e únicos em `BASE_ALUNOS` |
-| Snapshot substitui snapshot | O objetivo inicial é monitorar o estado atual com baixo atrito | `04_PlanilhaRepositorio.gs` | `substituirAbasGerenciadas` limpa e regrava as três abas |
-| Histórico fora das abas atuais | Evita complexidade antes do dashboard | `IMPORTACOES` e `02_PROCESSADOS` | Para tendências, será preciso importar snapshots antigos ou criar uma aba histórica |
-| Operação transacional com rollback | Um arquivo ruim não pode destruir a última base válida | `07_ImportacaoService.gs` | Testes de serviço cobrem substituição, restauração e rejeição |
-| Arquivos `.xls` tratados como HTML | Os relatórios exportados têm extensão Excel, mas conteúdo HTML UTF-8 | `02_ParserHtml.gs`, `05_DriveRepositorio.gs` | Não converter nem salvar novamente os arquivos antes do upload |
-| Revisão obrigatória | Impede reprocessar acidentalmente o mesmo lote | `06_LogImportacoes.gs` | Um lote com mesma data/revisão já registrada é recusado; correção usa `r02`, `r03` etc. |
-| Painel manual | Permite observar o lote e o resultado antes de automatizar | `08_Main.gs`, `Sidebar.html` | Recarregar a planilha e abrir `TecnoFit > Abrir painel` |
-| Código modular e testável | Reduz risco em parsing e transformação de dados reais | `apps-script/`, `tests/` | Executar `npm test` com Node 24 |
+| Leitor XLSX nativo | TecnoFit passou a entregar XLSX; conversão via Drive exigiria permissões e arquivos temporários | `02_ParserXlsx.gs` | Usa `Utilities.unzip(blob)` e lê a primeira worksheet |
+| Roteamento antes da transformação | Um formato ruim não pode alterar snapshot vigente | `05_DriveRepositorio.gs`, `07_ImportacaoService.gs` | Leitura acontece antes de backup/substituição |
+| Reaproveitar `tabelaParaObjetos` | Regras de cabeçalho, total e validação precisam ser iguais para HTML e XLSX | `02_ParserHtml.gs`, `02_ParserXlsx.gs` | Ambos geram matriz de linhas antes do mapeamento |
+| Snapshot limpo | Dashboard comum deve mostrar só o lote vigente | Abas gerenciadas | Projetar histórico separado quando a análise de ausentes for implementada |
 
 ## Informações importantes capturadas do chat
 
-- O usuário já realizou duas atualizações e confirmou que o processo operacional ocorreu corretamente.
-- O usuário explicitamente ainda não conferiu se os dados foram migrados de forma adequada; não tratar a migração como validada.
-- Em uma atualização bem-sucedida, os dados antigos não permanecem nas três abas gerenciadas. Eles só podem ser recuperados dos arquivos em `02_PROCESSADOS`, do histórico de versões do Sheets ou de uma futura tabela histórica.
-- Se a segunda atualização tiver menos alunos ou contratos, os registros ausentes desaparecem do snapshot atual.
-- O backup do backend é temporário e serve para rollback durante a execução; não é uma cópia histórica persistente.
-- O pacote `CONTEXTO_DO_PROJETO.md` + `.html` deve ser atualizado após cada grande marco.
-- Dados pessoais dos alunos não devem ser copiados para documentação, testes, commits ou prompts de continuidade.
+- A planilha de exemplo `avaliacao_fisica_2026-07-25_r01.xls` foi lida como HTML de Excel e contém os cabeçalhos exigidos (`Código` e `Data da Avaliação`); ela já é compatível com o leitor legado.
+- O arquivo de vencimentos problemático era Excel 2007+ (ZIP/OOXML), embora estivesse nomeado com `.xls`; os cabeçalhos necessários existiam, mas o leitor antigo não podia vê-los.
+- Falhas dos lotes de 20/07 ocorreram antes da substituição das três abas; a última base válida não foi apagada.
+- Não registrar dados pessoais de alunos em documentação, testes ou conversas de continuidade.
+- O usuário quer atualizar sempre o mesmo conjunto de códigos, sem vários worktrees ou cópias concorrentes.
 
 ## Etapa atual em desenvolvimento
 
-- **O que está sendo feito:** estabilização do backend e preparação para validação dos dados consolidados.
-- **Arquivos envolvidos:** `apps-script/`, `tests/`, `LEIA-ME.md` e este pacote de contexto.
-- **O que já está pronto:** backend modular, painel lateral, instalação manual, testes automatizados, validação local e duas execuções remotas.
-- **O que ainda falta:** conferir a exatidão dos dados na planilha e atualizar a documentação operacional que ainda afirma que o backend precisa ser instalado.
-- **Cuidado ao continuar:** não implementar dashboard ou histórico assumindo que a migração está validada; não editar manualmente as três abas gerenciadas.
+- **Pronto localmente:** `02_ParserXlsx.gs`, detecção de formato em `05_DriveRepositorio.gs`, testes e documentação operacional.
+- **Testes:** `npm test` passou em 26/07/2026; há cobertura para nomes `.xlsx`, XLSX disfarçado de `.xls`, HTML disfarçado de `.xlsx`, strings compartilhadas, texto inline, números, datas seriais, XLSX inválido e rollback antes da substituição.
+- **Ainda falta:** instalar no projeto Apps Script vinculado e validar um lote real não registrado.
+- **Cuidado:** ao instalar, criar também o arquivo novo `02_ParserXlsx`; copiar somente `05_DriveRepositorio` causará erro de função inexistente.
 
 ## Próximos passos
 
-1. Validar a segunda atualização na planilha mestre: contagens, IDs únicos, contratos múltiplos, contatos, datas, valores e polos.
-2. Comparar uma amostra de IDs entre os três relatórios processados e `VISAO_MESTRE`, sem expor dados pessoais em documentação.
-3. Decidir se o dashboard precisa mostrar apenas o estado atual ou também evolução semanal; se precisar de evolução, projetar uma camada histórica antes do dashboard.
-4. Atualizar a seção “Situação atual” de `LEIA-ME.md`, pois ela ainda descreve o backend como não instalado.
-5. Definir uma estratégia de sincronização entre máquinas: preferencialmente inicializar Git e manter o código-fonte como referência canônica do Apps Script remoto.
-6. Somente após validar a base, iniciar uma especificação separada para o dashboard.
-7. Atualizar `CONTEXTO_DO_PROJETO.md` e `.html` ao concluir cada um desses marcos.
+1. No Apps Script da planilha mestre, criar `02_ParserXlsx` e copiar o conteúdo de `apps-script/02_ParserXlsx.gs`; substituir `05_DriveRepositorio` pelo arquivo local correspondente e salvar.
+2. Recarregar a planilha, abrir o painel e verificar se o lote de 25/07 usa revisão não registrada. Se `r01` já existir em `IMPORTACOES`, renomear os três relatórios para `r02`.
+3. Executar a importação e conferir três linhas `SUCESSO`, base atualizada, `01_ENTRADA` vazia e extensões coerentes em `02_PROCESSADOS/2026/2026-07-25`.
+4. Validar uma amostra de IDs, valores, polos e datas antes de usar o dashboard como fonte de decisão.
+5. Consolidar o worktree/branch `feature/dashboard-xsteam` na `main` ou removê-lo conscientemente, preservando a regra de uma única cópia oficial.
+6. Projetar a aba de eventos históricos para alunos/contratos ausentes do lote antes de incluí-la em análises de dashboard.
 
 ## Arquivos e pastas importantes
 
 | Caminho | Função | Observação |
 |---|---|---|
-| `CONTEXTO_DO_PROJETO.md` | Memória canônica portátil | Ler primeiro em outra máquina ou chat |
-| `CONTEXTO_DO_PROJETO.html` | Painel retrátil do mesmo contexto | Consulta rápida; não é fonte independente |
-| `LEIA-ME.md` | Arquitetura, rotina semanal e regras de dados | A seção de situação atual precisa ser atualizada |
-| `apps-script/00_Config.gs` | IDs, abas e cabeçalhos | Contém os identificadores operacionais do Drive e Sheets |
-| `apps-script/01_Normalizacao.gs` | IDs, datas, moeda e chave | Datas `dd/MM/yyyy`; moeda brasileira |
-| `apps-script/02_ParserHtml.gs` | Parser dos `.xls` HTML | Ignora rodapés `Total` conhecidos |
-| `apps-script/03_Transformacao.gs` | Consolidação por ID e contrato | Define o snapshot final |
-| `apps-script/04_PlanilhaRepositorio.gs` | Escrita, backup e restauração | Substitui as três abas atuais |
-| `apps-script/05_DriveRepositorio.gs` | Entrada e arquivamento | Aceita hífen/sublinhado e normaliza nomes |
-| `apps-script/06_LogImportacoes.gs` | Auditoria e revisões | `IMPORTACOES` é append-only |
-| `apps-script/07_ImportacaoService.gs` | Orquestração e rollback | Lock, transformação, escrita, movimentação e erro |
-| `apps-script/08_Main.gs` | Interfaces públicas | `onOpen`, painel, status e execução |
-| `apps-script/Sidebar.html` | Botão e mensagens do painel | Usa `google.script.run` |
-| `apps-script/INSTRUCOES_INSTALACAO.md` | Instalação manual | Já foi executada pelo usuário |
-| `tests/` | Testes com dados fictícios | Não contém dados pessoais reais |
-| `scripts/validar-dados-reais.js` | Validação local controlada | Recebe caminhos externos; não imprime nomes/contatos |
-| `docs/superpowers/plans/2026-07-10-importacao-base-tecnofit.md` | Plano histórico detalhado | Parte sobre `clasp` foi substituída pela instalação manual |
+| `apps-script/02_ParserHtml.gs` | Leitor dos relatórios HTML/XLS | Mantido por compatibilidade |
+| `apps-script/02_ParserXlsx.gs` | Leitor OOXML/XLSX | Novo; deve ser criado no Apps Script remoto |
+| `apps-script/05_DriveRepositorio.gs` | Nomes, detecção, leitura e arquivamento | Atualizado para roteamento por conteúdo |
+| `apps-script/07_ImportacaoService.gs` | Lock, auditoria, substituição e rollback | Não mudou; garante que falha de leitura não substitui a base |
+| `apps-script/INSTRUCOES_INSTALACAO.md` | Passo a passo de instalação | Atualizado com `.xlsx` e arquivo novo |
+| `LEIA-ME.md` | Manual de operação | Aceita `.xls` e `.xlsx` |
+| `tests/parser.test.js` | Testes do leitor XLSX | Dados sintéticos, sem dados pessoais |
+| `tests/lote.test.js` | Testes de nomes, formatos e roteamento | Cobre extensões divergentes |
+| `tests/service.test.js` | Garantia contra substituição indevida | Cobre falha de leitura XLSX |
+| `docs/superpowers/specs/2026-07-26-suporte-xlsx-design.md` | Design aprovado | Fonte da decisão técnica |
+| `docs/superpowers/plans/2026-07-26-suporte-xlsx.md` | Plano executado | Registro das etapas TDD |
 
-### Recursos remotos
+## Recursos remotos
 
-- Pasta principal: `https://drive.google.com/drive/folders/1t7U0mAzejc98pvq5foknWKIADa9YBcuj`
 - Planilha mestre: `https://docs.google.com/spreadsheets/d/1I63DuNBk1mR-U5gNe9EvGhSu-QryqXxfVrG0RC0vtfM/edit`
+- Pasta principal do Drive: `https://drive.google.com/drive/folders/1t7U0mAzejc98pvq5foknWKIADa9YBcuj`
 
 ## Riscos, bloqueios e pendências
 
-### Riscos
-
-- A execução técnica foi bem-sucedida, mas a correção dos campos migrados ainda não foi auditada.
-- As abas atuais não armazenam histórico temporal. Tendências e churn não podem ser calculados diretamente delas.
-- O código remoto foi instalado por cópia manual; pode surgir divergência entre Apps Script e os arquivos locais.
-- Sem Git, a troca de máquina depende de copiar toda a pasta corretamente e não há histórico de commits.
-- Os relatórios contêm dados pessoais; permissões e compartilhamentos precisam permanecer restritos.
-- Excluir arquivos de `02_PROCESSADOS` elimina a principal fonte de reconstrução histórica.
-
-### Bloqueios
-
-- Nenhum bloqueio técnico identificado para executar novos lotes.
-- O dashboard deve permanecer bloqueado por decisão até a validação mínima da qualidade dos dados.
-
-### Pendências
-
-- Validar conteúdo migrado.
-- Decidir estratégia histórica.
-- Atualizar `LEIA-ME.md` para refletir a implantação concluída.
-- Inicializar controle de versão/sincronização entre máquinas.
-- Confirmar se o código no Apps Script permanece idêntico a `apps-script/` após futuras alterações.
-
-### Lacunas de contexto
-
-- Frequência definitiva das atualizações: semanal foi planejado, mas a rotina operacional final ainda pode mudar.
-- Métricas e layout do dashboard: não definidos.
-- Política de retenção de arquivos processados: recomendação atual é não excluir; prazo formal não definido.
-- Método de validação da migração: a confirmar com o usuário.
+- **Risco operacional:** o código local e o Apps Script remoto podem divergir até a cópia manual ser concluída.
+- **Risco de dados:** a qualidade de campos migrados ainda não foi conferida; sucesso técnico não equivale a dados corretos.
+- **Limite conhecido:** XLS binário antigo (BIFF/OLE) não é suportado; o formato observado foi HTML/XLS ou XLSX/OOXML.
+- **Pendência de arquitetura:** histórico de ausentes do lote foi decidido conceitualmente, mas não implementado.
+- **Pendência de organização:** há worktree/branch de dashboard a consolidar ou eliminar; não criar novas cópias locais.
+- **Bloqueio atual:** nenhum no código local; a validação final depende da instalação e de um lote real.
 
 ## Como retomar o trabalho
 
-1. Leia `CONTEXTO_DO_PROJETO.md` por completo.
-2. Leia `LEIA-ME.md` e considere a ressalva de que sua seção de situação atual está desatualizada.
-3. Leia `apps-script/03_Transformacao.gs`, `04_PlanilhaRepositorio.gs` e `07_ImportacaoService.gs` antes de alterar regras de dados.
-4. Verifique a planilha remota, especialmente `IMPORTACOES`, sem copiar dados pessoais para logs ou prompts.
-5. Confirme que `01_ENTRADA` está no estado esperado antes de qualquer teste real.
-6. Use Node 24 (`nvm use`) e execute `npm test`.
-7. Se tiver acesso local aos relatórios de teste, execute `npm run validate:real -- <vencimentos> <fichas> <avaliacao>`.
-8. Continue pelo primeiro item pendente: validação da qualidade da migração.
-9. Atualize os dois arquivos `CONTEXTO_DO_PROJETO` ao concluir o próximo marco.
+1. Leia este arquivo e o design de XLSX.
+2. Execute `git status --short --branch` e `npm test` na raiz.
+3. Compare `apps-script/02_ParserXlsx.gs` e `05_DriveRepositorio.gs` com o projeto Apps Script remoto antes de importar.
+4. Consulte `IMPORTACOES` para escolher uma revisão ainda não registrada.
+5. Após a importação, valide os totais e uma amostra de valores, polos e datas.
+6. Atualize este pacote de contexto ao concluir a validação ou a consolidação do worktree.
 
 ## Contexto para outro chat ou IA
 
-Cole ou anexe este arquivo ao iniciar em outra máquina, conta ou IA.
-
-- **Objetivo essencial:** consolidar três relatórios TecnoFit em uma base mestre atualizável e segura, preparada para um futuro dashboard.
-- **Estado atual:** backend Apps Script instalado; dois lotes remotos concluídos com sucesso; dados ainda não auditados pelo usuário.
-- **Arquivos que precisam ser lidos:** `CONTEXTO_DO_PROJETO.md`, `LEIA-ME.md`, `apps-script/03_Transformacao.gs`, `04_PlanilhaRepositorio.gs`, `07_ImportacaoService.gs` e `INSTRUCOES_INSTALACAO.md`.
-- **Decisões que não devem ser desfeitas sem nova validação:** uma linha por aluno, uma por contrato, visão por contrato, snapshot substitutivo, histórico bruto em processados, revisão obrigatória e rollback em erro.
-- **Próxima ação:** conferir a qualidade dos dados do lote `2026-07-10 r01` e decidir se haverá histórico analítico.
-- **Lacunas que a IA deve confirmar antes de agir:** métricas do dashboard, necessidade de histórico, método de validação e política de retenção.
-- **Restrições:** não expor dados pessoais, não apagar processados, não alterar IDs/nome de abas sem atualizar configuração e documentação.
-
-## Rotina de atualização desta memória
-
-Atualizar `CONTEXTO_DO_PROJETO.md` primeiro e regenerar `CONTEXTO_DO_PROJETO.html` sempre que ocorrer um grande passo, por exemplo:
-
-- conclusão da validação da migração;
-- mudança da estrutura das abas ou regras de transformação;
-- criação da camada histórica;
-- início ou conclusão do dashboard;
-- adoção de Git/clasp ou mudança da forma de implantação;
-- incidente relevante, rollback ou alteração do fluxo semanal.
+- **Objetivo essencial:** consolidar três relatórios TecnoFit em uma base mestre atualizável e segura para dashboard futuro.
+- **Estado:** suporte local a HTML/XLS e XLSX foi implementado e testado; a instalação manual no Apps Script remoto está pendente.
+- **Arquivos-chave:** `02_ParserXlsx.gs`, `05_DriveRepositorio.gs`, `07_ImportacaoService.gs`, `tests/parser.test.js`, `tests/lote.test.js` e `INSTRUCOES_INSTALACAO.md`.
+- **Decisões imutáveis sem nova revisão:** snapshot atual limpo, contratos preservados por chave técnica, rollback em erro, revisão obrigatória e formato detectado pelo conteúdo.
+- **Próxima ação:** instalar os dois módulos atualizados e importar o lote de 25/07 com revisão não registrada.
+- **Não esquecer:** não expor dados pessoais; não apagar processados; não criar novo worktree; a branch de dashboard ainda não foi consolidada.
