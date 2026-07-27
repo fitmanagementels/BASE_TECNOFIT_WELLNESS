@@ -58,12 +58,12 @@
 - A pasta principal `main` deve ser a única cópia oficial. A consolidação do worktree de dashboard ainda está pendente.
 - O dashboard terá navegação lateral no desktop e quatro botões compactos na base do mobile; a primeira versão visual foi aprovada como referência, em tema escuro XSTEAM.
 - Todas as páginas do dashboard terão filtros globais de status e polo, iniciando em `Ativo` e `Wellness`.
-- O dashboard é de leitura. Dados operacionais manuais de pagamento ficarão em uma aba persistente separada, a ser criada pelo backend quando a implementação começar.
+- O dashboard é de leitura para dados do lote. A exceção controlada é `Configurações`, que salva regras globais e o perfil de pagamento por ID em abas persistentes separadas.
 - A navegação principal definida é `Home`, `Financeiro`, `Acompanhamento` e `Configurações`. `Financeiro` contém as subabas `Planos` e `Vencimentos`; `Acompanhamento` contém `Prescrições` e `Avaliações`.
 - A página `Planos` agrupará estatísticas principalmente por frequência semanal (`X/sem`); o nome completo do plano permanecerá disponível no detalhamento.
 - A Home exibirá simultaneamente ações da semana e indicadores positivos, mantendo listas detalhadas em pop-ups acionados por KPIs ou gráficos.
 - O dashboard será publicado como web app do mesmo projeto Apps Script; o menu da planilha abrirá o dashboard em nova aba. A sidebar existente permanece exclusiva para atualização da base.
-- `Configurações` será global, inicialmente usada apenas pelo usuário atual. Ela permitirá ativar/desativar e ordenar cartões da Home, escolher suas situações e editar os prazos de alerta.
+- `Configurações` será global, inicialmente usada apenas pelo usuário atual. Ela permitirá ativar/desativar e ordenar cartões da Home, escolher suas situações, editar os prazos de alerta e manter perfis de pagamento.
 - Os prazos editáveis mantêm a estrutura fixa de faixas e cores; somente os dias de corte podem mudar e devem ser positivos e crescentes. Ausência de ficha/avaliação permanece prioridade máxima.
 
 ## Memória de decisões e justificativas
@@ -77,7 +77,7 @@
 | Snapshot limpo | Dashboard comum deve mostrar só o lote vigente | Abas gerenciadas | Projetar histórico separado quando a análise de ausentes for implementada |
 | Filtros globais | Comparações devem sempre respeitar o mesmo recorte operacional | Dashboard futuro | Padrão `Ativo` + `Wellness`, editável pelo usuário |
 | Agrupamento visual de contratos | Um aluno pode ter contratos múltiplos sem perder o contexto da pessoa | Dashboard futuro | KPIs informam alunos e contratos; lista/pop-up agrupa por ID e expande contratos |
-| Perfil de pagamento por ID | É comportamento do aluno, não de um contrato que pode desaparecer do snapshot | Futura aba `GESTAO_PAGAMENTOS` | Backend deve preservar a aba; dashboard apenas a consulta |
+| Perfil de pagamento por ID | É comportamento do aluno, não de um contrato que pode desaparecer do snapshot | Futura aba `GESTAO_PAGAMENTOS` | Backend preserva a aba; formulário simples do app cria/atualiza uma única linha por ID |
 | Navegação por áreas | Quatro objetivos principais reduzem ruído e agrupam análises relacionadas | Dashboard futuro | Desktop expande subabas na lateral; mobile alterna duas subabas em blocos no conteúdo |
 | Configuração global da Home | Prioridades operacionais mudam conforme estratégia | Futuras abas de configuração e página Configurações | Configurações salva a seleção/ordem de cartões e os recortes na planilha |
 | Prazos de alerta editáveis | Regras de operação podem evoluir sem novo código | Configurações / backend do dashboard | Validar cortes numéricos crescentes; cores e sem-dado permanecem padronizados |
@@ -96,6 +96,7 @@
 - Valor por aula será `valor mensal do plano ÷ (frequência semanal × 4,33)`.
 - O monitoramento financeiro não usará o rótulo “atraso”. A página de vencimentos mostrará vencidos nos últimos 5 dias, vencem hoje e vencem nos próximos 5 dias, sempre com quantidade e lista detalhada.
 - Os contadores de vencimento distinguem alunos e contratos. O pop-up agrupa por ID e expande todos os contratos daquele aluno.
+- O perfil de pagamento será mantido pelo app em `Configurações > Pagamentos`: busca por nome/ID, seleção de perfil, observação opcional e salvamento por upsert. A aba guardará `id`, `aluno`, `perfil_pagamento`, `observacao` e `atualizado_em`.
 
 ## Etapa atual em desenvolvimento
 
@@ -125,7 +126,7 @@ Estas perguntas foram separadas do fluxo atual para o usuário revisar e evoluir
 3. Como a Home deve ponderar valor mensal, valor por aula, perfil de pagamento, prescrição e avaliação para ordenar prioridades?
 4. Quais KPIs e gráficos específicos de cada página trazem decisão prática após as primeiras semanas de uso? A versão inicial deve começar enxuta e evoluir com observação real.
 5. A data de vencimento representa de forma consistente a próxima cobrança em todos os formatos de contrato? Validar após auditoria de dados reais.
-6. Quais campos, além do perfil de pagamento e observação objetiva, devem existir na futura aba manual `GESTAO_PAGAMENTOS`, sem transformá-la em cadastro paralelo?
+6. Quais campos, além do perfil de pagamento e observação objetiva, devem existir em `GESTAO_PAGAMENTOS`, sem transformá-la em cadastro paralelo?
 
 ## Arquivos e pastas importantes
 
@@ -175,5 +176,5 @@ Estas perguntas foram separadas do fluxo atual para o usuário revisar e evoluir
 - **Arquivos-chave:** `02_ParserXlsx.gs`, `05_DriveRepositorio.gs`, `07_ImportacaoService.gs`, `tests/parser.test.js`, `tests/lote.test.js` e `INSTRUCOES_INSTALACAO.md`.
 - **Decisões imutáveis sem nova revisão:** snapshot atual limpo, contratos preservados por chave técnica, rollback em erro, revisão obrigatória e formato detectado pelo conteúdo.
 - **Próxima ação:** atualizar somente `02_ParserXlsx.gs` no Apps Script e importar os três arquivos de 25/07 como `r03`.
-- **Dashboard em definição:** tema escuro XSTEAM; desktop com sidebar, mobile com dock de quatro botões; Home, Financeiro, Acompanhamento e Configurações; subabas Planos/Vencimentos e Prescrições/Avaliações; filtros globais Ativo/Wellness; todos os detalhes abrem em pop-up.
+- **Dashboard em definição:** tema escuro XSTEAM; desktop com sidebar, mobile com dock de quatro botões; Home, Financeiro, Acompanhamento e Configurações; subabas Planos/Vencimentos e Prescrições/Avaliações; filtros globais Ativo/Wellness; todos os detalhes abrem em pop-up. Configurações também gerencia Home, alertas e perfil de pagamento por ID.
 - **Não esquecer:** não expor dados pessoais; não apagar processados; não criar novo worktree; a branch de dashboard ainda não foi consolidada.
