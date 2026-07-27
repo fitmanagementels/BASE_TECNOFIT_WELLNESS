@@ -33,7 +33,7 @@
       <li>Falhas de 20/07 revelaram XLSX real nomeado como <code>.xls</code>. A base não foi substituída.</li>
       <li>O código local agora roteia por conteúdo: HTML de Excel usa o leitor legado; ZIP/OOXML usa o leitor XLSX.</li>
       <li>Em 27/07, o XLSX de vencimentos do lote <code>2026-07-25 r02</code> foi validado localmente, mas falhou ao descompactar o blob original do Drive. O leitor agora normaliza os mesmos bytes como ZIP antes do unzip; o teste remoto com <code>r03</code> é pendente.</li>
-      <li>O dashboard entrou em brainstorming: será somente de leitura, terá cinco páginas e usará a identidade escura XSTEAM.</li>
+      <li>O dashboard entrou em brainstorming: será somente de leitura, terá quatro áreas principais e usará a identidade escura XSTEAM.</li>
     </ul></details>
 
     <details><summary>Objetivo e regras da base</summary><ul>
@@ -66,6 +66,8 @@
       <tr><td>Normalizar blob ZIP</td><td>O XLSX íntegro falhou apenas ao ser descompactado diretamente do Drive</td><td><code>02_ParserXlsx.gs</code></td><td>Recria o mesmo conteúdo como <code>application/zip</code> antes de <code>Utilities.unzip</code></td></tr>
       <tr><td>Dashboard por contrato e aluno</td><td>Contratos múltiplos precisam aparecer sem repetir visualmente a pessoa</td><td>Dashboard futuro</td><td>KPIs mostram alunos e contratos; detalhes agrupam por ID e expandem os contratos</td></tr>
       <tr><td>Perfil de pagamento por ID</td><td>É comportamento do aluno e precisa sobreviver à troca do snapshot</td><td>Futura <code>GESTAO_PAGAMENTOS</code></td><td>Backend deve preservar a aba; o dashboard apenas consulta</td></tr>
+      <tr><td>Navegação por áreas</td><td>Quatro objetivos principais reduzem ruído e agrupam análises relacionadas</td><td>Dashboard futuro</td><td>Financeiro contém Planos/Vencimentos; Acompanhamento contém Prescrições/Avaliações</td></tr>
+      <tr><td>Configuração global</td><td>As prioridades operacionais podem mudar por estratégia</td><td>Configurações / planilha</td><td>Ativa, ordena e filtra cartões da Home; também ajusta prazos de alerta</td></tr>
       <tr><td>Snapshot limpo</td><td>Análises comuns devem refletir apenas o lote atual</td><td>Abas gerenciadas</td><td>Implementar histórico separado para ausentes</td></tr>
       <tr><td>Uma cópia oficial</td><td>Evitar divergência local</td><td>Git/worktrees</td><td>Consolidar ou remover o worktree de dashboard pendente</td></tr>
     </tbody></table></details>
@@ -98,7 +100,7 @@
       <li>Quais campos adicionais, além de perfil e observação objetiva, devem existir em <code>GESTAO_PAGAMENTOS</code>?</li>
     </ol></details>
 
-    <details><summary>Contexto para outro chat ou IA</summary><p>Base Central TecnoFit: o backend Apps Script atualiza um snapshot de alunos e contratos a partir de três relatórios. O leitor HTML/XLS funcionou nos lotes 08/07 e 10/07. O suporte nativo a XLSX e o roteamento por conteúdo foram implementados. O XLSX válido do lote 2026-07-25 r02 falhou apenas em <code>Utilities.unzip</code> sobre o blob original do Drive; a base foi preservada e o lote foi rejeitado. O commit <code>1589231</code> recria os mesmos bytes como ZIP antes da descompactação em <code>02_ParserXlsx.gs</code>. Atualizar somente esse arquivo no Apps Script e testar os três relatórios com revisão r03. O dashboard está em brainstorming: tema escuro XSTEAM, sidebar no desktop, dock de cinco botões no mobile, páginas Home/Planos/Vencimentos/Prescrições/Avaliações, filtros globais Ativo/Wellness e detalhes em pop-ups. Não expor dados pessoais, manter o snapshot atual limpo e não criar novos worktrees; a consolidação da branch de dashboard continua pendente.</p></details>
+    <details><summary>Contexto para outro chat ou IA</summary><p>Base Central TecnoFit: o backend Apps Script atualiza um snapshot de alunos e contratos a partir de três relatórios. O leitor HTML/XLS funcionou nos lotes 08/07 e 10/07. O suporte nativo a XLSX e o roteamento por conteúdo foram implementados. O XLSX válido do lote 2026-07-25 r02 falhou apenas em <code>Utilities.unzip</code> sobre o blob original do Drive; a base foi preservada e o lote foi rejeitado. O commit <code>1589231</code> recria os mesmos bytes como ZIP antes da descompactação em <code>02_ParserXlsx.gs</code>. Atualizar somente esse arquivo no Apps Script e testar os três relatórios com revisão r03. O dashboard está em brainstorming: tema escuro XSTEAM, sidebar no desktop, dock de quatro botões no mobile (Home, Financeiro, Acompanhamento e Configurações); Financeiro abre Planos/Vencimentos e Acompanhamento abre Prescrições/Avaliações. Os filtros globais iniciam em Ativo/Wellness, detalhes abrem em pop-ups e Configurações globais ordenam cartões da Home e editam prazos de alerta. Não expor dados pessoais, manter o snapshot atual limpo e não criar novos worktrees; a consolidação da branch de dashboard continua pendente.</p></details>
   </main>
 </body>
 </html>

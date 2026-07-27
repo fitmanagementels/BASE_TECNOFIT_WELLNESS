@@ -13,7 +13,7 @@
 - Em 20/07, dois lotes foram rejeitados antes de alterar a base porque um arquivo XLSX real foi tratado como HTML por ter nome `.xls`.
 - O código local agora aceita HTML/XLS legado e XLSX real, detectando o formato pelo conteúdo e corrigindo a extensão ao arquivar.
 - O lote `2026-07-25 r02` foi rejeitado antes de alterar a base: o XLSX é válido, mas o Apps Script falhou ao descompactar diretamente o blob do Drive. O ajuste local recria o mesmo conteúdo como ZIP antes da descompactação; a validação remota com `r03` ainda está pendente.
-- O brainstorming do dashboard foi iniciado: ele será uma interface somente de leitura, com cinco páginas, foco em decisões operacionais e identidade visual escura da XSTEAM.
+- O brainstorming do dashboard foi iniciado: ele será uma interface somente de leitura, com quatro áreas principais, foco em decisões operacionais e identidade visual escura da XSTEAM.
 
 ## Objetivo do projeto
 
@@ -56,12 +56,15 @@
 - Correções de lote exigem revisão maior porque qualquer tentativa registrada bloqueia a mesma combinação data/revisão.
 - Não usar `clasp`, gatilhos ou conversão temporária para Google Sheets nesta fase.
 - A pasta principal `main` deve ser a única cópia oficial. A consolidação do worktree de dashboard ainda está pendente.
-- O dashboard terá navegação lateral no desktop e cinco botões compactos na base do mobile; a primeira versão visual foi aprovada como referência, em tema escuro XSTEAM.
+- O dashboard terá navegação lateral no desktop e quatro botões compactos na base do mobile; a primeira versão visual foi aprovada como referência, em tema escuro XSTEAM.
 - Todas as páginas do dashboard terão filtros globais de status e polo, iniciando em `Ativo` e `Wellness`.
 - O dashboard é de leitura. Dados operacionais manuais de pagamento ficarão em uma aba persistente separada, a ser criada pelo backend quando a implementação começar.
-- As páginas definidas são `Home`, `Planos`, `Vencimentos`, `Prescrições` e `Avaliações`.
+- A navegação principal definida é `Home`, `Financeiro`, `Acompanhamento` e `Configurações`. `Financeiro` contém as subabas `Planos` e `Vencimentos`; `Acompanhamento` contém `Prescrições` e `Avaliações`.
 - A página `Planos` agrupará estatísticas principalmente por frequência semanal (`X/sem`); o nome completo do plano permanecerá disponível no detalhamento.
 - A Home exibirá simultaneamente ações da semana e indicadores positivos, mantendo listas detalhadas em pop-ups acionados por KPIs ou gráficos.
+- O dashboard será publicado como web app do mesmo projeto Apps Script; o menu da planilha abrirá o dashboard em nova aba. A sidebar existente permanece exclusiva para atualização da base.
+- `Configurações` será global, inicialmente usada apenas pelo usuário atual. Ela permitirá ativar/desativar e ordenar cartões da Home, escolher suas situações e editar os prazos de alerta.
+- Os prazos editáveis mantêm a estrutura fixa de faixas e cores; somente os dias de corte podem mudar e devem ser positivos e crescentes. Ausência de ficha/avaliação permanece prioridade máxima.
 
 ## Memória de decisões e justificativas
 
@@ -75,6 +78,9 @@
 | Filtros globais | Comparações devem sempre respeitar o mesmo recorte operacional | Dashboard futuro | Padrão `Ativo` + `Wellness`, editável pelo usuário |
 | Agrupamento visual de contratos | Um aluno pode ter contratos múltiplos sem perder o contexto da pessoa | Dashboard futuro | KPIs informam alunos e contratos; lista/pop-up agrupa por ID e expande contratos |
 | Perfil de pagamento por ID | É comportamento do aluno, não de um contrato que pode desaparecer do snapshot | Futura aba `GESTAO_PAGAMENTOS` | Backend deve preservar a aba; dashboard apenas a consulta |
+| Navegação por áreas | Quatro objetivos principais reduzem ruído e agrupam análises relacionadas | Dashboard futuro | Desktop expande subabas na lateral; mobile alterna duas subabas em blocos no conteúdo |
+| Configuração global da Home | Prioridades operacionais mudam conforme estratégia | Futuras abas de configuração e página Configurações | Configurações salva a seleção/ordem de cartões e os recortes na planilha |
+| Prazos de alerta editáveis | Regras de operação podem evoluir sem novo código | Configurações / backend do dashboard | Validar cortes numéricos crescentes; cores e sem-dado permanecem padronizados |
 
 ## Informações importantes capturadas do chat
 
@@ -98,6 +104,7 @@
 - **Ainda falta:** copiar a versão atual de `02_ParserXlsx.gs` para o projeto Apps Script vinculado e validar um lote real de revisão `r03`.
 - **Cuidado:** o `r02` já foi registrado como erro; todos os três arquivos do novo teste devem usar `2026-07-25_r03` e mesma data/revisão.
 - **Dashboard:** requisitos e primeira referência visual em elaboração; nenhuma implementação do dashboard foi iniciada durante o brainstorming.
+- **Navegação aprovada:** Home, Financeiro, Acompanhamento e Configurações; subabas Financeiro (Planos/Vencimentos) e Acompanhamento (Prescrições/Avaliações).
 
 ## Próximos passos
 
@@ -168,5 +175,5 @@ Estas perguntas foram separadas do fluxo atual para o usuário revisar e evoluir
 - **Arquivos-chave:** `02_ParserXlsx.gs`, `05_DriveRepositorio.gs`, `07_ImportacaoService.gs`, `tests/parser.test.js`, `tests/lote.test.js` e `INSTRUCOES_INSTALACAO.md`.
 - **Decisões imutáveis sem nova revisão:** snapshot atual limpo, contratos preservados por chave técnica, rollback em erro, revisão obrigatória e formato detectado pelo conteúdo.
 - **Próxima ação:** atualizar somente `02_ParserXlsx.gs` no Apps Script e importar os três arquivos de 25/07 como `r03`.
-- **Dashboard em definição:** tema escuro XSTEAM; desktop com sidebar, mobile com dock de cinco botões; páginas Home, Planos, Vencimentos, Prescrições e Avaliações; filtros globais Ativo/Wellness; todos os detalhes abrem em pop-up.
+- **Dashboard em definição:** tema escuro XSTEAM; desktop com sidebar, mobile com dock de quatro botões; Home, Financeiro, Acompanhamento e Configurações; subabas Planos/Vencimentos e Prescrições/Avaliações; filtros globais Ativo/Wellness; todos os detalhes abrem em pop-up.
 - **Não esquecer:** não expor dados pessoais; não apagar processados; não criar novo worktree; a branch de dashboard ainda não foi consolidada.
