@@ -65,6 +65,8 @@
 - O dashboard será publicado como web app do mesmo projeto Apps Script; o menu da planilha abrirá o dashboard em nova aba. A sidebar existente permanece exclusiva para atualização da base.
 - `Configurações` será global, inicialmente usada apenas pelo usuário atual. Ela permitirá ativar/desativar e ordenar cartões da Home, escolher suas situações, editar os prazos de alerta e manter perfis de pagamento.
 - Os prazos editáveis mantêm a estrutura fixa de faixas e cores; somente os dias de corte podem mudar e devem ser positivos e crescentes. Ausência de ficha/avaliação permanece prioridade máxima.
+- O dashboard priorizará fluidez: dados do lote serão carregados uma vez, usados localmente em filtros/pop-ups/gráficos e versionados pela última importação. Aberturas posteriores usam cache local e revalidam em segundo plano.
+- Configurações e perfis de pagamento usarão fila local de gravação, atualização otimista, agrupamento de alterações próximas, retry e bloqueio no Apps Script para evitar colisões.
 
 ## Memória de decisões e justificativas
 
@@ -81,6 +83,8 @@
 | Navegação por áreas | Quatro objetivos principais reduzem ruído e agrupam análises relacionadas | Dashboard futuro | Desktop expande subabas na lateral; mobile alterna duas subabas em blocos no conteúdo |
 | Configuração global da Home | Prioridades operacionais mudam conforme estratégia | Futuras abas de configuração e página Configurações | Configurações salva a seleção/ordem de cartões e os recortes na planilha |
 | Prazos de alerta editáveis | Regras de operação podem evoluir sem novo código | Configurações / backend do dashboard | Validar cortes numéricos crescentes; cores e sem-dado permanecem padronizados |
+| Cache local versionado | Interações não devem depender de leituras repetidas da planilha | Web app / backend | Mostrar cache imediatamente e revalidar contra a versão da última importação |
+| Fila de gravação | Cliques próximos não podem travar ou sobrescrever alterações | Configurações / backend | Agrupar patches, salvar sequencialmente e usar lock no servidor |
 
 ## Informações importantes capturadas do chat
 
@@ -97,6 +101,8 @@
 - O monitoramento financeiro não usará o rótulo “atraso”. A página de vencimentos mostrará vencidos nos últimos 5 dias, vencem hoje e vencem nos próximos 5 dias, sempre com quantidade e lista detalhada.
 - Os contadores de vencimento distinguem alunos e contratos. O pop-up agrupa por ID e expande todos os contratos daquele aluno.
 - O perfil de pagamento será mantido pelo app em `Configurações > Pagamentos`: busca por nome/ID, seleção de perfil, observação opcional e salvamento por upsert. A aba guardará `id`, `aluno`, `perfil_pagamento`, `observacao` e `atualizado_em`.
+- O primeiro carregamento usará splash XSTEAM com barra de progresso até 95%; ela conclui ao receber dados. A abertura seguinte usa dados cacheados, revalida a versão em segundo plano e não deve bloquear a navegação.
+- O cache local não deve guardar contato nem campos pessoais sem uso no dashboard.
 
 ## Etapa atual em desenvolvimento
 
@@ -106,6 +112,7 @@
 - **Cuidado:** o `r02` já foi registrado como erro; todos os três arquivos do novo teste devem usar `2026-07-25_r03` e mesma data/revisão.
 - **Dashboard:** requisitos e primeira referência visual em elaboração; nenhuma implementação do dashboard foi iniciada durante o brainstorming.
 - **Navegação aprovada:** Home, Financeiro, Acompanhamento e Configurações; subabas Financeiro (Planos/Vencimentos) e Acompanhamento (Prescrições/Avaliações).
+- **Desempenho aprovado:** cache local versionado, cache temporário no servidor, carregamento inicial progressivo e fila de gravação tolerante a ações próximas.
 
 ## Próximos passos
 
@@ -177,4 +184,5 @@ Estas perguntas foram separadas do fluxo atual para o usuário revisar e evoluir
 - **Decisões imutáveis sem nova revisão:** snapshot atual limpo, contratos preservados por chave técnica, rollback em erro, revisão obrigatória e formato detectado pelo conteúdo.
 - **Próxima ação:** atualizar somente `02_ParserXlsx.gs` no Apps Script e importar os três arquivos de 25/07 como `r03`.
 - **Dashboard em definição:** tema escuro XSTEAM; desktop com sidebar, mobile com dock de quatro botões; Home, Financeiro, Acompanhamento e Configurações; subabas Planos/Vencimentos e Prescrições/Avaliações; filtros globais Ativo/Wellness; todos os detalhes abrem em pop-up. Configurações também gerencia Home, alertas e perfil de pagamento por ID.
+- **Desempenho do dashboard:** splash apenas no primeiro carregamento; cache persistente do navegador sem contatos, revalidação de versão em segundo plano e uma fila de gravações para configurações/perfis.
 - **Não esquecer:** não expor dados pessoais; não apagar processados; não criar novo worktree; a branch de dashboard ainda não foi consolidada.
