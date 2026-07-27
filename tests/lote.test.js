@@ -9,7 +9,10 @@ const leitorGas = loadGas([
   'apps-script/02_ParserXlsx.gs',
   'apps-script/05_DriveRepositorio.gs'
 ], {
-  Utilities: { unzip: blob => blob.files }
+  Utilities: {
+    newBlob: (bytes, contentType, name) => ({ bytes, contentType, name, files: bytes.files }),
+    unzip: blob => blob.files
+  }
 });
 
 function file(name, id = name) {
@@ -21,8 +24,10 @@ function xmlBlob(name, content) {
 }
 
 function xlsxBlob(files) {
+  const bytes = [0x50, 0x4b, 0x03, 0x04];
+  bytes.files = files;
   return {
-    getBytes: () => [0x50, 0x4b, 0x03, 0x04],
+    getBytes: () => bytes,
     files,
     getDataAsString: () => ''
   };

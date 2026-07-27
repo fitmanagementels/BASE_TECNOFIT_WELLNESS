@@ -5,7 +5,10 @@ const { loadGas } = require('./helpers/load-gas');
 
 const gas = loadGas(['apps-script/02_ParserHtml.gs']);
 const xlsxGas = loadGas(['apps-script/02_ParserHtml.gs', 'apps-script/02_ParserXlsx.gs'], {
-  Utilities: { unzip: blob => blob.files }
+  Utilities: {
+    newBlob: (bytes, contentType, name) => ({ bytes, contentType, name, files: bytes.files }),
+    unzip: blob => blob.files
+  }
 });
 
 function xmlBlob(name, content) {
@@ -16,8 +19,10 @@ function xmlBlob(name, content) {
 }
 
 function xlsxBlob(files) {
+  const bytes = [0x50, 0x4b, 0x03, 0x04];
+  bytes.files = files;
   return {
-    getBytes: () => [0x50, 0x4b, 0x03, 0x04],
+    getBytes: () => bytes,
     files
   };
 }
@@ -84,4 +89,23 @@ test('converte data serial XLSX para dd/MM/yyyy', () => {
 
 test('rejeita XLSX sem worksheet', () => {
   assert.throws(() => xlsxGas.parseTabelaXlsx(xlsxBlob([])), /nenhuma worksheet/);
+});
+
+test('recria o blob como ZIP antes de descompactar XLSX vindo do Drive', () => {
+  let blobRecebidoPeloUnzip = null;
+  const gasComBlobZip = loadGas(['apps-script/02_ParserHtml.gs', 'apps-script/02_ParserXlsx.gs'], {
+    Utilities: {
+      newBlob: (bytes, contentType, name) => ({ bytes, contentType, name }),
+      unzip: blob => {
+        blobRecebidoPeloUnzip = blob;
+        return [xmlBlob('xl/worksheets/sheet1.xml', '<worksheet><sheetData><row r="1"><c r="A1"><v>101</v></c></row></sheetData></worksheet>')];
+      }
+    }
+  });
+
+  gasComBlobZip.parseTabelaXlsx({ getBytes: () => [0x50, 0x4b, 0x03, 0x04] });
+
+  assert.equal(blobRecebidoPeloUnzip.contentType, 'application/zip');
+  assert.equal(blobRecebidoPeloUnzip.name, 'relatorio.xlsx');
+  assert.deepEqual(blobRecebidoPeloUnzip.bytes, [0x50, 0x4b, 0x03, 0x04]);
 });

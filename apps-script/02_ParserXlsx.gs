@@ -116,7 +116,8 @@ function linhasWorksheetXlsx_(xml, compartilhadas, formatosDeData) {
 function parseTabelaXlsx(blob) {
   var partes;
   try {
-    partes = arquivosXlsxPorNome_(Utilities.unzip(blob));
+    var blobZip = Utilities.newBlob(blob.getBytes(), 'application/zip', 'relatorio.xlsx');
+    partes = arquivosXlsxPorNome_(Utilities.unzip(blobZip));
   } catch (erro) {
     throw new Error('XLSX inválido: não foi possível descompactar o arquivo.');
   }
