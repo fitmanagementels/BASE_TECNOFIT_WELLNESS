@@ -24,6 +24,7 @@ function dependencies(overrides = {}) {
     moverProcessados: () => calls.push('processed'),
     moverRejeitados: () => calls.push('rejected'),
     restaurar: () => calls.push('restore'),
+    incrementarVersaoDashboard: () => calls.push('version'),
     finalizarLog: (_rows, result) => calls.push(`log-${result.status}`),
     agoraIso: () => '2026-07-10T12:00:00-03:00',
     ...overrides
@@ -34,7 +35,19 @@ test('executa substituição e arquivamento na ordem segura', () => {
   const deps = dependencies();
   const result = gas.executarImportacaoComDependencias_(deps);
   assert.equal(result.ok, true);
-  assert.deepEqual(deps.calls, ['check', 'log-start', 'backup', 'replace', 'processed', 'log-SUCESSO', 'release']);
+  assert.deepEqual(deps.calls, ['check', 'log-start', 'backup', 'replace', 'processed', 'version', 'log-SUCESSO', 'release']);
+});
+
+test('publica uma nova versão do dashboard somente depois que o lote foi arquivado', () => {
+  const deps = dependencies({
+    incrementarVersaoDashboard: () => deps.calls.push('version')
+  });
+
+  gas.executarImportacaoComDependencias_(deps);
+
+  assert.deepEqual(deps.calls, [
+    'check', 'log-start', 'backup', 'replace', 'processed', 'version', 'log-SUCESSO', 'release'
+  ]);
 });
 
 test('restaura dados e rejeita lote quando falha após substituição', () => {

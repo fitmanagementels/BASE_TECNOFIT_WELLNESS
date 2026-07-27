@@ -5,17 +5,19 @@ var CONFIG = Object.freeze({
   pastaRejeitadosId: '1ttdgt5lvXwEacgkDYurhuMoZ09yPENNb',
   fusoHorario: 'America/Fortaleza',
   dashboard: Object.freeze({
-    diasFicha: 30,
-    diasAvaliacao: 90,
     cacheSegundos: 300,
-    chartJsUrl: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js'
+    chartJsUrl: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js',
+    propriedadeVersao: 'tecnofit.dashboard.versao'
   }),
   tiposObrigatorios: Object.freeze(['vencimentos', 'fichas', 'avaliacao_fisica']),
   abas: Object.freeze({
     alunos: 'BASE_ALUNOS',
     contratos: 'CONTRATOS',
     visaoMestre: 'VISAO_MESTRE',
-    importacoes: 'IMPORTACOES'
+    importacoes: 'IMPORTACOES',
+    configDashboard: 'CONFIG_DASHBOARD',
+    configAlertas: 'CONFIG_ALERTAS',
+    gestaoPagamentos: 'GESTAO_PAGAMENTOS'
   }),
   cabecalhos: Object.freeze({
     alunos: Object.freeze([
@@ -36,6 +38,15 @@ var CONFIG = Object.freeze({
       'execucao_id', 'data_hora_inicio', 'data_hora_fim', 'tipo_arquivo',
       'nome_arquivo', 'drive_file_id', 'data_referencia', 'revisao',
       'linhas_lidas', 'linhas_validas', 'linhas_rejeitadas', 'status', 'mensagem'
+    ]),
+    configDashboard: Object.freeze([
+      'tipo', 'chave', 'ativo', 'ordem', 'valor', 'titulo', 'estados'
+    ]),
+    configAlertas: Object.freeze([
+      'tipo', 'chave', 'ativo', 'ordem', 'valor', 'titulo', 'estados'
+    ]),
+    gestaoPagamentos: Object.freeze([
+      'id', 'aluno', 'perfil_pagamento', 'observacao', 'atualizado_em'
     ])
   })
 });

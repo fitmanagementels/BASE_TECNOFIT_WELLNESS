@@ -1,0 +1,84 @@
+var DASHBOARD_CONFIGURACAO_PADRAO = Object.freeze({
+  dashboard: Object.freeze([
+    Object.freeze(['filtros', 'globais', true, 0, '{"status":"Ativo","polo":"Wellness"}', 'Filtros padrão', '']),
+    Object.freeze(['home_card', 'vencimentos', true, 10, '', 'Vencimentos', '["ultimos_5_dias","hoje","proximos_5_dias"]']),
+    Object.freeze(['home_card', 'acompanhamento', true, 20, '', 'Acompanhamento', '["prescricoes","avaliacoes"]'])
+  ]),
+  alertas: Object.freeze([
+    Object.freeze(['alertas', 'prescricoes', true, 10, '{"laranja":90,"vermelho":180,"roxo":270}', 'Prescrições', '']),
+    Object.freeze(['alertas', 'avaliacoes', true, 20, '{"laranja":90,"vermelho":120,"roxo":180,"critico":270}', 'Avaliações', ''])
+  ]),
+  perfisPagamento: Object.freeze([
+    'Sem histórico',
+    'Bom pagador',
+    'Pagamento eventual fora do prazo',
+    'Pagamento frequentemente fora do prazo',
+    'Cobrança recorrente necessária',
+    'Em acompanhamento'
+  ])
+});
+
+function garantirAbaConfiguracaoDashboard_(planilha, nomeAba, cabecalhos, linhasPadrao) {
+  var aba = planilha.getSheetByName(nomeAba) || planilha.insertSheet(nomeAba);
+  if (aba.getMaxColumns() < cabecalhos.length) {
+    aba.insertColumnsAfter(aba.getMaxColumns(), cabecalhos.length - aba.getMaxColumns());
+  }
+  aba.getRange(1, 1, 1, cabecalhos.length)
+    .setValues([cabecalhos])
+    .setFontWeight('bold')
+    .setBackground('#14324A')
+    .setFontColor('#FFFFFF');
+  aba.setFrozenRows(1);
+
+  if (linhasPadrao.length && aba.getLastRow() < 2) {
+    aba.getRange(2, 1, linhasPadrao.length, cabecalhos.length).setValues(linhasPadrao);
+  }
+  var protecoes = aba.getProtections(SpreadsheetApp.ProtectionType.RANGE).filter(function (protecao) {
+    return protecao.getDescription() === 'TecnoFit - cabeçalho';
+  });
+  if (!protecoes.length) {
+    aba.getRange(1, 1, 1, cabecalhos.length)
+      .protect()
+      .setDescription('TecnoFit - cabeçalho')
+      .setWarningOnly(true);
+  }
+  return aba;
+}
+
+function garantirConfiguracoesDashboardNaPlanilha_(planilha) {
+  garantirAbaConfiguracaoDashboard_(
+    planilha,
+    CONFIG.abas.configDashboard,
+    CONFIG.cabecalhos.configDashboard,
+    DASHBOARD_CONFIGURACAO_PADRAO.dashboard
+  );
+  garantirAbaConfiguracaoDashboard_(
+    planilha,
+    CONFIG.abas.configAlertas,
+    CONFIG.cabecalhos.configAlertas,
+    DASHBOARD_CONFIGURACAO_PADRAO.alertas
+  );
+  garantirAbaConfiguracaoDashboard_(
+    planilha,
+    CONFIG.abas.gestaoPagamentos,
+    CONFIG.cabecalhos.gestaoPagamentos,
+    []
+  );
+  SpreadsheetApp.flush();
+}
+
+function garantirConfiguracoesDashboard_() {
+  garantirConfiguracoesDashboardNaPlanilha_(obterPlanilhaMestre_());
+}
+
+function obterVersaoDashboard_() {
+  var propriedades = PropertiesService.getDocumentProperties();
+  return Number(propriedades.getProperty(CONFIG.dashboard.propriedadeVersao) || 0);
+}
+
+function incrementarVersaoDashboard_() {
+  var propriedades = PropertiesService.getDocumentProperties();
+  var proximaVersao = obterVersaoDashboard_() + 1;
+  propriedades.setProperty(CONFIG.dashboard.propriedadeVersao, String(proximaVersao));
+  return proximaVersao;
+}

@@ -28,6 +28,7 @@ function executarImportacaoComDependencias_(deps) {
     deps.substituir(dados);
     substituiuDados = true;
     deps.moverProcessados(lote);
+    deps.incrementarVersaoDashboard();
     deps.finalizarLog(referenciasLog, {
       status: 'SUCESSO',
       mensagem: dados.avisos.length ? dados.avisos.join(' | ') : 'Base atualizada',
@@ -109,6 +110,7 @@ function criarDependenciasImportacao_() {
     moverProcessados: moverLoteParaProcessados,
     moverRejeitados: moverLoteParaRejeitados,
     restaurar: restaurarBackupAbasGerenciadas,
+    incrementarVersaoDashboard: incrementarVersaoDashboard_,
     finalizarLog: function (referencias, resultado) {
       return finalizarLogImportacao(obterAbaImportacoes_(), referencias, resultado, new Date());
     },
