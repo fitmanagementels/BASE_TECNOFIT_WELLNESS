@@ -15,7 +15,7 @@ Este projeto consolida três relatórios exportados pelo sistema TecnoFit em uma
 - `fichas`: fonte dos contatos e das datas das fichas;
 - `avaliacao_fisica`: fonte das datas das avaliações físicas.
 
-A base central servirá como fonte para um futuro dashboard em Google Apps Script. O processo deve ser repetível, auditável e seguro: um arquivo semanal inválido não pode apagar ou corromper a última base válida.
+A base central é a fonte do dashboard implementado em Google Apps Script. O processo deve ser repetível, auditável e seguro: um arquivo semanal inválido não pode apagar ou corromper a última base válida.
 
 ## 2. Estrutura no Google Drive
 
@@ -125,7 +125,7 @@ O texto completo deve permanecer em `contrato_completo`, mesmo quando partes del
 
 ### 3.3 `VISAO_MESTRE`
 
-É a visão consolidada que será consumida inicialmente pelo dashboard. Ela contém uma linha por contrato; por isso, IDs com vários contratos aparecem em várias linhas.
+É a visão consolidada consumida pelo dashboard. Ela contém uma linha por contrato; por isso, IDs com vários contratos aparecem em várias linhas.
 
 | Coluna | Campo | Origem ou regra |
 |---|---|---|
@@ -397,7 +397,9 @@ Não compartilhar publicamente os relatórios, pois eles contêm dados pessoais.
 
 O código-fonte da automação manual do Google Apps Script está disponível em `apps-script/`, acompanhado por testes e instruções de instalação. O backend ainda precisa ser copiado para o editor Apps Script vinculado à planilha e autorizado pela conta proprietária antes da primeira importação real.
 
-O dashboard teve sua direção funcional e visual aprovada e será a próxima frente de planejamento. Gatilhos agendados e atualizações automáticas permanecem fora da fase atual. Não substituir manualmente as abas definitivas.
+O dashboard de gestão está implementado localmente em `apps-script/`, incluindo métricas, páginas, repositório, API e os quatro arquivos HTML da interface. Os testes automatizados locais estão passando. A implantação externa não foi realizada nesta etapa: ainda é necessário copiar o código para o projeto Apps Script vinculado à planilha, publicar o aplicativo da web com acesso restrito aos usuários autorizados e verificar visualmente a URL `/exec` em desktop, tablet e celular.
+
+A validação operacional com dados reais também permanece pendente. Ela só deve ser executada quando os três exports semanais autorizados estiverem disponíveis em uma pasta temporária, sem copiar dados de alunos para o repositório ou para relatórios. Até a implantação e essas verificações serem concluídas, o dashboard deve ser tratado como implementado e verificado por testes locais, mas ainda não homologado no ambiente real. Gatilhos agendados e atualizações automáticas permanecem fora da fase atual. Não substituir manualmente as abas definitivas.
 
 ## 15. Arquivos do backend
 
@@ -407,23 +409,23 @@ O dashboard teve sua direção funcional e visual aprovada e será a próxima fr
 - `apps-script/INSTRUCOES_INSTALACAO.md`: procedimento completo de instalação e primeira execução.
 - `tests/`: testes automatizados com dados fictícios.
 
-## 16. Dashboard de gestão aprovado
+## 16. Dashboard de gestão implementado
 
 ### 16.1 Objetivo e identidade visual
 
-O dashboard terá foco principal em desktop e uso ocasional no celular. Cada página combinará indicadores e gráficos com uma lista operacional de alunos que precisam de atenção.
+O dashboard prioriza o uso em desktop e também se adapta ao uso ocasional no celular. Cada página combina indicadores e gráficos com uma lista operacional de alunos que precisam de atenção.
 
-A interface seguirá a identidade visual da XSTEAM: fundo preto ou grafite, textos brancos de alto contraste, verde-limão como cor principal de destaque e ação, tipografia forte, cartões escuros e gráficos objetivos.
+A interface segue a identidade visual da XSTEAM: fundo preto ou grafite, textos brancos de alto contraste, verde-limão como cor principal de destaque e ação, tipografia forte, cartões escuros e gráficos objetivos.
 
 ### 16.2 Arquitetura e navegação
 
-O dashboard será uma aplicação web única e modular em Google Apps Script. As quatro páginas serão carregadas internamente, sem recarregar toda a aplicação.
+O dashboard é uma aplicação web única e modular em Google Apps Script. As quatro páginas são carregadas internamente, sem recarregar toda a aplicação.
 
 - desktop: menu lateral, indicadores em grade, gráficos e tabela operacional;
 - tablet: menu lateral reduzido e grade em duas colunas;
 - celular: navegação inferior, indicadores roláveis, filtros compactos, gráficos empilhados e listas em cartões.
 
-As páginas serão:
+As páginas são:
 
 1. `Vencimentos`;
 2. `Fichas prescritas`;
@@ -435,21 +437,21 @@ As páginas serão:
 #### `Vencimentos`
 
 - vencidos, próximos 7 dias, próximos 30 dias e valor a renovar;
-- vencimentos por semana e distribuição por situação;
-- filtros por polo e período;
-- lista de alunos ordenada por urgência, com contato, plano, polo, vencimento e valor.
+- vencimentos por semana, distribuição por situação e análise por polo;
+- busca por nome ou ID e filtros por polo, status do aluno, período de 30/60/90 dias, situação, frequência, modalidade e status do contrato;
+- lista paginada e ordenada por urgência, com contato, frequência, polo, vencimento, situação e valor.
 
 #### `Fichas prescritas`
 
 - alunos com ficha, sem ficha, com ficha desatualizada e cobertura percentual;
-- situação das fichas e tempo desde a última prescrição;
+- situação das fichas, faixas de idade e cobertura por polo;
 - lista prioritária de alunos sem ficha ou com ficha antiga;
 - limite inicial configurável de 30 dias para considerar uma ficha desatualizada.
 
 #### `Avaliações`
 
 - alunos avaliados, sem avaliação, com avaliação desatualizada e cobertura percentual;
-- avaliações por período e tempo desde a última avaliação;
+- situação das avaliações, faixas de idade e cobertura por polo;
 - lista prioritária de alunos sem avaliação ou com avaliação antiga;
 - limite inicial configurável de 90 dias para considerar uma avaliação desatualizada.
 
@@ -457,17 +459,22 @@ As páginas serão:
 
 - alunos distintos, contratos, valor total e ticket médio;
 - contratos por polo, frequência semanal, modalidade e status;
-- tabela detalhada de contratos e alunos.
+- valor contratado por polo;
+- tabela paginada com status do aluno, frequência, modalidade, polo, início corrente, vencimento, status do contrato e valor.
 
 ### 16.4 Fontes e regras
 
-- `VISAO_MESTRE`: fonte principal das páginas e listas consolidadas;
-- `BASE_ALUNOS`: dados únicos do aluno e datas de ficha e avaliação;
-- `CONTRATOS`: detalhes de modalidade, polo, frequência, status e valor;
+- `BASE_ALUNOS`: fonte efetiva dos dados únicos do aluno e das datas de ficha e avaliação;
+- `CONTRATOS`: fonte efetiva dos detalhes de modalidade, polo, frequência, status, datas e valor;
+- `VISAO_MESTRE`: visão consolidada disponível na planilha para conferência e outras integrações, mas não lida pela API atual do dashboard;
 - `IMPORTACOES`: data, estado e mensagens da última atualização.
 
-Indicadores de alunos usarão contagem distinta de `id`. Indicadores financeiros e de contratos usarão `_chave_contrato` distinta para evitar duplicidades.
+Indicadores de alunos usam contagem distinta de `id`. Indicadores financeiros e de contratos usam `_chave_contrato` distinta para evitar duplicidades.
 
-Os limites de 30 dias para fichas e 90 dias para avaliações serão configurações centralizadas. O dashboard exibirá estados próprios de carregamento, ausência de resultados e erro. Se uma importação falhar, continuará apresentando a última base válida e sinalizará a falha.
+Os limites de 30 dias para fichas e 90 dias para avaliações são configurações centralizadas. O dashboard exibe esqueletos durante o carregamento e estados próprios de ausência de resultados e erro. O cabeçalho informa a data da última base válida e, quando uma tentativa posterior falha, apresenta um alerta sem expor a mensagem bruta da importação. As listas usam paginação no servidor (25 itens por padrão e máximo de 100), sem reduzir a população usada pelos indicadores e gráficos.
+
+Cada gráfico possui um resumo textual acessível associado ao canvas. O Chart.js 4.4.7 é carregado pelo CDN configurado com SRI e `crossorigin="anonymous"`; se o CDN falhar, os indicadores, resumos e listas continuam disponíveis.
+
+No celular, somente os cartões com contato parcialmente oculto são criados no DOM; no desktop, somente a tabela correspondente é criada. Linhas com contato oferecem **Ver detalhes**, que abre um diálogo acessível e revela o contato completo somente após a ação. O diálogo recebe foco inicial, fecha por botão ou `Escape` e devolve o foco ao acionador. Essa ocultação reduz a exposição visual em telas pequenas, mas não concede nem substitui autorização: a barreira de acesso é a publicação do Web App restrita aos usuários autorizados do Google Workspace.
 
 A especificação completa está em `docs/superpowers/specs/2026-07-11-dashboard-xsteam-design.md`.

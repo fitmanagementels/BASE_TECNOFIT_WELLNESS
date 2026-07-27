@@ -143,9 +143,9 @@ Tabela: aluno, status do aluno, frequência, modalidade, polo, início corrente,
 
 ## 6. Fontes e integridade
 
-- `VISAO_MESTRE`: fonte principal das páginas consolidadas;
-- `BASE_ALUNOS`: uma linha por aluno, usada em contagens e coberturas;
-- `CONTRATOS`: uma linha por contrato, usada em detalhes contratuais;
+- `BASE_ALUNOS`: fonte efetivamente lida para dados únicos do aluno, contagens e coberturas;
+- `CONTRATOS`: fonte efetivamente lida para contratos, datas, polos, modalidades, frequências, status e valores;
+- `VISAO_MESTRE`: visão consolidada disponível na planilha para conferência e integrações futuras, mas não lida pela API atual do dashboard;
 - `IMPORTACOES`: última atualização, resultado e mensagens da carga.
 
 Regras contra duplicidade:

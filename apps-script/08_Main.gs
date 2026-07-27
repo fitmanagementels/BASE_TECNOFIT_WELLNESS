@@ -26,3 +26,19 @@ function obterStatusImportacao() {
 function executarImportacao() {
   return executarImportacaoBackend_();
 }
+
+function incluirArquivo_(nome) {
+  return HtmlService.createHtmlOutputFromFile(nome).getContent();
+}
+
+function doGet() {
+  return HtmlService.createTemplateFromFile('Dashboard')
+    .evaluate()
+    .setTitle('XSTEAM — Gestão')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function obterUrlDashboard() {
+  return ScriptApp.getService().getUrl() || '';
+}
