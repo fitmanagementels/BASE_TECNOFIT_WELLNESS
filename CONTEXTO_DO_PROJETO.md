@@ -13,6 +13,7 @@
 - Em 20/07, dois lotes foram rejeitados antes de alterar a base porque um arquivo XLSX real foi tratado como HTML por ter nome `.xls`.
 - O código local agora aceita HTML/XLS legado e XLSX real, detectando o formato pelo conteúdo e corrigindo a extensão ao arquivar.
 - O lote `2026-07-25 r02` foi rejeitado antes de alterar a base: o XLSX é válido, mas o Apps Script falhou ao descompactar diretamente o blob do Drive. O ajuste local recria o mesmo conteúdo como ZIP antes da descompactação; a validação remota com `r03` ainda está pendente.
+- O brainstorming do dashboard foi iniciado: ele será uma interface somente de leitura, com cinco páginas, foco em decisões operacionais e identidade visual escura da XSTEAM.
 
 ## Objetivo do projeto
 
@@ -28,6 +29,7 @@
 - **Base remota:** permanece na última atualização bem-sucedida de `2026-07-10 r01` até uma nova importação concluir.
 - **Lote mais recente observado:** `2026-07-25 r02` foi reconhecido, registrado com `ERRO` e movido para rejeitados; `01_ENTRADA` está vazia.
 - **Pendência prioritária:** atualizar somente `02_ParserXlsx` no Apps Script e testar os três relatórios como `2026-07-25 r03`.
+- **Dashboard:** brainstorming em andamento; a referência visual inicial foi aprovada, mas requisitos por página ainda estão sendo definidos antes de qualquer código.
 
 ## Histórico relevante
 
@@ -54,6 +56,12 @@
 - Correções de lote exigem revisão maior porque qualquer tentativa registrada bloqueia a mesma combinação data/revisão.
 - Não usar `clasp`, gatilhos ou conversão temporária para Google Sheets nesta fase.
 - A pasta principal `main` deve ser a única cópia oficial. A consolidação do worktree de dashboard ainda está pendente.
+- O dashboard terá navegação lateral no desktop e cinco botões compactos na base do mobile; a primeira versão visual foi aprovada como referência, em tema escuro XSTEAM.
+- Todas as páginas do dashboard terão filtros globais de status e polo, iniciando em `Ativo` e `Wellness`.
+- O dashboard é de leitura. Dados operacionais manuais de pagamento ficarão em uma aba persistente separada, a ser criada pelo backend quando a implementação começar.
+- As páginas definidas são `Home`, `Planos`, `Vencimentos`, `Prescrições` e `Avaliações`.
+- A página `Planos` agrupará estatísticas principalmente por frequência semanal (`X/sem`); o nome completo do plano permanecerá disponível no detalhamento.
+- A Home exibirá simultaneamente ações da semana e indicadores positivos, mantendo listas detalhadas em pop-ups acionados por KPIs ou gráficos.
 
 ## Memória de decisões e justificativas
 
@@ -64,6 +72,9 @@
 | Roteamento antes da transformação | Um formato ruim não pode alterar snapshot vigente | `05_DriveRepositorio.gs`, `07_ImportacaoService.gs` | Leitura acontece antes de backup/substituição |
 | Reaproveitar `tabelaParaObjetos` | Regras de cabeçalho, total e validação precisam ser iguais para HTML e XLSX | `02_ParserHtml.gs`, `02_ParserXlsx.gs` | Ambos geram matriz de linhas antes do mapeamento |
 | Snapshot limpo | Dashboard comum deve mostrar só o lote vigente | Abas gerenciadas | Projetar histórico separado quando a análise de ausentes for implementada |
+| Filtros globais | Comparações devem sempre respeitar o mesmo recorte operacional | Dashboard futuro | Padrão `Ativo` + `Wellness`, editável pelo usuário |
+| Agrupamento visual de contratos | Um aluno pode ter contratos múltiplos sem perder o contexto da pessoa | Dashboard futuro | KPIs informam alunos e contratos; lista/pop-up agrupa por ID e expande contratos |
+| Perfil de pagamento por ID | É comportamento do aluno, não de um contrato que pode desaparecer do snapshot | Futura aba `GESTAO_PAGAMENTOS` | Backend deve preservar a aba; dashboard apenas a consulta |
 
 ## Informações importantes capturadas do chat
 
@@ -74,6 +85,11 @@
 - Falhas dos lotes de 20/07 ocorreram antes da substituição das três abas; a última base válida não foi apagada.
 - Não registrar dados pessoais de alunos em documentação, testes ou conversas de continuidade.
 - O usuário quer atualizar sempre o mesmo conjunto de códigos, sem vários worktrees ou cópias concorrentes.
+- Para prescrições, a idade é calculada contra a data atual: até 90 dias verde; 91–180 laranja; 181–270 vermelho; acima de 270 roxo.
+- Para avaliações, a idade é calculada contra a data atual: até 90 dias verde; 91–120 laranja; 121–180 vermelho; 181–270 roxo; acima de 270 é falha crítica de processo em vinho quase preto.
+- Valor por aula será `valor mensal do plano ÷ (frequência semanal × 4,33)`.
+- O monitoramento financeiro não usará o rótulo “atraso”. A página de vencimentos mostrará vencidos nos últimos 5 dias, vencem hoje e vencem nos próximos 5 dias, sempre com quantidade e lista detalhada.
+- Os contadores de vencimento distinguem alunos e contratos. O pop-up agrupa por ID e expande todos os contratos daquele aluno.
 
 ## Etapa atual em desenvolvimento
 
@@ -81,6 +97,7 @@
 - **Testes:** `npm test` passou em 27/07/2026; há cobertura para nomes `.xlsx`, XLSX disfarçado de `.xls`, HTML disfarçado de `.xlsx`, strings compartilhadas, texto inline, números, datas seriais, XLSX inválido, recriação do blob ZIP e rollback antes da substituição.
 - **Ainda falta:** copiar a versão atual de `02_ParserXlsx.gs` para o projeto Apps Script vinculado e validar um lote real de revisão `r03`.
 - **Cuidado:** o `r02` já foi registrado como erro; todos os três arquivos do novo teste devem usar `2026-07-25_r03` e mesma data/revisão.
+- **Dashboard:** requisitos e primeira referência visual em elaboração; nenhuma implementação do dashboard foi iniciada durante o brainstorming.
 
 ## Próximos passos
 
@@ -88,8 +105,20 @@
 2. Renomear os três relatórios para `vencimentos_2026-07-25_r03`, `fichas_2026-07-25_r03` e `avaliacao_fisica_2026-07-25_r03`, preservando a extensão real de cada arquivo, e enviá-los a `01_ENTRADA`.
 3. Executar a importação e conferir três linhas `SUCESSO`, base atualizada, `01_ENTRADA` vazia e extensões coerentes em `02_PROCESSADOS/2026/2026-07-25`.
 4. Validar uma amostra de IDs, valores, polos e datas antes de usar o dashboard como fonte de decisão.
-5. Consolidar o worktree/branch `feature/dashboard-xsteam` na `main` ou removê-lo conscientemente, preservando a regra de uma única cópia oficial.
-6. Projetar a aba de eventos históricos para alunos/contratos ausentes do lote antes de incluí-la em análises de dashboard.
+5. Concluir o brainstorming dos KPIs e gráficos de `Planos`, `Vencimentos`, `Prescrições`, `Avaliações` e da pontuação da Home; então obter aprovação do design antes de planejar ou implementar.
+6. Consolidar o worktree/branch `feature/dashboard-xsteam` na `main` ou removê-lo conscientemente, preservando a regra de uma única cópia oficial.
+7. Projetar a aba de eventos históricos para alunos/contratos ausentes do lote antes de incluí-la em análises de dashboard.
+
+## Perguntas para revisão futura — Dashboard
+
+Estas perguntas foram separadas do fluxo atual para o usuário revisar e evoluir quando tiver mais uso do painel. Não bloqueiam o MVP.
+
+1. Qual será a fonte, a regra e a visualização de “tempo de empresa” do aluno quando esse dado for adicionado?
+2. Quais categorias finais e quais critérios objetivos devem compor o perfil de pagamento por ID? Sugestão inicial: sem histórico, bom pagador, pagamento eventual fora do prazo, pagamento frequentemente fora do prazo, cobrança recorrente necessária e em acompanhamento.
+3. Como a Home deve ponderar valor mensal, valor por aula, perfil de pagamento, prescrição e avaliação para ordenar prioridades?
+4. Quais KPIs e gráficos específicos de cada página trazem decisão prática após as primeiras semanas de uso? A versão inicial deve começar enxuta e evoluir com observação real.
+5. A data de vencimento representa de forma consistente a próxima cobrança em todos os formatos de contrato? Validar após auditoria de dados reais.
+6. Quais campos, além do perfil de pagamento e observação objetiva, devem existir na futura aba manual `GESTAO_PAGAMENTOS`, sem transformá-la em cadastro paralelo?
 
 ## Arquivos e pastas importantes
 
@@ -106,6 +135,7 @@
 | `tests/service.test.js` | Garantia contra substituição indevida | Cobre falha de leitura XLSX |
 | `docs/superpowers/specs/2026-07-26-suporte-xlsx-design.md` | Design aprovado | Fonte da decisão técnica |
 | `docs/superpowers/plans/2026-07-26-suporte-xlsx.md` | Plano executado | Registro das etapas TDD |
+| `.superpowers/brainstorm/` | Mockups transitórios do brainstorming | Referência visual local; não é código do dashboard |
 
 ## Recursos remotos
 
@@ -118,6 +148,7 @@
 - **Risco de dados:** a qualidade de campos migrados ainda não foi conferida; sucesso técnico não equivale a dados corretos.
 - **Limite conhecido:** XLS binário antigo (BIFF/OLE) não é suportado; o formato observado foi HTML/XLS ou XLSX/OOXML.
 - **Pendência de arquitetura:** histórico de ausentes do lote foi decidido conceitualmente, mas não implementado.
+- **Pendência de dashboard:** os KPIs/gráficos por página e a ordenação de prioridades ainda estão em definição; as perguntas acima foram registradas para revisão sem interromper o MVP.
 - **Pendência de organização:** há worktree/branch de dashboard a consolidar ou eliminar; não criar novas cópias locais.
 - **Bloqueio atual:** nenhum no código local; a validação final depende de substituir `02_ParserXlsx` e importar o lote real `r03`.
 
@@ -137,4 +168,5 @@
 - **Arquivos-chave:** `02_ParserXlsx.gs`, `05_DriveRepositorio.gs`, `07_ImportacaoService.gs`, `tests/parser.test.js`, `tests/lote.test.js` e `INSTRUCOES_INSTALACAO.md`.
 - **Decisões imutáveis sem nova revisão:** snapshot atual limpo, contratos preservados por chave técnica, rollback em erro, revisão obrigatória e formato detectado pelo conteúdo.
 - **Próxima ação:** atualizar somente `02_ParserXlsx.gs` no Apps Script e importar os três arquivos de 25/07 como `r03`.
+- **Dashboard em definição:** tema escuro XSTEAM; desktop com sidebar, mobile com dock de cinco botões; páginas Home, Planos, Vencimentos, Prescrições e Avaliações; filtros globais Ativo/Wellness; todos os detalhes abrem em pop-up.
 - **Não esquecer:** não expor dados pessoais; não apagar processados; não criar novo worktree; a branch de dashboard ainda não foi consolidada.
