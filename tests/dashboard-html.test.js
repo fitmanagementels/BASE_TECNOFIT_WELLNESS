@@ -62,3 +62,10 @@ test('cliente usa bootstrap local, cache persistente e fila de mutações', () =
   assert.doesNotMatch(client, /\.x-mark/);
   assert.doesNotMatch(client, /innerHTML\s*=/);
 });
+
+test('cliente oferece filtro Matriculados e normaliza os três status elegíveis', () => {
+  const client = fs.readFileSync('apps-script/DashboardClient.html', 'utf8');
+  assert.match(client, /__matriculados__/);
+  assert.match(client, /function isEnrolledStatus\(status\)/);
+  assert.match(client, /ativo.*bloqueado.*licenca/s);
+});
