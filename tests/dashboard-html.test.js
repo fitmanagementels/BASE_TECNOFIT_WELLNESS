@@ -17,6 +17,16 @@ test('shell contém splash, quatro áreas principais, subabas e modal acessível
   assert.match(html, /id="globalPolo"/);
 });
 
+test('shell usa a logo oficial XSTEAM em todas as áreas de marca', () => {
+  const html = fs.readFileSync('apps-script/DashboardComponents.html', 'utf8');
+  const logoUses = html.match(/src="XsteamLogo\.svg"/g) || [];
+  assert.equal(logoUses.length, 3);
+  assert.match(html, /class="brand-logo brand-logo-splash"/);
+  assert.match(html, /class="brand-logo brand-logo-sidebar"/);
+  assert.match(html, /class="brand-logo brand-logo-mobile"/);
+  assert.ok(fs.statSync('apps-script/XsteamLogo.svg').size > 200);
+});
+
 test('tema traz branding escuro, dock móvel e leitura confortável', () => {
   const css = fs.readFileSync('apps-script/DashboardStyles.html', 'utf8');
   assert.match(css, /--lime:\s*#dfff22/i);
