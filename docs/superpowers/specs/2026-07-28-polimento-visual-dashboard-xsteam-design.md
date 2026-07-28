@@ -64,7 +64,7 @@ O dashboard continuará sendo uma ferramenta de acompanhamento diário. O acabam
 | `apps-script/DashboardComponents.html` | Substituir marca improvisada por SVG, introduzir ícones acessíveis de navegação e agrupamentos semânticos mínimos. |
 | `apps-script/DashboardStyles.html` | Novo sistema de tokens, layout, superfícies, tipografia, responsividade, estados e motion reduzido. |
 | `apps-script/DashboardClient.html` | Ajustar somente a criação de classes/ícones necessárias ao novo markup; não alterar regras de dados, filtros, cache ou fila. |
-| `tests/dashboard-frontend.test.js` | Cobrir a presença da logo e estruturas/classes essenciais, além da verificação sintática existente. |
+| `tests/dashboard-html.test.js` | Cobrir a presença da logo e estruturas/classes essenciais, além da verificação sintática existente. |
 
 ## Limites de escopo
 
