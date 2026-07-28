@@ -11,6 +11,7 @@
 - O leitor local aceita HTML/XLS legado e XLSX/OOXML detectado pelo conteúdo. A validação remota do ajuste de descompactação XLSX ainda é pendente.
 - O dashboard XSTEAM foi implementado localmente como web app: Home, Financeiro, Acompanhamento e Configurações; layout desktop/mobile, cache local e fila de gravação.
 - O dashboard recebeu o sistema visual XSTEAM premium: logo oficial embutida no HTML Service, superfícies arredondadas, profundidade sutil, responsividade e estados acessíveis.
+- Financeiro permite abrir detalhes por frequência, por hora-aula e por quartil mensal de vencimentos; o filtro global `Matriculados` reúne Ativo, Bloqueado e Licença.
 - O código oficial está unificado em `main`; não há outro conjunto de códigos ativo.
 - A suíte local completa passa com `npm test`.
 
@@ -42,17 +43,20 @@
 | `58f4afe` | Mutações seguras | Lock, idempotência e upsert de pagamento por ID |
 | `bcb3af6` | Interface XSTEAM responsiva | Sidebar desktop, dock mobile, cache local e splash |
 | `cea6411` | Polimento visual XSTEAM | Superfícies, espaçamento, foco, motion reduzido e responsividade refinada |
+| `ee9af42`–`cfdd3fa` | Recortes financeiros | Filtro Matriculados e detalhes por frequência/hora-aula |
 
 ## Decisões tomadas
 
 - Snapshot atual é substituído somente após validação completa; histórico de ausentes do lote é uma futura camada separada.
 - Um aluno pode ter vários contratos; KPIs separam pessoas de contratos e detalhes agrupam por ID.
 - Filtros globais padrão: **Ativo** e **XSTEAM WELLNESS CLUB**.
+- O filtro adicional **Matriculados** reúne status Ativo, Bloqueado e Licença/Em licença, normalizando acentos e capitalização; o padrão continua Ativo.
 - Navegação principal: Home, Financeiro, Acompanhamento e Configurações. Financeiro contém Planos/Vencimentos; Acompanhamento contém Prescrições/Avaliações.
 - Não usar a palavra “atraso” no dashboard de vencimentos. Mostrar últimos cinco dias, hoje e próximos cinco dias.
 - A idade usa a data atual de abertura: prescrição `≤90`, `91–180`, `181–270`, `>270`; avaliação `≤90`, `91–120`, `121–180`, `181–270`, `>270`.
 - Ausência de ficha/avaliação é prioridade máxima e não uma idade calculada.
 - Valor por aula: `valor mensal ÷ (frequência semanal × 4,33)`.
+- Em Planos, cada frequência abre contratos daquele recorte e o Ticket mostra a média por hora-aula; em Vencimentos, cada quartil do mapa mensal abre sua lista de contratos.
 - Dados enviados ao navegador não incluem contato.
 - Configurações são globais e persistem em abas próprias; o cliente usa cache local e revalida somente a versão.
 
@@ -89,8 +93,9 @@ Perfis iniciais: Sem histórico; Bom pagador; Pagamento eventual fora do prazo; 
 2. Recarregar a planilha, abrir o painel/importação para criar as três abas persistentes e conferir seus cabeçalhos.
 3. Publicar uma nova implantação do Web App como o usuário autorizado; abrir por `TecnoFit > Abrir dashboard`.
 4. Validar no navegador: filtros padrão, múltiplos contratos, recortes de vencimento, prioridades de ficha/avaliação, modal e gravação de perfil de pagamento.
-5. Usar uma revisão superior para revalidar XLSX real no fluxo de importação e conferir uma amostra de valores, polos e datas.
-6. Configurar um remoto GitHub e enviar `main` para continuar em outra máquina.
+5. Validar também Matriculados, barras de frequência, hora-aula média e os quatro quartis do mapa mensal.
+6. Usar uma revisão superior para revalidar XLSX real no fluxo de importação e conferir uma amostra de valores, polos e datas.
+7. Configurar um remoto GitHub e enviar `main` para continuar em outra máquina.
 
 ## Riscos, bloqueios e pendências
 
@@ -110,4 +115,4 @@ Perfis iniciais: Sem histórico; Bom pagador; Pagamento eventual fora do prazo; 
 
 ## Contexto para outro chat/IA
 
-O projeto TecnoFit mantém um snapshot semanal de três relatórios e um web app Apps Script XSTEAM. A branch oficial é `main`; o importador preserva a última base válida em qualquer erro. O dashboard usa `obterBootstrapDashboard()` sem contato, cache local versionado e `salvarMutacoesDashboard()` com fila cliente, LockService e idempotência. A navegação é Home/Financeiro/Acompanhamento/Configurações, com subabas Planos/Vencimentos e Prescrições/Avaliações. Filtros padrão são Ativo/XSTEAM WELLNESS CLUB; contratos múltiplos são agrupados por ID em detalhes. A configuração visual controla cartões e ordem da Home, alertas e perfil por ID. O polimento visual usa `XsteamLogo.html`, incluído pelo HTML Service e reutilizado como símbolo SVG no splash, sidebar e cabeçalho mobile. Falta copiar/deployar todos os arquivos no Apps Script, validar manualmente o Web App e configurar/push para GitHub. Não criar cópias paralelas ou expor dados pessoais.
+O projeto TecnoFit mantém um snapshot semanal de três relatórios e um web app Apps Script XSTEAM. A branch oficial é `main`; o importador preserva a última base válida em qualquer erro. O dashboard usa `obterBootstrapDashboard()` sem contato, cache local versionado e `salvarMutacoesDashboard()` com fila cliente, LockService e idempotência. A navegação é Home/Financeiro/Acompanhamento/Configurações, com subabas Planos/Vencimentos e Prescrições/Avaliações. Filtros padrão são Ativo/XSTEAM WELLNESS CLUB, e Matriculados reúne Ativo/Bloqueado/Licença. Contratos múltiplos são agrupados por ID nos detalhes; frequência, hora-aula e quartis mensais de vencimento abrem seus recortes específicos. A configuração visual controla cartões e ordem da Home, alertas e perfil por ID. O polimento visual usa `XsteamLogo.html`, incluído pelo HTML Service e reutilizado como símbolo SVG no splash, sidebar e cabeçalho mobile. Falta copiar/deployar todos os arquivos no Apps Script, validar manualmente o Web App e configurar/push para GitHub. Não criar cópias paralelas ou expor dados pessoais.

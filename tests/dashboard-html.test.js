@@ -79,3 +79,9 @@ test('planos abre detalhes por frequência e informa hora-aula média', () => {
   assert.match(client, /showHourlyValueDetail\(data\.contratos\)/);
   assert.match(client, /showFinancialDetail\('Plano ' \+ item\.label/);
 });
+
+test('mapa mensal encaminha cada quartil ao detalhe dos contratos', () => {
+  const client = fs.readFileSync('apps-script/DashboardClient.html', 'utf8');
+  assert.match(client, /function contractsForMonthQuartile\(contracts, quartile\)/);
+  assert.match(client, /detailsForContracts\(i\.label, contractsForMonthQuartile\(data\.contratos, i\.quartile\)\)/);
+});

@@ -103,7 +103,23 @@
   }
   function dueBuckets(data) { var h=today(), result={previous:[],today:[],next:[], timeline:[], month:[0,0,0,0]}; for(var i=-5;i<=5;i++)result.timeline.push({label:i===0?'Hoje':(i<0?Math.abs(i)+'d atrás':'+'+i+'d'),value:0,day:i}); data.contratos.forEach(function(c){var d=dayDiff(parseDate(c.vencimento),h)*-1; if(d>=-5&&d<=-1)result.previous.push(c); if(d===0)result.today.push(c); if(d>=1&&d<=5)result.next.push(c); result.timeline.forEach(function(x){if(x.day===d)x.value++;}); var date=parseDate(c.vencimento); if(date&&date.getFullYear()===h.getFullYear()&&date.getMonth()===h.getMonth()){var q=date.getDate()<=7?0:date.getDate()<=15?1:date.getDate()<=23?2:3;result.month[q]++;}}); return result; }
   function detailsForContracts(title, contracts) { var by=groupedContracts(contracts), people=(state.bootstrap.alunos||[]).filter(function(p){return by[p.id];}).map(function(p){return{aluno:p.aluno,contratos:by[p.id],valorMensal:by[p.id].reduce(function(s,c){return s+c.valor;},0),profile:(profileMap()[p.id]||{}).perfilPagamento||'Sem histórico'};}); showDetail(title,people); }
-  function renderDue(data) { var b=dueBuckets(data), grid=el('div','kpi-grid'); [['Últimos 5 dias',b.previous],['Vencem hoje',b.today],['Próximos 5 dias',b.next]].forEach(function(x){grid.appendChild(card(x[0],number(x[1].length),'contratos',function(){detailsForContracts(x[0],x[1]);}));}); var timeline=section('Linha do tempo — 11 dias');timeline.appendChild(barList(b.timeline,function(i){detailsForContracts(i.label,data.contratos.filter(function(c){return -dayDiff(parseDate(c.vencimento),today())===i.day;}));})); var heat=section('Mapa do mês');heat.appendChild(barList(['1–7','8–15','16–23','24–fim'].map(function(l,i){return{label:l,value:b.month[i]};})));return[grid,timeline,heat]; }
+  function contractsForMonthQuartile(contracts, quartile) {
+    var ranges = [[1, 7], [8, 15], [16, 23], [24, 31]], range = ranges[Number(quartile)], current = today();
+    if (!range) return [];
+    return contracts.filter(function (contract) {
+      var date = parseDate(contract.vencimento);
+      return date && date.getFullYear() === current.getFullYear() && date.getMonth() === current.getMonth() && date.getDate() >= range[0] && date.getDate() <= range[1];
+    });
+  }
+  function renderDue(data) {
+    var b = dueBuckets(data), grid = el('div', 'kpi-grid');
+    [['Últimos 5 dias', b.previous], ['Vencem hoje', b.today], ['Próximos 5 dias', b.next]].forEach(function (item) { grid.appendChild(card(item[0], number(item[1].length), 'contratos', function () { detailsForContracts(item[0], item[1]); })); });
+    var timeline = section('Linha do tempo — 11 dias');
+    timeline.appendChild(barList(b.timeline, function (item) { detailsForContracts(item.label, data.contratos.filter(function (contract) { return -dayDiff(parseDate(contract.vencimento), today()) === item.day; })); }));
+    var heat = section('Mapa do mês');
+    heat.appendChild(barList(['1–7', '8–15', '16–23', '24–fim'].map(function (label, index) { return { label: label, value: b.month[index], quartile: index }; }), function (i) { detailsForContracts(i.label, contractsForMonthQuartile(data.contratos, i.quartile)); }));
+    return [grid, timeline, heat];
+  }
   function renderFollow(kind) { var list=peopleFor(kind), grid=el('div','kpi-grid'), groups={verde:[],laranja:[],critico:[],sem:[]};list.forEach(function(x){var s=x.classification.state;if(s==='verde')groups.verde.push(x);else if(s==='laranja')groups.laranja.push(x);else if(s.indexOf('sem_')===0)groups.sem.push(x);else groups.critico.push(x);}); grid.appendChild(card('Em dia',number(groups.verde.length),'Até o prazo verde',function(){showDetail('Em dia',groups.verde);}));grid.appendChild(card('Atenção',number(groups.laranja.length),'Próximo ciclo',function(){showDetail('Atenção',groups.laranja);}));grid.appendChild(card('Prioridade',number(groups.critico.length),'Requer ação',function(){showDetail('Prioridades',groups.critico);}));grid.appendChild(card('Sem dado',number(groups.sem.length),'Prioridade máxima',function(){showDetail('Dados a regularizar',groups.sem);}));var chart=section(kind==='prescricoes'?'Prescrições por situação':'Avaliações por situação');var count={};list.forEach(function(x){count[x.classification.state]=(count[x.classification.state]||0)+1;});chart.appendChild(barList(Object.keys(count).map(function(k){return{label:stateLabel(k),value:count[k]};}),function(i){showDetail(i.label,list.filter(function(x){return stateLabel(x.classification.state)===i.label;}));}));return[grid,chart]; }
   function renderHome(data) {
     var prescriptions = peopleFor('prescricoes'); var evaluations = peopleFor('avaliacoes'); var due = dueBuckets(data); var grid = el('div', 'kpi-grid');
