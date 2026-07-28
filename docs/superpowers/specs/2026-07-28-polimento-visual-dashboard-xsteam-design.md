@@ -22,9 +22,9 @@ O dashboard continuará sendo uma ferramenta de acompanhamento diário. O acabam
 
 ### Marca
 
-- Adicionar `User attachment.svg` aos ativos do Apps Script, como `XsteamLogo.svg`.
+- Adicionar o conteúdo de `User attachment.svg` ao arquivo HTML `XsteamLogo.html` como símbolo SVG local do Apps Script.
 - Exibir a logo oficial no carregamento, topo da barra lateral e navegação móvel.
-- A logo será renderizada como imagem SVG com dimensões controladas; o antigo `.x-mark` CSS será removido.
+- A logo será renderizada como símbolo SVG reutilizável, com dimensões controladas; o antigo `.x-mark` CSS será removido.
 - O nome `XSTEAM` permanece como texto acessível ao lado da marca na versão desktop; no mobile, a marca pode aparecer isolada onde o espaço for limitado.
 
 ### Sistema de superfícies
@@ -60,7 +60,7 @@ O dashboard continuará sendo uma ferramenta de acompanhamento diário. O acabam
 
 | Arquivo | Responsabilidade da mudança |
 | --- | --- |
-| `apps-script/XsteamLogo.svg` | Novo ativo oficial, copiado da logo enviada pelo usuário. |
+| `apps-script/XsteamLogo.html` | Símbolo SVG oficial incluído pelo template Apps Script. |
 | `apps-script/DashboardComponents.html` | Substituir marca improvisada por SVG, introduzir ícones acessíveis de navegação e agrupamentos semânticos mínimos. |
 | `apps-script/DashboardStyles.html` | Novo sistema de tokens, layout, superfícies, tipografia, responsividade, estados e motion reduzido. |
 | `apps-script/DashboardClient.html` | Ajustar somente a criação de classes/ícones necessárias ao novo markup; não alterar regras de dados, filtros, cache ou fila. |
@@ -78,7 +78,7 @@ Não faz parte desta entrega:
 
 ## Dados e desempenho
 
-- Todo polimento será client-side, em HTML/CSS/SVG local do projeto Apps Script.
+- Todo polimento será client-side, em HTML/CSS/SVG local incluído pelo projeto Apps Script.
 - A carga do SVG é pequena e embutida/servida junto ao PWA, sem nova chamada de dados ao Sheets.
 - As funções `obterBootstrapDashboard`, cache local, revalidação e fila de mutações ficam inalteradas.
 - Estilos não criarão reflow contínuo nem dependerão de canvas. Transições terão duração curta e serão desativadas para usuários que solicitarem menos movimento.

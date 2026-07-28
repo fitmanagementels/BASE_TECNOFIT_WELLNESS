@@ -1,6 +1,6 @@
 # Contexto do Projeto — Base Central TecnoFit
 
-Última atualização: **27/07/2026 — America/Fortaleza (UTC−03:00)**
+Última atualização: **28/07/2026 — America/Fortaleza (UTC−03:00)**
 
 > Memória portátil canônica. Atualizar este arquivo e `CONTEXTO_DO_PROJETO.html` após cada grande marco.
 
@@ -10,7 +10,8 @@
 - O importador Apps Script preserva `BASE_ALUNOS`, `CONTRATOS` e `VISAO_MESTRE` em erro; `IMPORTACOES` é auditoria append-only.
 - O leitor local aceita HTML/XLS legado e XLSX/OOXML detectado pelo conteúdo. A validação remota do ajuste de descompactação XLSX ainda é pendente.
 - O dashboard XSTEAM foi implementado localmente como web app: Home, Financeiro, Acompanhamento e Configurações; layout desktop/mobile, cache local e fila de gravação.
-- O código oficial agora está em `main`. Há um worktree antigo de referência, já incorporado, que deve ser removido após conferir o Git.
+- O dashboard recebeu o sistema visual XSTEAM premium: logo oficial embutida no HTML Service, superfícies arredondadas, profundidade sutil, responsividade e estados acessíveis.
+- O código oficial está unificado em `main`; não há outro conjunto de códigos ativo.
 - A suíte local completa passa com `npm test`.
 
 ## Objetivo do projeto
@@ -22,7 +23,7 @@
 
 ## Estado atual
 
-- **Etapa:** implementação local do MVP do dashboard concluída; falta instalação/validação manual no Apps Script e publicação do repositório remoto.
+- **Etapa:** implementação local do MVP e polimento visual do dashboard concluídos; falta instalação/validação manual no Apps Script e publicação do repositório remoto.
 - **Base:** última importação remota confirmada pelo usuário foi `2026-07-25 r02`; a qualidade dos campos ainda requer auditoria por amostra.
 - **XLSX:** o ajuste local `1589231` normaliza o blob como ZIP antes de `Utilities.unzip`; testar remoto usando revisão superior à que já falhou.
 - **Dashboard:** há menu `TecnoFit > Abrir dashboard`, bootstrap versionado sem dados de contato e três novas abas persistentes.
@@ -40,6 +41,7 @@
 | `04e98d6` | Bootstrap versionado | Web app recebe apenas dados necessários, sem contato |
 | `58f4afe` | Mutações seguras | Lock, idempotência e upsert de pagamento por ID |
 | `bcb3af6` | Interface XSTEAM responsiva | Sidebar desktop, dock mobile, cache local e splash |
+| `cea6411` | Polimento visual XSTEAM | Superfícies, espaçamento, foco, motion reduzido e responsividade refinada |
 
 ## Decisões tomadas
 
@@ -77,18 +79,18 @@ Perfis iniciais: Sem histórico; Bom pagador; Pagamento eventual fora do prazo; 
 | `apps-script/12_DashboardApi.gs` | `obterBootstrapDashboard()` e `obterVersaoDashboard()` |
 | `apps-script/14_DashboardMutacoes.gs` | `salvarMutacoesDashboard()` com LockService e idempotência |
 | `apps-script/Dashboard*.html` | web app responsivo XSTEAM |
+| `apps-script/XsteamLogo.html` | símbolo SVG oficial incluído no HTML Service; não usa URL externa |
 | `docs/superpowers/specs/2026-07-27-dashboard-xsteam-design.md` | especificação aprovada |
 | `docs/superpowers/plans/2026-07-27-dashboard-xsteam.md` | plano de implementação |
 
 ## Próximos passos
 
-1. No editor Apps Script, copiar os arquivos atualizados de `apps-script/` (incluindo `13_DashboardConfiguracao.gs` e `14_DashboardMutacoes.gs`) e salvar.
+1. No editor Apps Script, copiar os arquivos atualizados de `apps-script/` e criar o novo arquivo HTML `XsteamLogo`, colando o conteúdo de `XsteamLogo.html`; salvar todos.
 2. Recarregar a planilha, abrir o painel/importação para criar as três abas persistentes e conferir seus cabeçalhos.
 3. Publicar uma nova implantação do Web App como o usuário autorizado; abrir por `TecnoFit > Abrir dashboard`.
 4. Validar no navegador: filtros padrão, múltiplos contratos, recortes de vencimento, prioridades de ficha/avaliação, modal e gravação de perfil de pagamento.
 5. Usar uma revisão superior para revalidar XLSX real no fluxo de importação e conferir uma amostra de valores, polos e datas.
 6. Configurar um remoto GitHub e enviar `main` para continuar em outra máquina.
-7. Remover o worktree antigo após confirmar que `main` é a única cópia oficial.
 
 ## Riscos, bloqueios e pendências
 
@@ -104,8 +106,8 @@ Perfis iniciais: Sem histórico; Bom pagador; Pagamento eventual fora do prazo; 
 1. Leia este arquivo e a especificação em `docs/superpowers/specs/2026-07-27-dashboard-xsteam-design.md`.
 2. Execute `git status --short --branch` e `npm test`.
 3. Confira a implantação Apps Script e os três nomes de abas persistentes.
-4. Continue pelos próximos passos acima; não crie novo worktree.
+4. Continue pelos próximos passos acima; não crie novo worktree nem cópia paralela do código.
 
 ## Contexto para outro chat/IA
 
-O projeto TecnoFit mantém um snapshot semanal de três relatórios e um web app Apps Script XSTEAM. A branch oficial é `main`; o importador preserva a última base válida em qualquer erro. O dashboard usa `obterBootstrapDashboard()` sem contato, cache local versionado e `salvarMutacoesDashboard()` com fila cliente, LockService e idempotência. A navegação é Home/Financeiro/Acompanhamento/Configurações, com subabas Planos/Vencimentos e Prescrições/Avaliações. Filtros padrão são Ativo/Wellness; contratos múltiplos são agrupados por ID em detalhes. A configuração visual controla cartões e ordem da Home, alertas e perfil por ID. Falta copiar/deployar todos os arquivos no Apps Script, validar manualmente o Web App e configurar/push para GitHub. Não criar cópias paralelas ou expor dados pessoais.
+O projeto TecnoFit mantém um snapshot semanal de três relatórios e um web app Apps Script XSTEAM. A branch oficial é `main`; o importador preserva a última base válida em qualquer erro. O dashboard usa `obterBootstrapDashboard()` sem contato, cache local versionado e `salvarMutacoesDashboard()` com fila cliente, LockService e idempotência. A navegação é Home/Financeiro/Acompanhamento/Configurações, com subabas Planos/Vencimentos e Prescrições/Avaliações. Filtros padrão são Ativo/XSTEAM WELLNESS CLUB; contratos múltiplos são agrupados por ID em detalhes. A configuração visual controla cartões e ordem da Home, alertas e perfil por ID. O polimento visual usa `XsteamLogo.html`, incluído pelo HTML Service e reutilizado como símbolo SVG no splash, sidebar e cabeçalho mobile. Falta copiar/deployar todos os arquivos no Apps Script, validar manualmente o Web App e configurar/push para GitHub. Não criar cópias paralelas ou expor dados pessoais.

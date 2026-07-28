@@ -19,12 +19,15 @@ test('shell contém splash, quatro áreas principais, subabas e modal acessível
 
 test('shell usa a logo oficial XSTEAM em todas as áreas de marca', () => {
   const html = fs.readFileSync('apps-script/DashboardComponents.html', 'utf8');
-  const logoUses = html.match(/src="XsteamLogo\.svg"/g) || [];
+  const page = fs.readFileSync('apps-script/Dashboard.html', 'utf8');
+  const logo = fs.readFileSync('apps-script/XsteamLogo.html', 'utf8');
+  const logoUses = html.match(/href="#xsteam-logo-symbol"/g) || [];
   assert.equal(logoUses.length, 3);
+  assert.match(page, /incluirArquivo_\('XsteamLogo'\)/);
+  assert.match(logo, /<symbol id="xsteam-logo-symbol"/);
   assert.match(html, /class="brand-logo brand-logo-splash"/);
   assert.match(html, /class="brand-logo brand-logo-sidebar"/);
   assert.match(html, /class="brand-logo brand-logo-mobile"/);
-  assert.ok(fs.statSync('apps-script/XsteamLogo.svg').size > 200);
 });
 
 test('tema traz branding escuro, dock móvel e leitura confortável', () => {
@@ -56,5 +59,6 @@ test('cliente usa bootstrap local, cache persistente e fila de mutações', () =
   assert.match(client, /salvarMutacoesDashboard/);
   assert.match(client, /withFailureHandler/);
   assert.doesNotMatch(client, /contato/);
+  assert.doesNotMatch(client, /\.x-mark/);
   assert.doesNotMatch(client, /innerHTML\s*=/);
 });

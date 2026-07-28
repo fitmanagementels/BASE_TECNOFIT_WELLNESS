@@ -13,7 +13,7 @@
 - Usar somente a pasta e branch `main` existentes; não criar worktree.
 - Não alterar regras de métricas, dados, filtros, cache local, fila de mutações ou abas do Sheets.
 - Não introduzir fontes, bibliotecas de ícones, imagens de fundo ou dependências remotas novas.
-- Usar `apps-script/XsteamLogo.svg` como a única fonte da logo no PWA.
+- Usar `apps-script/XsteamLogo.html` como símbolo SVG incluído no template do PWA.
 - Manter contraste, foco de teclado, estados semânticos e `prefers-reduced-motion`.
 - Cada tarefa segue TDD e termina com um commit.
 
@@ -22,13 +22,13 @@
 ### Task 1: Adicionar a marca oficial e contratos de UI verificáveis
 
 **Files:**
-- Create: `apps-script/XsteamLogo.svg`
+- Create: `apps-script/XsteamLogo.html`
 - Modify: `apps-script/DashboardComponents.html`
 - Modify: `tests/dashboard-html.test.js`
 
 **Interfaces:**
 - Consumes: arquivo recebido em `/home/elohimlima/Downloads/User attachment.svg`.
-- Produces: elemento de imagem com `class="brand-logo"` na tela de carregamento, na barra lateral e na navegação móvel; um único ativo SVG local para os três usos.
+- Produces: símbolo SVG `#xsteam-logo-symbol`, incluído uma vez pelo template e usado três vezes por elementos com `class="brand-logo"`.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
@@ -37,12 +37,15 @@ Em `tests/dashboard-html.test.js`, adicionar:
 ```javascript
 test('shell usa a logo oficial XSTEAM em todas as áreas de marca', () => {
   const html = fs.readFileSync('apps-script/DashboardComponents.html', 'utf8');
-  const logoUses = html.match(/src="XsteamLogo\.svg"/g) || [];
+  const page = fs.readFileSync('apps-script/Dashboard.html', 'utf8');
+  const logo = fs.readFileSync('apps-script/XsteamLogo.html', 'utf8');
+  const logoUses = html.match(/href="#xsteam-logo-symbol"/g) || [];
   assert.equal(logoUses.length, 3);
+  assert.match(page, /incluirArquivo_\('XsteamLogo'\)/);
+  assert.match(logo, /<symbol id="xsteam-logo-symbol"/);
   assert.match(html, /class="brand-logo brand-logo-splash"/);
   assert.match(html, /class="brand-logo brand-logo-sidebar"/);
   assert.match(html, /class="brand-logo brand-logo-mobile"/);
-  assert.ok(fs.statSync('apps-script/XsteamLogo.svg').size > 200);
 });
 ```
 
@@ -50,16 +53,16 @@ test('shell usa a logo oficial XSTEAM em todas as áreas de marca', () => {
 
 Run: `node --test tests/dashboard-html.test.js`
 
-Expected: FAIL porque `XsteamLogo.svg` ainda não existe e o componente ainda usa `.x-mark`.
+Expected: FAIL porque `XsteamLogo.html` ainda não existe, o template não o inclui e o componente ainda usa `.x-mark`.
 
 - [ ] **Step 3: Implementar a marca mínima**
 
-Copiar o SVG fornecido para `apps-script/XsteamLogo.svg`. Em `DashboardComponents.html`, substituir os três usos de `.x-mark` por:
+Copiar o SVG fornecido para `apps-script/XsteamLogo.html`, dentro de um `<symbol id="xsteam-logo-symbol">`. Incluir o fragmento em `Dashboard.html` com `<?!= incluirArquivo_('XsteamLogo'); ?>`. Em `DashboardComponents.html`, substituir os três usos de `.x-mark` por:
 
 ```html
-<img class="brand-logo brand-logo-splash" src="XsteamLogo.svg" alt="XSTEAM">
-<img class="brand-logo brand-logo-sidebar" src="XsteamLogo.svg" alt="XSTEAM">
-<img class="brand-logo brand-logo-mobile" src="XsteamLogo.svg" alt="XSTEAM">
+<svg class="brand-logo brand-logo-splash" role="img" aria-label="XSTEAM"><use href="#xsteam-logo-symbol"></use></svg>
+<svg class="brand-logo brand-logo-sidebar" role="img" aria-label="XSTEAM"><use href="#xsteam-logo-symbol"></use></svg>
+<svg class="brand-logo brand-logo-mobile" aria-hidden="true"><use href="#xsteam-logo-symbol"></use></svg>
 ```
 
 O item mobile ficará no dock e terá `aria-hidden="true"`; os botões continuam com texto para nome acessível.
@@ -73,7 +76,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps-script/XsteamLogo.svg apps-script/DashboardComponents.html tests/dashboard-html.test.js
+git add apps-script/XsteamLogo.html apps-script/Dashboard.html apps-script/DashboardComponents.html tests/dashboard-html.test.js
 git commit -m "feat: use official xsteam dashboard logo"
 ```
 
