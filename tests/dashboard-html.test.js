@@ -36,6 +36,17 @@ test('tema traz branding escuro, dock móvel e leitura confortável', () => {
   assert.match(css, /\.detail-dialog/);
 });
 
+test('tema premium define superfícies, foco e adaptação de movimento', () => {
+  const css = fs.readFileSync('apps-script/DashboardStyles.html', 'utf8');
+  assert.match(css, /--radius-card:\s*16px/);
+  assert.match(css, /--shadow-card:/);
+  assert.match(css, /background:\s*radial-gradient/);
+  assert.match(css, /\.nav-button:focus-visible/);
+  assert.match(css, /\.kpi:hover/);
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+  assert.match(css, /\.mobile-dock[^}]*border-radius:/s);
+});
+
 test('cliente usa bootstrap local, cache persistente e fila de mutações', () => {
   const client = fs.readFileSync('apps-script/DashboardClient.html', 'utf8');
   assert.match(client, /obterBootstrapDashboard/);
