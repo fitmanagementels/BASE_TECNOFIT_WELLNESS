@@ -78,3 +78,11 @@ test('incrementa uma versão persistente para invalidar apenas dados já superad
   assert.equal(gas.incrementarVersaoDashboard_(), 8);
   assert.equal(values.get('tecnofit.dashboard.versao'), '8');
 });
+
+test('usa o nome exato do polo Wellness como padrão canônico', () => {
+  const gas = loadGas(['apps-script/00_Config.gs', 'apps-script/13_DashboardConfiguracao.gs']);
+  assert.match(
+    gas.DASHBOARD_CONFIGURACAO_PADRAO.dashboard[0][4],
+    /XSTEAM WELLNESS CLUB/
+  );
+});

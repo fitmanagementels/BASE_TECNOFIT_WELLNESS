@@ -45,7 +45,7 @@
 
 - Snapshot atual é substituído somente após validação completa; histórico de ausentes do lote é uma futura camada separada.
 - Um aluno pode ter vários contratos; KPIs separam pessoas de contratos e detalhes agrupam por ID.
-- Filtros globais padrão: **Ativo** e **Wellness**.
+- Filtros globais padrão: **Ativo** e **XSTEAM WELLNESS CLUB**.
 - Navegação principal: Home, Financeiro, Acompanhamento e Configurações. Financeiro contém Planos/Vencimentos; Acompanhamento contém Prescrições/Avaliações.
 - Não usar a palavra “atraso” no dashboard de vencimentos. Mostrar últimos cinco dias, hoje e próximos cinco dias.
 - A idade usa a data atual de abertura: prescrição `≤90`, `91–180`, `181–270`, `>270`; avaliação `≤90`, `91–120`, `121–180`, `181–270`, `>270`.

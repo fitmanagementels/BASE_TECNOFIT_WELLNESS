@@ -114,7 +114,7 @@ function lerConfiguracaoDashboardPersistente_(planilha) {
   var linhasPagamentos = lerTabelaDashboardDaPlanilha_(
     planilha, CONFIG.abas.gestaoPagamentos, CONFIG.cabecalhos.gestaoPagamentos
   );
-  var filtrosPadrao = { status: 'Ativo', polo: 'Wellness' };
+  var filtrosPadrao = { status: 'Ativo', polo: 'XSTEAM WELLNESS CLUB' };
   var linhaFiltros = linhasDashboard.filter(function (linha) {
     return linha.tipo === 'filtros' && linha.chave === 'globais';
   })[0];
