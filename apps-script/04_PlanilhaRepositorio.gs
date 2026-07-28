@@ -35,6 +35,9 @@ function garantirEstruturaPlanilha() {
     }
   });
   planilha.getSheetByName(CONFIG.abas.visaoMestre).hideColumns(13);
+  if (typeof garantirConfiguracoesDashboardNaPlanilha_ === 'function') {
+    garantirConfiguracoesDashboardNaPlanilha_(planilha);
+  }
   SpreadsheetApp.flush();
 }
 

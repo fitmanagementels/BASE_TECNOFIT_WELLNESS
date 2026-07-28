@@ -1,573 +1,72 @@
 <script>
-  const state = {
-    page: 'vencimentos',
-    filters: {},
-    filtersByPage: {},
-    charts: [],
-    requestId: 0,
-    currentData: null
-  };
+(function () {
+  var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, mutationQueue: [], saving: false };
+  var cacheKey = 'xsteam-dashboard-bootstrap-v1';
+  var labels = { home: 'Home', financeiro: 'Financeiro', acompanhamento: 'Acompanhamento', configuracoes: 'Configurações' };
 
-  const pageLabels = {
-    vencimentos: 'Vencimentos dos alunos',
-    fichas: 'Fichas prescritas',
-    avaliacoes: 'Avaliações físicas',
-    planos: 'Planos dos alunos'
-  };
+  function el(tag, className, text) { var node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = String(text); return node; }
+  function clear(node) { node.replaceChildren(); }
+  function money(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0); }
+  function number(v) { return new Intl.NumberFormat('pt-BR').format(Number(v) || 0); }
+  function parseDate(v) { var parts = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(v || '')); return parts ? new Date(Number(parts[3]), Number(parts[2]) - 1, Number(parts[1]), 12) : null; }
+  function dayDiff(a, b) { if (!a) return null; return Math.round((b - a) / 86400000); }
+  function today() { var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12); }
+  function safeCacheGet() { try { return JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch (e) { return null; } }
+  function safeCacheSet(v) { try { localStorage.setItem(cacheKey, JSON.stringify(v)); } catch (e) {} }
+  function call(name, argument) { return new Promise(function (resolve, reject) { var runner = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject); if (argument === undefined) runner[name](); else runner[name](argument); }); }
+  function setProgress(value) { document.getElementById('loading-progress').style.width = value + '%'; }
+  function finishLoading() { setProgress(100); setTimeout(function () { document.getElementById('loading-screen').hidden = true; }, 180); }
+  function setSave(text) { document.getElementById('saveStatus').textContent = text || ''; }
+  function writeOption(select, value, text) { var o = el('option', '', text); o.value = value; select.appendChild(o); }
 
-  const kpiMaps = {
-    vencimentos: [['vencidos', 'Vencidos', 'number'], ['ate7', 'Vencem em 7 dias', 'number'], ['ate30', 'Vencem em 30 dias', 'number'], ['valorAte30', 'Valor a renovar', 'money']],
-    fichas: [['atualizadas', 'Com ficha atualizada', 'number'], ['ausentes', 'Sem ficha', 'number'], ['desatualizadas', 'Ficha desatualizada', 'number'], ['cobertura', 'Cobertura', 'percent']],
-    avaliacoes: [['atualizadas', 'Com avaliação atualizada', 'number'], ['ausentes', 'Sem avaliação', 'number'], ['desatualizadas', 'Avaliação desatualizada', 'number'], ['cobertura', 'Cobertura', 'percent']],
-    planos: [['alunos', 'Alunos distintos', 'number'], ['contratos', 'Contratos', 'number'], ['valor', 'Valor contratado', 'money'], ['ticketMedio', 'Ticket médio', 'money']]
-  };
-
-  const listColumns = {
-    vencimentos: [['aluno', 'Aluno'], ['contato', 'Contato'], ['frequencia', 'Frequência'], ['polo', 'Polo'], ['vencimento', 'Vencimento'], ['situacao', 'Situação', 'status'], ['valor', 'Valor', 'money']],
-    fichas: [['aluno', 'Aluno'], ['contato', 'Contato'], ['polos', 'Polos', 'list'], ['data', 'Última ficha'], ['diasSemAtualizacao', 'Dias sem atualização', 'number'], ['situacao', 'Situação', 'status']],
-    avaliacoes: [['aluno', 'Aluno'], ['contato', 'Contato'], ['polos', 'Polos', 'list'], ['data', 'Última avaliação'], ['diasSemAtualizacao', 'Dias sem atualização', 'number'], ['situacao', 'Situação', 'status']],
-    planos: [['aluno', 'Aluno'], ['statusAluno', 'Status do aluno', 'status'], ['frequencia', 'Frequência'], ['modalidade', 'Modalidade'], ['polo', 'Polo'], ['inicioCorrente', 'Início corrente'], ['vencimento', 'Vencimento'], ['statusContrato', 'Status do contrato', 'status'], ['valor', 'Valor', 'money']]
-  };
-
-  const chartMaps = {
-    vencimentos: [['situacao', 'Situação dos vencimentos', 'doughnut'], ['semanas', 'Vencimentos nas próximas semanas', 'bar'], ['porPolo', 'Vencimentos por polo', 'bar']],
-    fichas: [['situacao', 'Situação das fichas', 'doughnut'], ['faixas', 'Faixas de idade das fichas', 'bar'], ['coberturaPorPolo', 'Cobertura de fichas por polo', 'bar', 'percent']],
-    avaliacoes: [['situacao', 'Situação das avaliações', 'doughnut'], ['faixas', 'Faixas de idade das avaliações', 'bar'], ['coberturaPorPolo', 'Cobertura de avaliações por polo', 'bar', 'percent']],
-    planos: [['polos', 'Contratos por polo', 'doughnut'], ['frequencias', 'Contratos por frequência', 'bar'], ['modalidades', 'Contratos por modalidade', 'bar'], ['status', 'Contratos por status', 'bar'], ['valorPorPolo', 'Valor contratado por polo', 'bar', 'money']]
-  };
-
-  const chartColors = ['#dfff22', '#9daa29', '#505a25', '#ffb84d', '#ff6b5f'];
-
-  const situationLabels = {
-    vencido: 'Vencido',
-    ate7: 'Até 7 dias',
-    ate30: 'De 8 a 30 dias',
-    futuro: 'Após 30 dias',
-    semData: 'Sem data',
-    ausente: 'Ausente',
-    desatualizada: 'Desatualizada',
-    atualizada: 'Atualizada'
-  };
-
-  function situationLabel(value) {
-    const technical = String(value == null ? '' : value);
-    return situationLabels[technical] || technical;
+  function filtered() {
+    var base = state.bootstrap || { alunos: [], contratos: [] };
+    var students = base.alunos.filter(function (p) { return !state.filters.status || p.status === state.filters.status; });
+    var ids = Object.create(null); students.forEach(function (p) { ids[p.id] = true; });
+    var contracts = base.contratos.filter(function (c) { return ids[c.id] && (!state.filters.polo || c.polo === state.filters.polo); });
+    var contractIds = Object.create(null); contracts.forEach(function (c) { contractIds[c.id] = true; });
+    return { alunos: students.filter(function (p) { return contractIds[p.id]; }), contratos: contracts };
   }
-
-  function el(tag, className, text) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text != null) node.textContent = String(text);
-    return node;
+  function groupedContracts(contracts) { return contracts.reduce(function (m, c) { (m[c.id] || (m[c.id] = [])).push(c); return m; }, Object.create(null)); }
+  function profileMap() { return (state.bootstrap.configuracao.perfisPagamento || []).reduce(function (m, p) { m[p.id] = p; return m; }, Object.create(null)); }
+  function classify(person, kind) {
+    var data = parseDate(kind === 'prescricoes' ? person.dataFicha : person.dataAvaliacao); var days = dayDiff(data, today());
+    var r = state.bootstrap.configuracao.alertas[kind] || {};
+    if (days === null) return { state: kind === 'prescricoes' ? 'sem_ficha' : 'sem_avaliacao', days: null, priority: 0 };
+    if (days <= r.laranja) return { state: 'verde', days: days, priority: 5 };
+    if (days <= r.vermelho) return { state: 'laranja', days: days, priority: 4 };
+    if (days <= r.roxo) return { state: 'vermelho', days: days, priority: 3 };
+    if (kind === 'avaliacoes' && days > r.critico) return { state: 'falha_critica', days: days, priority: 1 };
+    return { state: 'roxo', days: days, priority: 2 };
   }
+  function chip(value) { return el('span', 'chip estado-' + value, stateLabel(value)); }
+  function stateLabel(v) { return ({ verde:'Em dia', laranja:'Atenção', vermelho:'Prioridade alta', roxo:'Prioridade máxima', falha_critica:'Falha crítica de processo', sem_ficha:'Sem ficha registrada', sem_avaliacao:'Sem avaliação registrada' })[v] || v; }
+  function card(label, value, note, action) { var b = el('button', 'kpi'); b.type = 'button'; b.appendChild(el('span', 'label', label)); b.appendChild(el('strong', '', value)); if (note) b.appendChild(el('em', '', note)); if (action) b.addEventListener('click', action); return b; }
+  function section(title) { var box = el('section', 'section-card'); box.appendChild(el('h3', '', title)); return box; }
+  function barList(items, select) { var list = el('div', 'bar-list'); var max = Math.max.apply(null, items.map(function (x) { return x.value; }).concat([1])); items.forEach(function (item) { var row = el('button', 'bar-row'); row.type = 'button'; row.appendChild(el('span', '', item.label)); var bar = el('span', 'bar'); var fill = el('span'); fill.style.width = (item.value / max * 100) + '%'; bar.appendChild(fill); row.appendChild(bar); row.appendChild(el('strong', '', number(item.value))); if (select) row.addEventListener('click', function () { select(item); }); list.appendChild(row); }); return list; }
 
-  function clearNode(node) {
-    node.replaceChildren();
+  function showDetail(title, people) {
+    var dialog = document.getElementById('detailDialog'); var target = document.getElementById('detailContent'); clear(target); document.getElementById('detailTitle').textContent = title;
+    if (!people.length) target.appendChild(el('p', 'body-copy', 'Nenhum registro neste recorte.'));
+    people.forEach(function (item) { var row = el('article', 'student-row'); row.appendChild(el('h3', '', item.aluno)); if (item.classification) row.appendChild(chip(item.classification.state)); row.appendChild(el('p', 'body-copy', (item.classification && item.classification.days !== null ? item.classification.days + ' dias • ' : '') + money(item.valorMensal || 0) + ' • ' + (item.profile || 'Sem histórico'))); var list = el('ul', 'contract-list'); (item.contratos || []).forEach(function (c) { list.appendChild(el('li', '', (c.contrato || c.frequencia || 'Contrato') + ' — ' + money(c.valor) + (c.vencimento ? ' — ' + c.vencimento : ''))); }); row.appendChild(list); target.appendChild(row); }); dialog.showModal();
   }
-
-  function destroyCharts() {
-    state.charts.forEach(function (chart) {
-      chart.destroy();
-    });
-    state.charts = [];
-  }
-
-  function money(value) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) || 0);
-  }
-
-  function number(value) {
-    return new Intl.NumberFormat('pt-BR').format(Number(value) || 0);
-  }
-
-  function percent(value) {
-    return new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(Number(value) || 0) + '%';
-  }
-
-  function maskContact(contact) {
-    return String(contact || '').replace(/\d(?=\d{2})/g, '•');
-  }
-
-  function responseData(response) {
-    if (!response || response.ok !== true || response.pagina !== state.page) return null;
-    const data = response.dados;
-    const isObject = function (value) {
-      return value !== null && typeof value === 'object' && !Array.isArray(value);
-    };
-    if (!isObject(data) || !isObject(data.kpis) || !isObject(data.graficos) ||
-        !Array.isArray(data.lista) || !isObject(data.filtros) || !isObject(data.paginacao)) return null;
-    return data;
-  }
-
-  function setHealth(kind, response) {
-    const updated = document.getElementById('lastUpdate');
-    const warning = document.getElementById('importWarning');
-    warning.textContent = '';
-    warning.setAttribute('role', 'alert');
-    warning.hidden = true;
-    if (kind === 'loading') updated.textContent = 'Atualização indisponível durante o carregamento';
-    else if (!response || kind === 'error') updated.textContent = 'Atualização indisponível';
-    else updated.textContent = response.atualizadoEm ? 'Última atualização: ' + response.atualizadoEm : 'Nenhuma atualização válida disponível';
-    if (response && kind !== 'loading' && kind !== 'error' && response.avisoImportacao) {
-      warning.textContent = String(response.avisoImportacao);
-      warning.hidden = false;
-    }
-  }
-
-  function valueText(value, type) {
-    if (type === 'money') return money(value);
-    if (type === 'number') return value == null || value === '' ? '—' : number(value);
-    if (type === 'percent') return percent(value);
-    if (type === 'list') return Array.isArray(value) ? value.join(', ') : String(value || '—');
-    return value == null || value === '' ? '—' : String(value);
-  }
-
-  function setContentVisibility(showContent) {
-    ['filters', 'kpiGrid', 'chartGrid', 'listPanel'].forEach(function (id) {
-      document.getElementById(id).hidden = !showContent;
-    });
-    document.getElementById('appState').hidden = showContent;
-  }
-
-  function showState(kind, message, actionLabel, action) {
-    destroyCharts();
-    setContentVisibility(kind === 'loading');
-    const appState = document.getElementById('appState');
-    appState.hidden = false;
-    clearNode(appState);
-    appState.className = kind === 'error' ? 'app-state error' : 'app-state';
-    appState.setAttribute('role', kind === 'error' ? 'alert' : 'status');
-    if (kind === 'loading') appState.appendChild(el('div', 'spinner'));
-    appState.appendChild(el('p', '', message));
-    if (actionLabel) {
-      const button = el('button', 'filter-control', actionLabel);
-      button.type = 'button';
-      button.addEventListener('click', action);
-      appState.appendChild(button);
-    }
-    const main = document.getElementById('mainContent');
-    main.setAttribute('aria-busy', kind === 'loading' ? 'true' : 'false');
-    if (kind === 'loading') {
-      state.currentData = null;
-      renderSkeletons();
-    }
-    setHealth(kind);
-  }
-
-  function renderSkeletons() {
-    const definitions = [['kpiGrid', 4, 'card kpi-card skeleton'], ['chartGrid', 2, 'card chart-card skeleton'], ['listPanel', 1, 'skeleton list-skeleton']];
-    definitions.forEach(function (definition) {
-      const container = document.getElementById(definition[0]);
-      clearNode(container);
-      for (let index = 0; index < definition[1]; index += 1) container.appendChild(el('div', definition[2]));
-    });
-  }
-
-  function navigate(page) {
-    if (!Object.prototype.hasOwnProperty.call(pageLabels, page)) return;
-    state.page = page;
-    state.filters = Object.assign({}, state.filtersByPage[page] || {});
-    document.querySelectorAll('[data-page]').forEach(function (button) {
-      const active = button.dataset.page === page;
-      button.classList.toggle('active', active);
-      if (active) button.setAttribute('aria-current', 'page');
-      else button.removeAttribute('aria-current');
-    });
-    document.getElementById('pageTitle').textContent = pageLabels[page];
-    loadPage();
-  }
-
-  function loadPage() {
-    const requestId = ++state.requestId;
-    const requestedPage = state.page;
-    const requestedFilters = Object.assign({}, state.filters);
-    showState('loading', 'Carregando dashboard…');
-    google.script.run
-      .withSuccessHandler(function (response) {
-        if (requestId !== state.requestId || requestedPage !== state.page) return;
-        renderDashboard(response);
-      })
-      .withFailureHandler(function (error) {
-        if (requestId !== state.requestId || requestedPage !== state.page) return;
-        renderError(error);
-      })
-      .obterDadosPaginaDashboard(requestedPage, requestedFilters);
-  }
-
-  function renderError() {
-    showState('error', 'Não foi possível carregar esta página.', 'Tentar novamente', loadPage);
-  }
-
-  function clearFilters() {
-    state.filtersByPage[state.page] = {};
-    state.filters = {};
-    loadPage();
-  }
-
-  function renderEmpty(response) {
-    showState('empty', 'Nenhum resultado para os filtros selecionados.', 'Limpar filtros', clearFilters);
-    setHealth('empty', response);
-  }
-
-  function renderFilters(options) {
-    const container = document.getElementById('filters');
-    clearNode(container);
-    const situationValues = state.page === 'vencimentos'
-      ? ['vencido', 'ate7', 'ate30', 'futuro', 'semData']
-      : (state.page === 'fichas' || state.page === 'avaliacoes'
-        ? ['ausente', 'desatualizada', 'atualizada'] : []);
-    const situations = situationValues.map(function (value) {
-      return { value: value, label: situationLabel(value) };
-    });
-    const definitions = [
-      { key: 'polo', source: 'polos', label: 'Polo' },
-      { key: 'statusAluno', source: 'statusAlunos', label: 'Status do aluno' },
-      { key: 'busca', label: 'Buscar aluno ou ID', input: true },
-      { key: 'periodoDias', label: 'Vencimento no período', values: ['30', '60', '90'] },
-      { key: 'situacao', label: 'Situação', values: situations },
-      { key: 'frequencia', source: 'frequencias', label: 'Frequência' },
-      { key: 'modalidade', source: 'modalidades', label: 'Modalidade' },
-      { key: 'statusContrato', source: 'statusContratos', label: 'Status do contrato' }
-    ];
-    definitions.forEach(function (definition) {
-      const values = definition.values || (options && Array.isArray(options[definition.source]) ? options[definition.source] : []);
-      if (!definition.input && !values.length) return;
-      const field = el('div', 'filter-field');
-      const id = 'filter-' + definition.key;
-      const label = el('label', '', definition.label);
-      label.htmlFor = id;
-      const select = el(definition.input ? 'input' : 'select', 'filter-control');
-      select.id = id;
-      select.name = definition.key;
-      select.setAttribute('name', definition.key);
-      if (definition.input) {
-        select.type = 'search';
-        select.value = state.filters[definition.key] || '';
-      }
-      if (!definition.input) {
-      const all = el('option', '', 'Todos');
-      all.value = '';
-      select.appendChild(all);
-      values.forEach(function (value) {
-        const optionValue = value && typeof value === 'object' ? value.value : value;
-        const optionLabel = value && typeof value === 'object' ? value.label : value;
-        const option = el('option', '', optionLabel);
-        option.value = String(optionValue);
-        select.appendChild(option);
-      });
-      select.value = state.filters[definition.key] || '';
-      }
-      select.addEventListener('change', function () {
-        const next = Object.assign({}, state.filters);
-        delete next.paginaLista;
-        if (select.value) next[definition.key] = select.value;
-        else delete next[definition.key];
-        state.filters = next;
-        state.filtersByPage[state.page] = Object.assign({}, next);
-        loadPage();
-      });
-      field.appendChild(label);
-      field.appendChild(select);
-      container.appendChild(field);
-    });
-  }
-
-  function renderKpis(kpis) {
-    const grid = document.getElementById('kpiGrid');
-    clearNode(grid);
-    (kpiMaps[state.page] || []).forEach(function (definition) {
-      const card = el('article', 'card kpi-card');
-      card.appendChild(el('p', 'kpi-label', definition[1]));
-      card.appendChild(el('p', 'kpi-value', valueText(kpis && kpis[definition[0]], definition[2])));
-      grid.appendChild(card);
-    });
-  }
-
-  function chartValues(source) {
-    if (Array.isArray(source)) {
-      return {
-        labels: source.map(function (item) { return String(item.label || item.polo || 'Não informado'); }),
-        values: source.map(function (item) { return Number(item.valor != null ? item.valor : item.cobertura) || 0; })
-      };
-    }
-    const keys = source && typeof source === 'object' ? Object.keys(source) : [];
-    return {
-      labels: keys.map(situationLabel),
-      values: keys.map(function (key) { return Number(source[key]) || 0; })
-    };
-  }
-
-  function renderCharts(graphs) {
-    const grid = document.getElementById('chartGrid');
-    clearNode(grid);
-    destroyCharts();
-    (chartMaps[state.page] || []).forEach(function (definition) {
-      const card = el('article', 'card chart-card');
-      const header = el('div', 'card-header');
-      header.appendChild(el('h2', 'card-title', definition[1]));
-      card.appendChild(header);
-      const frame = el('div', 'chart-frame');
-      const canvas = el('canvas');
-      canvas.setAttribute('role', 'img');
-      canvas.setAttribute('aria-label', definition[1]);
-      const data = chartValues(graphs && graphs[definition[0]]);
-      const summary = el('ul', 'chart-summary');
-      summary.id = 'chart-summary-' + state.page + '-' + definition[0];
-      canvas.setAttribute('aria-describedby', summary.id);
-      data.labels.forEach(function (label, index) {
-        var formatted = definition[3] === 'percent' ? percent(data.values[index])
-          : definition[3] === 'money' ? money(data.values[index]) : number(data.values[index]);
-        summary.appendChild(el('li', '', label + ': ' + formatted));
-      });
-      frame.appendChild(canvas);
-      card.appendChild(frame);
-      card.appendChild(summary);
-      grid.appendChild(card);
-
-      if (typeof Chart === 'undefined') {
-        frame.replaceChildren(el('p', 'card-subtitle', 'Gráfico indisponível. Consulte os indicadores e a lista abaixo.'));
-        return;
-      }
-      const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const isCircular = definition[2] === 'doughnut';
-      try {
-        const chart = new Chart(canvas, {
-          type: definition[2],
-          data: {
-            labels: data.labels,
-            datasets: [{
-              data: data.values,
-              backgroundColor: isCircular ? chartColors : '#dfff22',
-              borderColor: isCircular ? '#111313' : '#dfff22',
-              borderWidth: isCircular ? 2 : 1
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: reducedMotion ? false : undefined,
-            plugins: { legend: { labels: { color: '#f5f7f7' } } },
-            scales: isCircular ? {} : {
-              x: { ticks: { color: '#969d9d' }, grid: { color: '#292c2c' } },
-              y: { beginAtZero: true, ticks: { color: '#969d9d' }, grid: { color: '#292c2c' } }
-            }
-          }
-        });
-        state.charts.push(chart);
-      } catch (error) {
-        frame.replaceChildren(el('p', 'card-subtitle', 'Gráfico indisponível. Consulte os indicadores e a lista abaixo.'));
-      }
-    });
-  }
-
-  function statusClass(value) {
-    const normalized = String(value || '').toLowerCase();
-    if (normalized === 'atualizada' || normalized === 'ativo') return 'status status-success';
-    if (normalized === 'vencido' || normalized === 'ausente') return 'status status-danger';
-    return 'status status-warning';
-  }
-
-  function cellText(row, definition, mobile) {
-    if (mobile && definition[0] === 'contato') return maskContact(row[definition[0]]);
-    if (definition[2] === 'status') return situationLabel(row[definition[0]]);
-    return valueText(row[definition[0]], definition[2]);
-  }
-
-  let detailRestoreFocus = null;
-  let detailFallbackFocus = null;
-
-  function detailFields(row) {
-    const fields = [['aluno', 'Aluno'], ['contato', 'Contato']];
-    (listColumns[state.page] || []).forEach(function (definition) {
-      if (definition[0] !== 'aluno' && definition[0] !== 'contato') fields.push([definition[0], definition[1], definition[2]]);
-    });
-    return fields;
-  }
-
-  function openDetails(row, trigger) {
-    const dialog = document.getElementById('detailDialog');
-    const content = document.getElementById('detailContent');
-    clearNode(content);
-    const list = el('dl', 'detail-list');
-    detailFields(row).forEach(function (definition) {
-      list.appendChild(el('dt', 'card-subtitle', definition[1]));
-      list.appendChild(el('dd', '', definition[2] === 'status'
-        ? situationLabel(row[definition[0]]) : valueText(row[definition[0]], definition[2])));
-    });
-    content.appendChild(list);
-    detailRestoreFocus = trigger;
-    detailFallbackFocus = null;
-    dialog.showModal();
-    document.getElementById('detailClose').focus();
-  }
-
-  function closeDetails() {
-    const dialog = document.getElementById('detailDialog');
-    if (dialog.open) dialog.close();
-  }
-
-  function detailButton(row) {
-    const button = el('button', 'filter-control detail-button', 'Ver detalhes');
-    button.type = 'button';
-    button.addEventListener('click', function () { openDetails(row, button); });
-    return button;
-  }
-
-  function renderList(rows, pagination) {
-    const panel = document.getElementById('listPanel');
-    clearNode(panel);
-    const header = el('div', 'list-header');
-    header.appendChild(el('h2', 'card-title', 'Detalhamento'));
-    header.appendChild(el('span', 'card-subtitle', number(pagination.totalItens) + ' registros'));
-    panel.appendChild(header);
-
-    const columns = listColumns[state.page] || [];
-    const mobile = window.matchMedia && window.matchMedia('(max-width: 720px)').matches;
-    if (!mobile) {
-    const scroll = el('div', 'table-scroll');
-    scroll.setAttribute('tabindex', '0');
-    scroll.setAttribute('aria-label', 'Detalhamento dos dados; role para ver todas as colunas');
-    const table = el('table', 'data-table');
-    const thead = el('thead');
-    const headingRow = el('tr');
-    columns.forEach(function (definition) {
-      const th = el('th', definition[2] === 'money' || definition[2] === 'number' ? 'numeric' : '', definition[1]);
-      th.scope = 'col';
-      headingRow.appendChild(th);
-    });
-    const hasDetails = rows.some(function (row) { return Boolean(row.contato); });
-    if (hasDetails) {
-      const th = el('th', '', 'Detalhes');
-      th.scope = 'col';
-      headingRow.appendChild(th);
-    }
-    thead.appendChild(headingRow);
-    table.appendChild(thead);
-    const tbody = el('tbody');
-    rows.forEach(function (row) {
-      const tr = el('tr');
-      columns.forEach(function (definition) {
-        const numeric = definition[2] === 'money' || definition[2] === 'number';
-        const td = el('td', numeric ? 'numeric' : '');
-        const text = cellText(row, definition, false);
-        if (definition[2] === 'status') td.appendChild(el('span', statusClass(text), text));
-        else td.textContent = text;
-        tr.appendChild(td);
-      });
-      if (hasDetails) {
-        const detailsCell = el('td');
-        if (row.contato) detailsCell.appendChild(detailButton(row));
-        tr.appendChild(detailsCell);
-      }
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    scroll.appendChild(table);
-    panel.appendChild(scroll);
-    } else {
-    const mobileCards = el('div', 'mobile-cards');
-    rows.forEach(function (row) {
-      const card = el('article', 'mobile-data-row');
-      columns.forEach(function (definition) {
-        card.appendChild(el('span', 'card-subtitle', definition[1]));
-        const text = cellText(row, definition, true);
-        if (definition[2] === 'status') card.appendChild(el('span', statusClass(text), text));
-        else card.appendChild(el('strong', '', text));
-      });
-      if (row.contato) card.appendChild(detailButton(row));
-      mobileCards.appendChild(card);
-    });
-    panel.appendChild(mobileCards);
-    }
-    const pager = el('nav', 'pagination');
-    pager.setAttribute('aria-label', 'Paginação da lista');
-    const previous = el('button', 'filter-control', 'Anterior');
-    previous.type = 'button';
-    previous.disabled = pagination.pagina <= 1;
-    const current = el('span', 'pagination-current', 'Página ' + pagination.pagina + ' de ' + pagination.totalPaginas);
-    current.setAttribute('aria-live', 'polite');
-    const next = el('button', 'filter-control', 'Próxima');
-    next.type = 'button';
-    next.disabled = pagination.pagina >= pagination.totalPaginas;
-    function go(page) {
-      state.filters.paginaLista = page;
-      state.filtersByPage[state.page] = Object.assign({}, state.filters);
-      loadPage();
-    }
-    previous.addEventListener('click', function () { go(pagination.pagina - 1); });
-    next.addEventListener('click', function () { go(pagination.pagina + 1); });
-    pager.appendChild(previous);
-    pager.appendChild(current);
-    pager.appendChild(next);
-    panel.appendChild(pager);
-  }
-
-  function renderDashboard(response) {
-    const data = responseData(response);
-    if (!data) {
-      renderError();
-      return;
-    }
-    state.currentData = { response: response, data: data };
-    if (state.filters.paginaLista && state.filters.paginaLista !== data.paginacao.pagina) {
-      state.filters.paginaLista = data.paginacao.pagina;
-      state.filtersByPage[state.page] = Object.assign({}, state.filters);
-    }
-    setHealth('ready', response);
-    const rows = Array.isArray(data.lista) ? data.lista : [];
-    if (!rows.length) {
-      renderEmpty(response);
-      return;
-    }
-    setContentVisibility(true);
-    document.getElementById('mainContent').setAttribute('aria-busy', 'false');
-    renderFilters(data.filtros || {});
-    renderKpis(data.kpis || {});
-    renderCharts(data.graficos || {});
-    renderList(rows, data.paginacao);
-  }
-
-  function rerenderCurrentList() {
-    if (!state.currentData || state.currentData.response.pagina !== state.page) return;
-    const dialog = document.getElementById('detailDialog');
-    if (dialog.open) {
-      detailRestoreFocus = null;
-      detailFallbackFocus = document.getElementById('mainContent');
-      closeDetails();
-    }
-    renderList(state.currentData.data.lista, state.currentData.data.paginacao);
-  }
-
-  function initializeDashboard() {
-    document.querySelectorAll('[data-page]').forEach(function (button) {
-      button.addEventListener('click', function () {
-        navigate(button.dataset.page);
-      });
-    });
-    if (window.matchMedia) {
-      const mobileQuery = window.matchMedia('(max-width: 720px)');
-      if (mobileQuery.addEventListener) mobileQuery.addEventListener('change', rerenderCurrentList);
-    }
-    const detailDialog = document.getElementById('detailDialog');
-    document.getElementById('detailClose').addEventListener('click', closeDetails);
-    detailDialog.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeDetails();
-      }
-    });
-    detailDialog.addEventListener('close', function () {
-      clearNode(document.getElementById('detailContent'));
-      const fallback = detailFallbackFocus || document.getElementById('mainContent');
-      if (detailRestoreFocus && detailRestoreFocus.isConnected && detailRestoreFocus.focus) detailRestoreFocus.focus();
-      else if (fallback && fallback.focus) fallback.focus();
-      detailRestoreFocus = null;
-      detailFallbackFocus = null;
-    });
-    navigate(state.page);
-  }
-
-  if (document.addEventListener) {
-    document.addEventListener('DOMContentLoaded', initializeDashboard);
-  }
+  function peopleFor(kind) { var f = filtered(), byId = groupedContracts(f.contratos), profiles = profileMap(); return f.alunos.map(function (p) { var cs = byId[p.id] || []; return { id:p.id, aluno:p.aluno, contratos:cs, valorMensal:cs.reduce(function(s,c){return s+c.valor;},0), profile:(profiles[p.id]||{}).perfilPagamento || 'Sem histórico', classification: classify(p, kind) }; }).sort(function(a,b){ return a.classification.priority-b.classification.priority || b.valorMensal-a.valorMensal || a.aluno.localeCompare(b.aluno,'pt-BR'); }); }
+  function renderPlans(data) { var grid = el('div','kpi-grid'), unique = Object.create(null), total = data.contratos.reduce(function(s,c){unique[c.id]=true;return s+c.valor;},0), freq = {}; data.contratos.forEach(function(c){freq[c.frequencia||'Não informado']=(freq[c.frequencia||'Não informado']||0)+1;}); grid.appendChild(card('Faturamento',money(total),'Contratos no filtro',function(){showDetail('Contratos no filtro',peopleFor('prescricoes'));})); grid.appendChild(card('Alunos',number(Object.keys(unique).length),'Pessoas únicas')); grid.appendChild(card('Contratos',number(data.contratos.length),'Ativos no recorte')); grid.appendChild(card('Ticket por aluno',money(Object.keys(unique).length?total/Object.keys(unique).length:0),'Faturamento / alunos')); var box=section('Distribuição por frequência'); box.appendChild(barList(Object.keys(freq).sort().map(function(k){return{label:k,value:freq[k]};}))); return [grid,box]; }
+  function dueBuckets(data) { var h=today(), result={previous:[],today:[],next:[], timeline:[], month:[0,0,0,0]}; for(var i=-5;i<=5;i++)result.timeline.push({label:i===0?'Hoje':(i<0?Math.abs(i)+'d atrás':'+'+i+'d'),value:0,day:i}); data.contratos.forEach(function(c){var d=dayDiff(parseDate(c.vencimento),h)*-1; if(d>=-5&&d<=-1)result.previous.push(c); if(d===0)result.today.push(c); if(d>=1&&d<=5)result.next.push(c); result.timeline.forEach(function(x){if(x.day===d)x.value++;}); var date=parseDate(c.vencimento); if(date&&date.getFullYear()===h.getFullYear()&&date.getMonth()===h.getMonth()){var q=date.getDate()<=7?0:date.getDate()<=15?1:date.getDate()<=23?2:3;result.month[q]++;}}); return result; }
+  function detailsForContracts(title, contracts) { var by=groupedContracts(contracts), people=(state.bootstrap.alunos||[]).filter(function(p){return by[p.id];}).map(function(p){return{aluno:p.aluno,contratos:by[p.id],valorMensal:by[p.id].reduce(function(s,c){return s+c.valor;},0),profile:(profileMap()[p.id]||{}).perfilPagamento||'Sem histórico'};}); showDetail(title,people); }
+  function renderDue(data) { var b=dueBuckets(data), grid=el('div','kpi-grid'); [['Últimos 5 dias',b.previous],['Vencem hoje',b.today],['Próximos 5 dias',b.next]].forEach(function(x){grid.appendChild(card(x[0],number(x[1].length),'contratos',function(){detailsForContracts(x[0],x[1]);}));}); var timeline=section('Linha do tempo — 11 dias');timeline.appendChild(barList(b.timeline,function(i){detailsForContracts(i.label,data.contratos.filter(function(c){return -dayDiff(parseDate(c.vencimento),today())===i.day;}));})); var heat=section('Mapa do mês');heat.appendChild(barList(['1–7','8–15','16–23','24–fim'].map(function(l,i){return{label:l,value:b.month[i]};})));return[grid,timeline,heat]; }
+  function renderFollow(kind) { var list=peopleFor(kind), grid=el('div','kpi-grid'), groups={verde:[],laranja:[],critico:[],sem:[]};list.forEach(function(x){var s=x.classification.state;if(s==='verde')groups.verde.push(x);else if(s==='laranja')groups.laranja.push(x);else if(s.indexOf('sem_')===0)groups.sem.push(x);else groups.critico.push(x);}); grid.appendChild(card('Em dia',number(groups.verde.length),'Até o prazo verde',function(){showDetail('Em dia',groups.verde);}));grid.appendChild(card('Atenção',number(groups.laranja.length),'Próximo ciclo',function(){showDetail('Atenção',groups.laranja);}));grid.appendChild(card('Prioridade',number(groups.critico.length),'Requer ação',function(){showDetail('Prioridades',groups.critico);}));grid.appendChild(card('Sem dado',number(groups.sem.length),'Prioridade máxima',function(){showDetail('Dados a regularizar',groups.sem);}));var chart=section(kind==='prescricoes'?'Prescrições por situação':'Avaliações por situação');var count={};list.forEach(function(x){count[x.classification.state]=(count[x.classification.state]||0)+1;});chart.appendChild(barList(Object.keys(count).map(function(k){return{label:stateLabel(k),value:count[k]};}),function(i){showDetail(i.label,list.filter(function(x){return stateLabel(x.classification.state)===i.label;}));}));return[grid,chart]; }
+  function renderHome(data) { var p=peopleFor('prescricoes'),a=peopleFor('avaliacoes'), d=dueBuckets(data),grid=el('div','kpi-grid');var miss=p.filter(function(x){return x.classification.state==='sem_ficha';}).concat(a.filter(function(x){return x.classification.state==='sem_avaliacao';}));grid.appendChild(card('Dados a regularizar',number(miss.length),'Prioridade máxima',function(){showDetail('Dados a regularizar',miss);}));grid.appendChild(card('Prescrições em ação',number(p.filter(function(x){return x.classification.state!=='verde';}).length),'Abrir recorte',function(){showDetail('Prescrições em ação',p.filter(function(x){return x.classification.state!=='verde';}));}));grid.appendChild(card('Avaliações em ação',number(a.filter(function(x){return x.classification.state!=='verde';}).length),'Abrir recorte',function(){showDetail('Avaliações em ação',a.filter(function(x){return x.classification.state!=='verde';}));}));grid.appendChild(card('Vencem hoje',number(d.today.length),'Acompanhar pagamentos',function(){detailsForContracts('Vencem hoje',d.today);}));var positive=section('Operação em dia');positive.appendChild(el('p','body-copy',number(p.filter(function(x){return x.classification.state==='verde';}).length)+' prescrições e '+number(a.filter(function(x){return x.classification.state==='verde';}).length+' avaliações estão dentro do prazo verde.'));return[grid,positive]; }
+  function renderSettings() { var page=el('div','settings-grid'), config=state.bootstrap.configuracao; var alert=section('Alertas');['prescricoes','avaliacoes'].forEach(function(k){var r=config.alertas[k];var block=el('div','');block.appendChild(el('h3','',k==='prescricoes'?'Prescrições':'Avaliações'));Object.keys(r).forEach(function(field){var label=el('label','',field);var input=el('input');input.type='number';input.value=r[field];input.dataset.rule=k;input.dataset.field=field;label.appendChild(input);block.appendChild(label);});alert.appendChild(block);});var alertSave=el('button','primary','Salvar alertas');alertSave.type='button';alertSave.addEventListener('click',function(){var values={};alert.querySelectorAll('input').forEach(function(i){(values[i.dataset.rule]||(values[i.dataset.rule]={}))[i.dataset.field]=Number(i.value);}); enqueue({tipo:'configAlertas',valores:values});});alert.appendChild(alertSave);page.appendChild(alert);
+    var payment=section('Perfil de pagamento');var selectStudent=el('select');state.bootstrap.alunos.slice().sort(function(a,b){return a.aluno.localeCompare(b.aluno,'pt-BR');}).forEach(function(p){writeOption(selectStudent,p.id,p.aluno+' · '+p.id);});var selectProfile=el('select');config.opcoesPerfilPagamento.forEach(function(p){writeOption(selectProfile,p,p);});var note=el('textarea');note.placeholder='Observação opcional';var paySave=el('button','primary','Salvar perfil');paySave.type='button';paySave.addEventListener('click',function(){var person=state.bootstrap.alunos.filter(function(p){return p.id===selectStudent.value;})[0];enqueue({tipo:'perfilPagamento',valores:{id:person.id,aluno:person.aluno,perfilPagamento:selectProfile.value,observacao:note.value}});});payment.appendChild(selectStudent);payment.appendChild(selectProfile);payment.appendChild(note);payment.appendChild(paySave);page.appendChild(payment);
+    var home=section('Home');home.appendChild(el('p','body-copy','A ordem e os cartões ativos podem ser ajustados nesta próxima revisão do painel. Os prazos e os perfis já são graváveis aqui.'));page.appendChild(home);return[page]; }
+  function render() { if(!state.bootstrap)return; var content=document.getElementById('pageContent');clear(content);var data=filtered(), nodes=[];document.getElementById('pageTitle').textContent=labels[state.page];document.getElementById('lastUpdate').textContent=state.bootstrap.atualizadoEm?'Base atualizada em '+state.bootstrap.atualizadoEm:'Nenhuma importação válida';var sub=document.getElementById('subnav');sub.hidden=!(state.page==='financeiro'||state.page==='acompanhamento');sub.querySelectorAll('button').forEach(function(b){var finance=b.dataset.subpage==='planos'||b.dataset.subpage==='vencimentos';b.hidden=(state.page==='financeiro')?!finance:(state.page==='acompanhamento'?finance:true);b.classList.toggle('active',b.dataset.subpage===state.subpage);});if(state.page==='home')nodes=renderHome(data);else if(state.page==='financeiro')nodes=state.subpage==='planos'?renderPlans(data):renderDue(data);else if(state.page==='acompanhamento')nodes=renderFollow(state.subpage);else nodes=renderSettings();nodes.forEach(function(n){content.appendChild(n);}); }
+  function syncFilters() { var status=document.getElementById('globalStatus'), polo=document.getElementById('globalPolo'), b=state.bootstrap;clear(status);clear(polo);var statuses=Array.from(new Set(b.alunos.map(function(p){return p.status;}))).sort();var polos=Array.from(new Set(b.contratos.map(function(c){return c.polo;}))).sort();statuses.forEach(function(v){writeOption(status,v,v);});polos.forEach(function(v){writeOption(polo,v,v);});status.value=state.filters.status||'';polo.value=state.filters.polo||''; }
+  function activate(page) { state.page=page;if(page==='financeiro'&&['planos','vencimentos'].indexOf(state.subpage)<0)state.subpage='planos';if(page==='acompanhamento'&&['prescricoes','avaliacoes'].indexOf(state.subpage)<0)state.subpage='prescricoes';document.querySelectorAll('[data-page]').forEach(function(b){b.classList.toggle('active',b.dataset.page===page);});render(); }
+  function applyBootstrap(data) { state.bootstrap=data;state.filters={status:data.filtrosPadrao.status,polo:data.filtrosPadrao.polo};syncFilters();render();safeCacheSet(data);finishLoading(); }
+  function enqueue(patch) { state.mutationQueue.push(patch);setSave('Alteração pendente');flushQueue(); }
+  function flushQueue() { if(state.saving||!state.mutationQueue.length)return;state.saving=true;var patches=state.mutationQueue.splice(0);var requestId='dash-'+Date.now()+'-'+Math.random().toString(36).slice(2);setSave('Salvando…');call('salvarMutacoesDashboard',{requestId:requestId,patches:patches}).then(function(){setSave('Salvo');return call('obterBootstrapDashboard');}).then(function(b){applyBootstrap(b);}).catch(function(){state.mutationQueue=patches.concat(state.mutationQueue);setSave('Não foi possível salvar. Tente novamente.');}).finally(function(){state.saving=false;if(state.mutationQueue.length)flushQueue();}); }
+  function start() { setProgress(8);var timer=setInterval(function(){var width=parseFloat(document.getElementById('loading-progress').style.width)||8;setProgress(Math.min(95,width+7));},150);setTimeout(function(){if(!state.bootstrap)document.getElementById('loading-message').textContent='A base está levando mais tempo que o normal…';},5000);var cached=safeCacheGet();if(cached&&cached.versao){applyBootstrap(cached);call('obterVersaoDashboard').then(function(v){if(v.versao!==cached.versao)return call('obterBootstrapDashboard');}).then(function(fresh){if(fresh)applyBootstrap(fresh);}).catch(function(){}).finally(function(){clearInterval(timer);});}else{call('obterBootstrapDashboard').then(applyBootstrap).catch(function(){document.getElementById('loading-message').textContent='Não foi possível carregar. Reabra o dashboard para tentar novamente.';}).finally(function(){clearInterval(timer);});} }
+  document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('[data-page]').forEach(function(b){b.addEventListener('click',function(){activate(b.dataset.page);});});document.getElementById('subnav').addEventListener('click',function(e){if(e.target.dataset.subpage){state.subpage=e.target.dataset.subpage;render();}});document.getElementById('globalStatus').addEventListener('change',function(e){state.filters.status=e.target.value;render();});document.getElementById('globalPolo').addEventListener('change',function(e){state.filters.polo=e.target.value;render();});document.getElementById('detailClose').addEventListener('click',function(){document.getElementById('detailDialog').close();});start();});
+}());
 </script>
