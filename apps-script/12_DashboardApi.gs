@@ -195,7 +195,7 @@ function versaoBootstrapDashboard_(ultimaImportacao) {
 }
 
 function chaveBootstrapDashboard_(versao) {
-  return 'dashboard:bootstrap:v1:' + hashTextoDashboard_(versao);
+  return 'dashboard:bootstrap:v2:' + hashTextoDashboard_(versao);
 }
 
 function obterCacheDashboard_() {
@@ -213,11 +213,35 @@ function respostaBootstrapDashboardValida_(resposta, versao) {
     Array.isArray(resposta.contratos);
 }
 
+function normalizarPoloDashboard_(valor) {
+  return String(valor == null ? '' : valor).trim().toLocaleLowerCase('pt-BR')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function resolverPoloPadraoDashboard_(poloPadrao, contratos) {
+  var procurado = normalizarPoloDashboard_(poloPadrao);
+  if (!procurado) return '';
+  var polos = Array.from(new Set((contratos || []).map(function (contrato) {
+    return String(contrato.polo || '').trim();
+  }).filter(Boolean)));
+  var exato = polos.filter(function (polo) { return normalizarPoloDashboard_(polo) === procurado; })[0];
+  if (exato) return exato;
+  var parcial = polos.filter(function (polo) {
+    var normalizado = normalizarPoloDashboard_(polo);
+    return normalizado.indexOf(procurado) !== -1 || procurado.indexOf(normalizado) !== -1;
+  })[0];
+  return parcial || '';
+}
+
 function montarBootstrapDashboard_(base, configuracao, versao) {
+  var filtrosPadrao = {
+    status: configuracao.filtrosPadrao.status,
+    polo: resolverPoloPadraoDashboard_(configuracao.filtrosPadrao.polo, base.contratos)
+  };
   return {
     versao: versao,
     atualizadoEm: base.ultimaImportacao ? base.ultimaImportacao.concluidaEm : '',
-    filtrosPadrao: configuracao.filtrosPadrao,
+    filtrosPadrao: filtrosPadrao,
     configuracao: {
       homeCards: configuracao.homeCards,
       alertas: configuracao.alertas,

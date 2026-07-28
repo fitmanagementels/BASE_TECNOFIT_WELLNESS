@@ -519,3 +519,14 @@ test('bootstrap inclui versão e configuração, mas nunca envia contato ao nave
   assert.equal(JSON.stringify(resposta).includes('85999999999'), false);
   assert.equal(resposta.configuracao.perfisPagamento[0].perfilPagamento, 'Bom pagador');
 });
+
+test('bootstrap resolve Wellness para o nome real do polo sem descartar contratos', () => {
+  const gas = loadGas(FILES);
+  assert.equal(
+    gas.resolverPoloPadraoDashboard_('Wellness', [
+      { polo: 'XSTEAM WELLNESS CLUB' }, { polo: 'GREENLIFE' }
+    ]),
+    'XSTEAM WELLNESS CLUB'
+  );
+  assert.equal(gas.resolverPoloPadraoDashboard_('Polo inexistente', [{ polo: 'GREENLIFE' }]), '');
+});
