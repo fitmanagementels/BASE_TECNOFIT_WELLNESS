@@ -80,9 +80,100 @@ function obterUltimoRegistroImportacaoDashboard_(planilha) {
 function lerBaseDashboard_() {
   var planilha = obterPlanilhaMestre_();
   return {
+    planilha: planilha,
     alunos: lerTabelaDashboardDaPlanilha_(planilha, CONFIG.abas.alunos, CONFIG.cabecalhos.alunos),
     contratos: lerTabelaDashboardDaPlanilha_(planilha, CONFIG.abas.contratos, CONFIG.cabecalhos.contratos),
     ultimaImportacao: obterUltimaImportacaoDashboard_(planilha),
     ultimaTentativa: obterUltimoRegistroImportacaoDashboard_(planilha)
+  };
+}
+
+function jsonDashboardSeguro_(valor, fallback) {
+  try {
+    var convertido = JSON.parse(String(valor == null ? '' : valor));
+    return convertido && typeof convertido === 'object' ? convertido : fallback;
+  } catch (erro) {
+    return fallback;
+  }
+}
+
+function configuracaoAlertaPadraoDashboard_() {
+  return {
+    prescricoes: { laranja: 90, vermelho: 180, roxo: 270 },
+    avaliacoes: { laranja: 90, vermelho: 120, roxo: 180, critico: 270 }
+  };
+}
+
+function lerConfiguracaoDashboardPersistente_(planilha) {
+  var linhasDashboard = lerTabelaDashboardDaPlanilha_(
+    planilha, CONFIG.abas.configDashboard, CONFIG.cabecalhos.configDashboard
+  );
+  var linhasAlertas = lerTabelaDashboardDaPlanilha_(
+    planilha, CONFIG.abas.configAlertas, CONFIG.cabecalhos.configAlertas
+  );
+  var linhasPagamentos = lerTabelaDashboardDaPlanilha_(
+    planilha, CONFIG.abas.gestaoPagamentos, CONFIG.cabecalhos.gestaoPagamentos
+  );
+  var filtrosPadrao = { status: 'Ativo', polo: 'Wellness' };
+  var linhaFiltros = linhasDashboard.filter(function (linha) {
+    return linha.tipo === 'filtros' && linha.chave === 'globais';
+  })[0];
+  if (linhaFiltros) {
+    var filtrosLidos = jsonDashboardSeguro_(linhaFiltros.valor, {});
+    if (String(filtrosLidos.status || '').trim()) filtrosPadrao.status = String(filtrosLidos.status).trim();
+    if (String(filtrosLidos.polo || '').trim()) filtrosPadrao.polo = String(filtrosLidos.polo).trim();
+  }
+  var alertas = configuracaoAlertaPadraoDashboard_();
+  linhasAlertas.forEach(function (linha) {
+    if (!Object.prototype.hasOwnProperty.call(alertas, linha.chave)) return;
+    var limites = jsonDashboardSeguro_(linha.valor, null);
+    if (limites) alertas[linha.chave] = limites;
+  });
+  return {
+    filtrosPadrao: filtrosPadrao,
+    homeCards: linhasDashboard.filter(function (linha) { return linha.tipo === 'home_card'; }).map(function (linha) {
+      return {
+        chave: String(linha.chave || ''),
+        ativo: linha.ativo === true || String(linha.ativo).toLowerCase() === 'true',
+        ordem: Number(linha.ordem) || 0,
+        titulo: String(linha.titulo || ''),
+        estados: Array.isArray(jsonDashboardSeguro_(linha.estados, [])) ? jsonDashboardSeguro_(linha.estados, []) : []
+      };
+    }).sort(function (a, b) { return a.ordem - b.ordem || a.chave.localeCompare(b.chave, 'pt-BR'); }),
+    alertas: alertas,
+    perfisPagamento: linhasPagamentos.map(function (linha) {
+      return {
+        id: String(linha.id || ''),
+        aluno: String(linha.aluno || ''),
+        perfilPagamento: String(linha.perfil_pagamento || 'Sem histórico'),
+        observacao: String(linha.observacao || ''),
+        atualizadoEm: String(linha.atualizado_em || '')
+      };
+    })
+  };
+}
+
+function alunoSeguroParaDashboard_(aluno) {
+  return {
+    id: String(aluno.id || ''),
+    aluno: String(aluno.aluno || ''),
+    status: String(aluno.status || ''),
+    dataFicha: formatarDataDashboard_(aluno.data_ficha),
+    dataAvaliacao: formatarDataDashboard_(aluno.data_avaliacao)
+  };
+}
+
+function contratoSeguroParaDashboard_(contrato) {
+  return {
+    chave: String(contrato._chave_contrato || ''),
+    id: String(contrato.id || ''),
+    contrato: String(contrato.contrato_completo || ''),
+    frequencia: String(contrato.contrato_x_sem || ''),
+    valor: Number(contrato.valor) || 0,
+    inicioCorrente: formatarDataDashboard_(contrato.inicio_corrente),
+    vencimento: formatarDataDashboard_(contrato.vencimento),
+    statusContrato: String(contrato.status_contrato || ''),
+    polo: String(contrato.polo || ''),
+    modalidade: String(contrato.modalidade || '')
   };
 }

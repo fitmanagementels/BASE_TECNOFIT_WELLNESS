@@ -2,6 +2,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('TecnoFit')
     .addItem('Abrir painel', 'abrirPainel')
+    .addItem('Abrir dashboard', 'abrirDashboard')
     .addToUi();
 }
 
@@ -41,4 +42,13 @@ function doGet() {
 
 function obterUrlDashboard() {
   return ScriptApp.getService().getUrl() || '';
+}
+
+function abrirDashboard() {
+  var url = obterUrlDashboard();
+  if (!url) throw new Error('Publique o web app antes de abrir o dashboard.');
+  var html = HtmlService.createHtmlOutput(
+    '<script>window.open(' + JSON.stringify(url) + ', "_blank");google.script.host.close();</script>'
+  ).setWidth(10).setHeight(10);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Abrindo dashboard');
 }

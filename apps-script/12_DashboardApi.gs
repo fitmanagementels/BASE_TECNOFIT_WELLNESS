@@ -188,3 +188,91 @@ function obterDadosPaginaDashboard(pagina, filtros) {
     throw new Error('Não foi possível carregar o dashboard.');
   }
 }
+
+function versaoBootstrapDashboard_(ultimaImportacao) {
+  var importacao = ultimaImportacao && ultimaImportacao.execucaoId ? ultimaImportacao.execucaoId : 'sem-importacao';
+  return 'importacao:' + importacao + '|config:' + obterVersaoDashboard_();
+}
+
+function chaveBootstrapDashboard_(versao) {
+  return 'dashboard:bootstrap:v1:' + hashTextoDashboard_(versao);
+}
+
+function obterCacheDashboard_() {
+  try {
+    return CacheService.getScriptCache();
+  } catch (erro) {
+    return null;
+  }
+}
+
+function respostaBootstrapDashboardValida_(resposta, versao) {
+  return objetoDashboardValido_(resposta) && resposta.versao === versao &&
+    typeof resposta.atualizadoEm === 'string' && objetoDashboardValido_(resposta.filtrosPadrao) &&
+    objetoDashboardValido_(resposta.configuracao) && Array.isArray(resposta.alunos) &&
+    Array.isArray(resposta.contratos);
+}
+
+function montarBootstrapDashboard_(base, configuracao, versao) {
+  return {
+    versao: versao,
+    atualizadoEm: base.ultimaImportacao ? base.ultimaImportacao.concluidaEm : '',
+    filtrosPadrao: configuracao.filtrosPadrao,
+    configuracao: {
+      homeCards: configuracao.homeCards,
+      alertas: configuracao.alertas,
+      perfisPagamento: configuracao.perfisPagamento,
+      opcoesPerfilPagamento: DASHBOARD_CONFIGURACAO_PADRAO.perfisPagamento
+    },
+    alunos: base.alunos.map(alunoSeguroParaDashboard_),
+    contratos: base.contratos.map(contratoSeguroParaDashboard_)
+  };
+}
+
+function obterBootstrapDashboard() {
+  try {
+    var base = lerBaseDashboard_();
+    var versao = versaoBootstrapDashboard_(base.ultimaImportacao);
+    var cache = obterCacheDashboard_();
+    var chave = chaveBootstrapDashboard_(versao);
+    if (cache) {
+      var existente = cache.get(chave);
+      if (existente) {
+        try {
+          var respostaCache = JSON.parse(existente);
+          if (respostaBootstrapDashboardValida_(respostaCache, versao)) return respostaCache;
+        } catch (erroCache) {
+          // Um cache descartável inválido nunca impede a leitura da fonte oficial.
+        }
+      }
+    }
+    var resposta = montarBootstrapDashboard_(
+      base,
+      lerConfiguracaoDashboardPersistente_(base.planilha),
+      versao
+    );
+    if (cache) {
+      try { cache.put(chave, JSON.stringify(resposta), CONFIG.dashboard.cacheSegundos); } catch (erroGravacaoCache) {
+        // Cache é apenas uma otimização.
+      }
+    }
+    return resposta;
+  } catch (erro) {
+    console.error('dashboard_bootstrap_error', { tipo: tipoErroDashboardSeguro_(erro) });
+    throw new Error('Não foi possível carregar o dashboard.');
+  }
+}
+
+function obterVersaoDashboard() {
+  try {
+    var planilha = obterPlanilhaMestre_();
+    var ultimaImportacao = obterUltimaImportacaoDashboard_(planilha);
+    return {
+      versao: versaoBootstrapDashboard_(ultimaImportacao),
+      atualizadoEm: ultimaImportacao ? ultimaImportacao.concluidaEm : ''
+    };
+  } catch (erro) {
+    console.error('dashboard_version_error', { tipo: tipoErroDashboardSeguro_(erro) });
+    throw new Error('Não foi possível verificar a atualização do dashboard.');
+  }
+}

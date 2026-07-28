@@ -132,7 +132,6 @@ function linhaContratoDashboard_(contrato, aluno, hoje) {
     chave: contrato._chave_contrato,
     id: String(contrato.id || ''),
     aluno: aluno ? aluno.aluno : '',
-    contato: aluno ? aluno.contato : '',
     statusAluno: aluno ? aluno.status : '',
     frequencia: contrato.contrato_x_sem || '',
     modalidade: contrato.modalidade || '',

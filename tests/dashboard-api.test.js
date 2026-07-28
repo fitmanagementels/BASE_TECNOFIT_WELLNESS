@@ -9,6 +9,7 @@ const FILES = [
   'apps-script/09_DashboardMetricas.gs',
   'apps-script/10_DashboardPaginas.gs',
   'apps-script/11_DashboardRepositorio.gs',
+  'apps-script/13_DashboardConfiguracao.gs',
   'apps-script/12_DashboardApi.gs'
 ];
 
@@ -205,9 +206,10 @@ test('obterDadosPaginaDashboard aplica filtros sem reduzir as opções disponív
     polos: ['POLO A', 'POLO B'], statusAlunos: ['Ativo', 'Inativo'],
     frequencias: ['2X', '3X'], modalidades: ['CORRIDA', 'MUSCULAÇÃO'], statusContratos: ['Ativo']
   });
-  assert.deepEqual(JSON.parse(JSON.stringify(resultado.dados.kpis)), {
-    alunos: 1, contratos: 1, valor: 100, ticketMedio: 100
-  });
+  assert.deepEqual(JSON.parse(JSON.stringify({
+    alunos: resultado.dados.kpis.alunos, contratos: resultado.dados.kpis.contratos,
+    valor: resultado.dados.kpis.valor, ticketMedio: resultado.dados.kpis.ticketMedio
+  })), { alunos: 1, contratos: 1, valor: 100, ticketMedio: 100 });
   assert.deepEqual(resultado.dados.lista.map(item => item.aluno), ['ALUNO ATIVO A']);
 });
 
@@ -470,4 +472,50 @@ test('obterDadosPaginaDashboard devolve dados calculados quando a gravação do 
 
   assert.equal(resultado.ok, true);
   assert.equal(resultado.pagina, 'planos');
+});
+
+test('bootstrap inclui versão e configuração, mas nunca envia contato ao navegador', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const abas = {
+    BASE_ALUNOS: criarAba([
+      Array.from(config.cabecalhos.alunos),
+      ['1', 'ALUNA TESTE', '85999999999', 'Ativo', '', new Date(2026, 6, 1), '', 'exec-1']
+    ]),
+    CONTRATOS: criarAba([
+      Array.from(config.cabecalhos.contratos),
+      ['c1', '1', '2X - WELLNESS - PERSONAL', '2X', 433, '', new Date(2026, 6, 20), 'Ativo', 'Wellness', 'PERSONAL', 'exec-1']
+    ]),
+    IMPORTACOES: criarAba([
+      Array.from(config.cabecalhos.importacoes),
+      ['exec-1', '', '27/07/2026 19:34', 'vencimentos', '', '', '2026-07-27', 'r1', '', '', '', 'SUCESSO', 'OK']
+    ]),
+    CONFIG_DASHBOARD: criarAba([
+      Array.from(config.cabecalhos.configDashboard),
+      ['filtros', 'globais', true, 0, '{"status":"Ativo","polo":"Wellness"}', 'Filtros padrão', '']
+    ]),
+    CONFIG_ALERTAS: criarAba([
+      Array.from(config.cabecalhos.configAlertas),
+      ['alertas', 'prescricoes', true, 10, '{"laranja":90,"vermelho":180,"roxo":270}', 'Prescrições', ''],
+      ['alertas', 'avaliacoes', true, 20, '{"laranja":90,"vermelho":120,"roxo":180,"critico":270}', 'Avaliações', '']
+    ]),
+    GESTAO_PAGAMENTOS: criarAba([
+      Array.from(config.cabecalhos.gestaoPagamentos),
+      ['1', 'ALUNA TESTE', 'Bom pagador', 'Observação interna', '27/07/2026 19:30']
+    ])
+  };
+  const values = new Map([['tecnofit.dashboard.versao', '7']]);
+  const { gas } = carregarComPlanilha(
+    { getSheetByName: nome => abas[nome] || null },
+    criarCache(),
+    { PropertiesService: { getDocumentProperties: () => ({ getProperty: key => values.get(key) || null }) } }
+  );
+
+  const resposta = gas.obterBootstrapDashboard();
+
+  assert.equal(resposta.versao, 'importacao:exec-1|config:7');
+  assert.equal(resposta.atualizadoEm, '27/07/2026 19:34');
+  assert.deepEqual(JSON.parse(JSON.stringify(resposta.filtrosPadrao)), { status: 'Ativo', polo: 'Wellness' });
+  assert.equal(Object.hasOwn(resposta.alunos[0], 'contato'), false);
+  assert.equal(JSON.stringify(resposta).includes('85999999999'), false);
+  assert.equal(resposta.configuracao.perfisPagamento[0].perfilPagamento, 'Bom pagador');
 });

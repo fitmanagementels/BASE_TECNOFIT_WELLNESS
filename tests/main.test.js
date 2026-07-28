@@ -11,7 +11,8 @@ function setup() {
   };
   const ui = {
     createMenu(name) { calls.push(['menu', name]); return menu; },
-    showSidebar(html) { calls.push(['sidebar', html.title]); }
+    showSidebar(html) { calls.push(['sidebar', html.title]); },
+    showModalDialog(html, title) { calls.push(['show-modal', title, html.content]); }
   };
   const gas = loadGas(['apps-script/08_Main.gs'], {
     SpreadsheetApp: { getUi: () => ui },
@@ -30,6 +31,13 @@ function setup() {
       createHtmlOutputFromFile(name) {
         calls.push(['html-output', name]);
         return { getContent: () => `<p>${name}</p>` };
+      },
+      createHtmlOutput(content) {
+        return {
+          content,
+          setWidth() { return this; },
+          setHeight() { return this; }
+        };
       }
     },
     ScriptApp: {
@@ -43,14 +51,24 @@ function setup() {
   return { gas, calls };
 }
 
-test('onOpen cria menu TecnoFit com ação para abrir o painel', () => {
+test('onOpen cria menu TecnoFit com ações para atualização e dashboard', () => {
   const { gas, calls } = setup();
   gas.onOpen();
   assert.deepEqual(calls, [
     ['menu', 'TecnoFit'],
     ['item', 'Abrir painel', 'abrirPainel'],
+    ['item', 'Abrir dashboard', 'abrirDashboard'],
     ['menu-added']
   ]);
+});
+
+test('abrirDashboard abre a URL publicada em uma nova janela', () => {
+  const { gas, calls } = setup();
+  gas.abrirDashboard();
+  assert.deepEqual(calls, [[
+    'show-modal', 'Abrindo dashboard',
+    '<script>window.open("https://script.google.com/mock", "_blank");google.script.host.close();</script>'
+  ]]);
 });
 
 test('abrirPainel renderiza Sidebar com título', () => {
