@@ -94,7 +94,7 @@ Perfis iniciais: Sem histórico; Bom pagador; Pagamento eventual fora do prazo; 
 
 - A instalação e implantação remotas do dashboard ainda não foram validadas manualmente.
 - A planilha precisa receber todos os arquivos novos do Apps Script; colar parcialmente pode causar funções ausentes.
-- O primeiro MVP de Configurações já salva alertas e pagamentos. A edição visual dos cartões da Home ficou como próxima melhoria do app, embora o backend a suporte.
+- Configurações já salva alertas, perfis de pagamento e cartões ativos/ordem da Home.
 - Não há histórico de alunos ausentes do lote nem tempo de empresa; ambos são pós-MVP.
 - O repositório local não possui `origin`; é necessário o URL do repositório GitHub ou autorização para criar um.
 - Não incluir dados pessoais em testes, documentação ou cache local.
@@ -108,4 +108,4 @@ Perfis iniciais: Sem histórico; Bom pagador; Pagamento eventual fora do prazo; 
 
 ## Contexto para outro chat/IA
 
-O projeto TecnoFit mantém um snapshot semanal de três relatórios e um web app Apps Script XSTEAM. A branch oficial é `main`; o importador preserva a última base válida em qualquer erro. O dashboard usa `obterBootstrapDashboard()` sem contato, cache local versionado e `salvarMutacoesDashboard()` com fila cliente, LockService e idempotência. A navegação é Home/Financeiro/Acompanhamento/Configurações, com subabas Planos/Vencimentos e Prescrições/Avaliações. Filtros padrão são Ativo/Wellness; contratos múltiplos são agrupados por ID em detalhes. Falta copiar/deployar todos os arquivos no Apps Script, validar manualmente o Web App, configurar/push para GitHub e remover o worktree já consolidado. Não criar cópias paralelas ou expor dados pessoais.
+O projeto TecnoFit mantém um snapshot semanal de três relatórios e um web app Apps Script XSTEAM. A branch oficial é `main`; o importador preserva a última base válida em qualquer erro. O dashboard usa `obterBootstrapDashboard()` sem contato, cache local versionado e `salvarMutacoesDashboard()` com fila cliente, LockService e idempotência. A navegação é Home/Financeiro/Acompanhamento/Configurações, com subabas Planos/Vencimentos e Prescrições/Avaliações. Filtros padrão são Ativo/Wellness; contratos múltiplos são agrupados por ID em detalhes. A configuração visual controla cartões e ordem da Home, alertas e perfil por ID. Falta copiar/deployar todos os arquivos no Apps Script, validar manualmente o Web App e configurar/push para GitHub. Não criar cópias paralelas ou expor dados pessoais.
