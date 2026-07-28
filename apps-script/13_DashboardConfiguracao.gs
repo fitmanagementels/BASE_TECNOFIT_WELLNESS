@@ -1,8 +1,8 @@
 var DASHBOARD_CONFIGURACAO_PADRAO = Object.freeze({
   dashboard: Object.freeze([
     Object.freeze(['filtros', 'globais', true, 0, '{"status":"Ativo","polo":"Wellness"}', 'Filtros padrão', '']),
-    Object.freeze(['home_card', 'vencimentos', true, 10, '', 'Vencimentos', '["ultimos_5_dias","hoje","proximos_5_dias"]']),
-    Object.freeze(['home_card', 'acompanhamento', true, 20, '', 'Acompanhamento', '["prescricoes","avaliacoes"]'])
+    Object.freeze(['home_card', 'dados_ausentes', true, 10, '', 'Dados a regularizar', '["sem_ficha","sem_avaliacao"]']),
+    Object.freeze(['home_card', 'vencem_hoje', true, 20, '', 'Vencem hoje', '[]'])
   ]),
   alertas: Object.freeze([
     Object.freeze(['alertas', 'prescricoes', true, 10, '{"laranja":90,"vermelho":180,"roxo":270}', 'Prescrições', '']),
