@@ -44,3 +44,37 @@ test('deduplica _chave_contrato sem colidir com propriedades herdadas', () => {
     ['Proto 1', 'ToString 1', 'Comum 1']
   );
 });
+
+test('prescrição muda de verde para laranja somente após o dia 90', () => {
+  const regras = { laranja: 90, vermelho: 180, roxo: 270 };
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(gas.classificarPrescricao_(new Date(2026, 3, 12, 12), hoje, regras))),
+    { situacao: 'verde', dias: 90, prioridade: 4 }
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(gas.classificarPrescricao_(new Date(2026, 3, 11, 12), hoje, regras))),
+    { situacao: 'laranja', dias: 91, prioridade: 3 }
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(gas.classificarPrescricao_('', hoje, regras))),
+    { situacao: 'sem_ficha', dias: null, prioridade: 0 }
+  );
+});
+
+test('avaliação respeita as quatro fronteiras e ausência tem prioridade máxima', () => {
+  const regras = { laranja: 90, vermelho: 120, roxo: 180, critico: 270 };
+  assert.equal(gas.classificarAvaliacao_(new Date(2026, 3, 12, 12), hoje, regras).situacao, 'verde');
+  assert.equal(gas.classificarAvaliacao_(new Date(2026, 3, 11, 12), hoje, regras).situacao, 'laranja');
+  assert.equal(gas.classificarAvaliacao_(new Date(2026, 2, 12, 12), hoje, regras).situacao, 'vermelho');
+  assert.equal(gas.classificarAvaliacao_(new Date(2026, 0, 11, 12), hoje, regras).situacao, 'roxo');
+  assert.equal(gas.classificarAvaliacao_(new Date(2025, 9, 13, 12), hoje, regras).situacao, 'falha_critica');
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(gas.classificarAvaliacao_('', hoje, regras))),
+    { situacao: 'sem_avaliacao', dias: null, prioridade: 0 }
+  );
+});
+
+test('valor por aula usa frequência semanal vezes 4,33', () => {
+  assert.equal(gas.calcularValorPorAula_(433, '2X'), 50);
+  assert.equal(gas.calcularValorPorAula_(433, 'sem frequência'), 0);
+});

@@ -40,7 +40,13 @@ test('fichas e avaliações contam alunos, não contratos', () => {
 
 test('planos calcula alunos, contratos, valor e ticket sem duplicar', () => {
   const page = gas.montarPaginaPlanos_(alunos, contratos.concat(contratos[0]));
-  assert.deepEqual(JSON.parse(JSON.stringify(page.kpis)), { alunos: 2, contratos: 3, valor: 600, ticketMedio: 200 });
+  assert.deepEqual(
+    JSON.parse(JSON.stringify({
+      alunos: page.kpis.alunos, contratos: page.kpis.contratos,
+      valor: page.kpis.valor, ticketMedio: page.kpis.ticketMedio
+    })),
+    { alunos: 2, contratos: 3, valor: 600, ticketMedio: 200 }
+  );
   assert.deepEqual(JSON.parse(JSON.stringify(page.graficos.valorPorPolo)), { 'POLO A': 400, 'POLO B': 200 });
 });
 
@@ -226,4 +232,29 @@ test('DTO de planos expõe somente campos consumidos pela interface', () => {
     'aluno', 'frequencia', 'inicioCorrente', 'modalidade', 'polo',
     'statusAluno', 'statusContrato', 'valor', 'vencimento'
   ].sort());
+});
+
+test('vencimentos expõe a janela de 11 dias e os quatro blocos fixos do mês', () => {
+  const page = gas.montarPaginaVencimentos_(alunos, contratos, hoje);
+  assert.equal(page.operacao.janela11Dias.length, 11);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(page.operacao.mapaMensal.map(item => item.chave))),
+    ['1-7', '8-15', '16-23', '24-fim']
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(page.operacao.resumos.map(item => item.chave))),
+    ['ultimos_5_dias', 'hoje', 'proximos_5_dias']
+  );
+});
+
+test('acompanhamento agrupa contratos por aluno e soma o valor associado à prioridade', () => {
+  const page = gas.montarPaginaAcompanhamento_(alunos, contratos, hoje, 'prescricoes', {
+    laranja: 90, vermelho: 180, roxo: 270
+  });
+  const semFicha = page.lista.find(item => item.id === '1');
+  assert.equal(semFicha.situacao, 'sem_ficha');
+  assert.equal(semFicha.valorMensal, 300);
+  assert.equal(semFicha.contratos.length, 2);
+  assert.equal(page.kpis.semDado, 1);
+  assert.equal(page.lista.some(item => Object.hasOwn(item, 'contato')), false);
 });

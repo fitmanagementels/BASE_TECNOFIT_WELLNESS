@@ -167,6 +167,7 @@ function montarPaginaVencimentos_(alunos, contratos, hoje) {
   });
   return {
     kpis: kpis,
+    operacao: montarOperacaoVencimentosDashboard_(lista, hoje),
     graficos: {
       situacao: contarPorDashboard_(lista, 'situacao'),
       semanas: vencimentosPorSemanaDashboard_(lista, hoje),
@@ -174,6 +175,153 @@ function montarPaginaVencimentos_(alunos, contratos, hoje) {
     },
     lista: lista,
     filtros: {}
+  };
+}
+
+function resumoVencimentosDashboard_(linhas, chave, titulo, corresponde) {
+  var contratos = linhas.filter(corresponde);
+  return {
+    chave: chave,
+    titulo: titulo,
+    alunos: unicosPor_(contratos, 'id').length,
+    contratos: contratos.length,
+    valor: contratos.reduce(function (soma, contrato) { return soma + contrato.valor; }, 0)
+  };
+}
+
+function montarOperacaoVencimentosDashboard_(lista, hoje) {
+  var janela11Dias = [];
+  for (var deslocamento = -5; deslocamento <= 5; deslocamento += 1) {
+    var data = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + deslocamento, 12);
+    var contratosDia = lista.filter(function (linha) { return linha.diasParaVencer === deslocamento; });
+    janela11Dias.push({
+      deslocamento: deslocamento,
+      data: formatarDataDashboard_(data),
+      hoje: deslocamento === 0,
+      alunos: unicosPor_(contratosDia, 'id').length,
+      contratos: contratosDia.length,
+      valor: contratosDia.reduce(function (soma, contrato) { return soma + contrato.valor; }, 0)
+    });
+  }
+  var blocos = [
+    { chave: '1-7', titulo: '1–7', inicio: 1, fim: 7 },
+    { chave: '8-15', titulo: '8–15', inicio: 8, fim: 15 },
+    { chave: '16-23', titulo: '16–23', inicio: 16, fim: 23 },
+    { chave: '24-fim', titulo: '24–fim', inicio: 24, fim: 31 }
+  ];
+  var mapaMensal = blocos.map(function (bloco) {
+    var contratosBloco = lista.filter(function (linha) {
+      var data = paraDataDashboard_(linha.vencimento);
+      return data && data.getFullYear() === hoje.getFullYear() && data.getMonth() === hoje.getMonth() &&
+        data.getDate() >= bloco.inicio && data.getDate() <= bloco.fim;
+    });
+    return {
+      chave: bloco.chave,
+      titulo: bloco.titulo,
+      alunos: unicosPor_(contratosBloco, 'id').length,
+      contratos: contratosBloco.length,
+      valor: contratosBloco.reduce(function (soma, contrato) { return soma + contrato.valor; }, 0)
+    };
+  });
+  return {
+    resumos: [
+      resumoVencimentosDashboard_(lista, 'ultimos_5_dias', 'Venceram nos últimos 5 dias', function (linha) {
+        return linha.diasParaVencer >= -5 && linha.diasParaVencer <= -1;
+      }),
+      resumoVencimentosDashboard_(lista, 'hoje', 'Vencem hoje', function (linha) {
+        return linha.diasParaVencer === 0;
+      }),
+      resumoVencimentosDashboard_(lista, 'proximos_5_dias', 'Vencem nos próximos 5 dias', function (linha) {
+        return linha.diasParaVencer >= 1 && linha.diasParaVencer <= 5;
+      })
+    ],
+    janela11Dias: janela11Dias,
+    mapaMensal: mapaMensal
+  };
+}
+
+function contratosPorAlunoDashboard_(contratos) {
+  return unicosPor_(contratos, '_chave_contrato').reduce(function (mapa, contrato) {
+    var id = String(contrato.id == null ? '' : contrato.id);
+    if (!mapa[id]) mapa[id] = [];
+    mapa[id].push(contrato);
+    return mapa;
+  }, Object.create(null));
+}
+
+function linhaAcompanhamentoDashboard_(aluno, contratos, classificacao, campoData) {
+  var contratosSeguros = (contratos || []).map(function (contrato) {
+    return {
+      chave: String(contrato._chave_contrato || ''),
+      contrato: String(contrato.contrato_completo || ''),
+      frequencia: String(contrato.contrato_x_sem || ''),
+      polo: String(contrato.polo || 'Não informado'),
+      valor: Number(contrato.valor) || 0,
+      vencimento: formatarDataDashboard_(contrato.vencimento)
+    };
+  });
+  return {
+    id: String(aluno.id || ''),
+    aluno: String(aluno.aluno || ''),
+    situacao: classificacao.situacao,
+    prioridade: classificacao.prioridade,
+    dias: classificacao.dias,
+    data: formatarDataDashboard_(aluno[campoData]),
+    valorMensal: contratosSeguros.reduce(function (soma, contrato) { return soma + contrato.valor; }, 0),
+    contratos: contratosSeguros
+  };
+}
+
+function montarPaginaAcompanhamento_(alunos, contratos, hoje, tipo, regras) {
+  var campo = tipo === 'avaliacoes' ? 'data_avaliacao' : 'data_ficha';
+  var classificar = tipo === 'avaliacoes' ? classificarAvaliacao_ : classificarPrescricao_;
+  var porAluno = contratosPorAlunoDashboard_(contratos);
+  var lista = unicosPor_(alunos, 'id').map(function (aluno) {
+    return linhaAcompanhamentoDashboard_(aluno, porAluno[String(aluno.id)] || [], classificar(aluno[campo], hoje, regras), campo);
+  }).sort(function (a, b) {
+    return a.prioridade - b.prioridade || b.valorMensal - a.valorMensal ||
+      a.aluno.localeCompare(b.aluno, 'pt-BR') || a.id.localeCompare(b.id, 'pt-BR');
+  });
+  var porSituacao = contarPorDashboard_(lista, 'situacao');
+  var semDado = tipo === 'avaliacoes' ? (porSituacao.sem_avaliacao || 0) : (porSituacao.sem_ficha || 0);
+  var criticos = (porSituacao.vermelho || 0) + (porSituacao.roxo || 0) + (porSituacao.falha_critica || 0);
+  var emAtencao = lista.filter(function (linha) { return linha.situacao !== 'verde'; });
+  return {
+    tipo: tipo,
+    kpis: {
+      verde: porSituacao.verde || 0,
+      laranja: porSituacao.laranja || 0,
+      criticos: criticos,
+      semDado: semDado,
+      valorEmAtencao: emAtencao.reduce(function (soma, linha) { return soma + linha.valorMensal; }, 0)
+    },
+    graficos: { situacoes: porSituacao },
+    lista: lista
+  };
+}
+
+function montarHomeDashboard_(alunos, contratos, hoje, regras, cartoes) {
+  regras = regras || {};
+  cartoes = cartoes || [];
+  var prescricoes = montarPaginaAcompanhamento_(alunos, contratos, hoje, 'prescricoes', regras.prescricoes);
+  var avaliacoes = montarPaginaAcompanhamento_(alunos, contratos, hoje, 'avaliacoes', regras.avaliacoes);
+  var vencimentos = montarPaginaVencimentos_(alunos, contratos, hoje);
+  var catalogo = {
+    prescricoes_criticas: prescricoes.lista.filter(function (linha) { return linha.situacao !== 'verde'; }),
+    avaliacoes_criticas: avaliacoes.lista.filter(function (linha) { return linha.situacao !== 'verde'; }),
+    vencidos_5_dias: vencimentos.lista.filter(function (linha) { return linha.diasParaVencer >= -5 && linha.diasParaVencer <= -1; }),
+    vencem_hoje: vencimentos.lista.filter(function (linha) { return linha.diasParaVencer === 0; }),
+    vencem_5_dias: vencimentos.lista.filter(function (linha) { return linha.diasParaVencer >= 1 && linha.diasParaVencer <= 5; })
+  };
+  return {
+    cartoes: cartoes.filter(function (cartao) { return cartao.ativo; }).sort(function (a, b) { return a.ordem - b.ordem; }).map(function (cartao) {
+      var lista = catalogo[cartao.chave] || [];
+      return { chave: cartao.chave, titulo: cartao.titulo, total: lista.length, lista: lista };
+    }),
+    positivos: {
+      prescricoesVerdes: prescricoes.kpis.verde,
+      avaliacoesVerdes: avaliacoes.kpis.verde
+    }
   };
 }
 
@@ -247,8 +395,18 @@ function montarPaginaPlanos_(alunos, contratos, hoje) {
   }).map(function (item) {
     return item.linha;
   });
+  var quantidadeAlunos = unicosPor_(alunos, 'id').length;
   return {
-    kpis: { alunos: unicosPor_(alunos, 'id').length, contratos: unicos.length, valor: valor, ticketMedio: unicos.length ? valor / unicos.length : 0 },
+    kpis: {
+      alunos: quantidadeAlunos,
+      contratos: unicos.length,
+      valor: valor,
+      ticketMedio: unicos.length ? valor / unicos.length : 0,
+      ticketPorAluno: quantidadeAlunos ? valor / quantidadeAlunos : 0,
+      valorPorAulaMedio: unicos.length ? unicos.reduce(function (soma, contrato) {
+        return soma + calcularValorPorAula_(contrato.valor, contrato.contrato_x_sem);
+      }, 0) / unicos.length : 0
+    },
     graficos: {
       polos: contarPorDashboard_(unicos, 'polo'), frequencias: contarPorDashboard_(unicos, 'contrato_x_sem'),
       modalidades: contarPorDashboard_(unicos, 'modalidade'), status: contarPorDashboard_(unicos, 'status_contrato'),

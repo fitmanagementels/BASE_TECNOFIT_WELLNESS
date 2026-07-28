@@ -49,6 +49,39 @@ function classificarAtualizacao_(data, hoje, limiteDias) {
   return idade > limiteDias ? 'desatualizada' : 'atualizada';
 }
 
+function classificarPrescricao_(data, hoje, regras) {
+  regras = regras || { laranja: 90, vermelho: 180, roxo: 270 };
+  var dias = diasEntreDashboard_(data, hoje);
+  if (dias == null) return { situacao: 'sem_ficha', dias: null, prioridade: 0 };
+  if (dias <= Number(regras.laranja)) return { situacao: 'verde', dias: dias, prioridade: 4 };
+  if (dias <= Number(regras.vermelho)) return { situacao: 'laranja', dias: dias, prioridade: 3 };
+  if (dias <= Number(regras.roxo)) return { situacao: 'vermelho', dias: dias, prioridade: 2 };
+  return { situacao: 'roxo', dias: dias, prioridade: 1 };
+}
+
+function classificarAvaliacao_(data, hoje, regras) {
+  regras = regras || { laranja: 90, vermelho: 120, roxo: 180, critico: 270 };
+  var dias = diasEntreDashboard_(data, hoje);
+  if (dias == null) return { situacao: 'sem_avaliacao', dias: null, prioridade: 0 };
+  if (dias <= Number(regras.laranja)) return { situacao: 'verde', dias: dias, prioridade: 5 };
+  if (dias <= Number(regras.vermelho)) return { situacao: 'laranja', dias: dias, prioridade: 4 };
+  if (dias <= Number(regras.roxo)) return { situacao: 'vermelho', dias: dias, prioridade: 3 };
+  if (dias <= Number(regras.critico)) return { situacao: 'roxo', dias: dias, prioridade: 2 };
+  return { situacao: 'falha_critica', dias: dias, prioridade: 1 };
+}
+
+function frequenciaSemanalDashboard_(frequencia) {
+  var encontrado = /^(\d+)\s*x\b/i.exec(String(frequencia == null ? '' : frequencia).trim());
+  return encontrado ? Number(encontrado[1]) : 0;
+}
+
+function calcularValorPorAula_(valor, frequencia) {
+  var vezesSemana = frequenciaSemanalDashboard_(frequencia);
+  var valorNumerico = Number(valor);
+  if (!vezesSemana || !isFinite(valorNumerico)) return 0;
+  return valorNumerico / (vezesSemana * 4.33);
+}
+
 function unicosPor_(linhas, chave) {
   var vistos = Object.create(null);
   return (linhas || []).filter(function (linha) {

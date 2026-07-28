@@ -5,6 +5,8 @@ var CONFIG = Object.freeze({
   pastaRejeitadosId: '1ttdgt5lvXwEacgkDYurhuMoZ09yPENNb',
   fusoHorario: 'America/Fortaleza',
   dashboard: Object.freeze({
+    diasFicha: 30,
+    diasAvaliacao: 90,
     cacheSegundos: 300,
     chartJsUrl: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js',
     propriedadeVersao: 'tecnofit.dashboard.versao'
