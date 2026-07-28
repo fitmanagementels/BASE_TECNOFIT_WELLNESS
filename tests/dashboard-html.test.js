@@ -69,3 +69,13 @@ test('cliente oferece filtro Matriculados e normaliza os três status elegíveis
   assert.match(client, /function isEnrolledStatus\(status\)/);
   assert.match(client, /ativo.*bloqueado.*licenca/s);
 });
+
+test('planos abre detalhes por frequência e informa hora-aula média', () => {
+  const client = fs.readFileSync('apps-script/DashboardClient.html', 'utf8');
+  assert.match(client, /function valorPorAula\(contrato\)/);
+  assert.match(client, /function showFinancialDetail\(title, contracts\)/);
+  assert.match(client, /Faturamento do recorte/);
+  assert.match(client, /Hora-aula média/);
+  assert.match(client, /showHourlyValueDetail\(data\.contratos\)/);
+  assert.match(client, /showFinancialDetail\('Plano ' \+ item\.label/);
+});

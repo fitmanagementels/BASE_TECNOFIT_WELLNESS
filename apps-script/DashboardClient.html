@@ -59,7 +59,48 @@
     people.forEach(function (item) { var row = el('article', 'student-row'); row.appendChild(el('h3', '', item.aluno)); if (item.classification) row.appendChild(chip(item.classification.state)); row.appendChild(el('p', 'body-copy', (item.classification && item.classification.days !== null ? item.classification.days + ' dias • ' : '') + money(item.valorMensal || 0) + ' • ' + (item.profile || 'Sem histórico'))); var list = el('ul', 'contract-list'); (item.contratos || []).forEach(function (c) { list.appendChild(el('li', '', (c.contrato || c.frequencia || 'Contrato') + ' — ' + money(c.valor) + (c.vencimento ? ' — ' + c.vencimento : ''))); }); row.appendChild(list); target.appendChild(row); }); dialog.showModal();
   }
   function peopleFor(kind) { var f = filtered(), byId = groupedContracts(f.contratos), profiles = profileMap(); return f.alunos.map(function (p) { var cs = byId[p.id] || []; return { id:p.id, aluno:p.aluno, contratos:cs, valorMensal:cs.reduce(function(s,c){return s+c.valor;},0), profile:(profiles[p.id]||{}).perfilPagamento || 'Sem histórico', classification: classify(p, kind) }; }).sort(function(a,b){ return a.classification.priority-b.classification.priority || b.valorMensal-a.valorMensal || a.aluno.localeCompare(b.aluno,'pt-BR'); }); }
-  function renderPlans(data) { var grid = el('div','kpi-grid'), unique = Object.create(null), total = data.contratos.reduce(function(s,c){unique[c.id]=true;return s+c.valor;},0), freq = {}; data.contratos.forEach(function(c){freq[c.frequencia||'Não informado']=(freq[c.frequencia||'Não informado']||0)+1;}); grid.appendChild(card('Faturamento',money(total),'Contratos no filtro',function(){showDetail('Contratos no filtro',peopleFor('prescricoes'));})); grid.appendChild(card('Alunos',number(Object.keys(unique).length),'Pessoas únicas')); grid.appendChild(card('Contratos',number(data.contratos.length),'Ativos no recorte')); grid.appendChild(card('Ticket por aluno',money(Object.keys(unique).length?total/Object.keys(unique).length:0),'Faturamento / alunos')); var box=section('Distribuição por frequência'); box.appendChild(barList(Object.keys(freq).sort().map(function(k){return{label:k,value:freq[k]};}))); return [grid,box]; }
+  function valorPorAula(contrato) {
+    var match = /^(\d+)\s*x\b/i.exec(String(contrato.frequencia || '').trim());
+    var vezesSemana = match ? Number(match[1]) : 0;
+    return vezesSemana ? Number(contrato.valor || 0) / (vezesSemana * 4.33) : null;
+  }
+  function showFinancialDetail(title, contracts) {
+    var dialog = document.getElementById('detailDialog'), target = document.getElementById('detailContent'), byId = groupedContracts(contracts);
+    clear(target); document.getElementById('detailTitle').textContent = title;
+    target.appendChild(el('p', 'body-copy', 'Faturamento do recorte: ' + money(contracts.reduce(function (sum, contract) { return sum + Number(contract.valor || 0); }, 0)) + ' • ' + number(contracts.length) + ' contrato(s)'));
+    Object.keys(byId).map(function (id) { return (state.bootstrap.alunos || []).filter(function (person) { return person.id === id; })[0] || { id: id, aluno: id }; }).sort(function (a, b) { return a.aluno.localeCompare(b.aluno, 'pt-BR'); }).forEach(function (person) {
+      var row = el('article', 'student-row'), list = el('ul', 'contract-list');
+      row.appendChild(el('h3', '', person.aluno));
+      byId[person.id].forEach(function (contract) { list.appendChild(el('li', '', (contract.frequencia || 'Frequência não informada') + ' — ' + money(contract.valor))); });
+      row.appendChild(list); target.appendChild(row);
+    });
+    dialog.showModal();
+  }
+  function showHourlyValueDetail(contracts) {
+    var dialog = document.getElementById('detailDialog'), target = document.getElementById('detailContent'), people = Object.create(null), valid = contracts.map(valorPorAula).filter(function (value) { return value !== null; });
+    (state.bootstrap.alunos || []).forEach(function (person) { people[person.id] = person; });
+    clear(target); document.getElementById('detailTitle').textContent = 'Valor por hora-aula';
+    target.appendChild(el('p', 'body-copy', 'Hora-aula média: ' + (valid.length ? money(valid.reduce(function (sum, value) { return sum + value; }, 0) / valid.length) : '—')));
+    contracts.slice().sort(function (a, b) { return String((people[a.id] || {}).aluno || a.id).localeCompare(String((people[b.id] || {}).aluno || b.id), 'pt-BR'); }).forEach(function (contract) {
+      var person = people[contract.id] || { aluno: contract.id }, row = el('article', 'student-row'), hourly = valorPorAula(contract);
+      row.appendChild(el('h3', '', person.aluno));
+      row.appendChild(el('p', 'body-copy', 'Valor do plano: ' + money(contract.valor)));
+      row.appendChild(el('p', 'body-copy', 'Valor por hora-aula: ' + (hourly === null ? '—' : money(hourly))));
+      target.appendChild(row);
+    });
+    dialog.showModal();
+  }
+  function renderPlans(data) {
+    var grid = el('div', 'kpi-grid'), unique = Object.create(null), total = data.contratos.reduce(function (sum, contract) { unique[contract.id] = true; return sum + Number(contract.valor || 0); }, 0), frequencies = {}, hourlyValues = data.contratos.map(valorPorAula).filter(function (value) { return value !== null; });
+    data.contratos.forEach(function (contract) { var label = contract.frequencia || 'Não informado'; frequencies[label] = (frequencies[label] || 0) + 1; });
+    grid.appendChild(card('Faturamento', money(total), 'Contratos no filtro', function () { showFinancialDetail('Contratos no filtro', data.contratos); }));
+    grid.appendChild(card('Alunos', number(Object.keys(unique).length), 'Pessoas únicas'));
+    grid.appendChild(card('Contratos', number(data.contratos.length), 'Ativos no recorte'));
+    grid.appendChild(card('Ticket por aluno', money(Object.keys(unique).length ? total / Object.keys(unique).length : 0), 'Hora-aula média: ' + (hourlyValues.length ? money(hourlyValues.reduce(function (sum, value) { return sum + value; }, 0) / hourlyValues.length) : '—'), function () { showHourlyValueDetail(data.contratos); }));
+    var box = section('Distribuição por frequência');
+    box.appendChild(barList(Object.keys(frequencies).sort().map(function (label) { return { label: label, value: frequencies[label] }; }), function (item) { showFinancialDetail('Plano ' + item.label, data.contratos.filter(function (contract) { return (contract.frequencia || 'Não informado') === item.label; })); }));
+    return [grid, box];
+  }
   function dueBuckets(data) { var h=today(), result={previous:[],today:[],next:[], timeline:[], month:[0,0,0,0]}; for(var i=-5;i<=5;i++)result.timeline.push({label:i===0?'Hoje':(i<0?Math.abs(i)+'d atrás':'+'+i+'d'),value:0,day:i}); data.contratos.forEach(function(c){var d=dayDiff(parseDate(c.vencimento),h)*-1; if(d>=-5&&d<=-1)result.previous.push(c); if(d===0)result.today.push(c); if(d>=1&&d<=5)result.next.push(c); result.timeline.forEach(function(x){if(x.day===d)x.value++;}); var date=parseDate(c.vencimento); if(date&&date.getFullYear()===h.getFullYear()&&date.getMonth()===h.getMonth()){var q=date.getDate()<=7?0:date.getDate()<=15?1:date.getDate()<=23?2:3;result.month[q]++;}}); return result; }
   function detailsForContracts(title, contracts) { var by=groupedContracts(contracts), people=(state.bootstrap.alunos||[]).filter(function(p){return by[p.id];}).map(function(p){return{aluno:p.aluno,contratos:by[p.id],valorMensal:by[p.id].reduce(function(s,c){return s+c.valor;},0),profile:(profileMap()[p.id]||{}).perfilPagamento||'Sem histórico'};}); showDetail(title,people); }
   function renderDue(data) { var b=dueBuckets(data), grid=el('div','kpi-grid'); [['Últimos 5 dias',b.previous],['Vencem hoje',b.today],['Próximos 5 dias',b.next]].forEach(function(x){grid.appendChild(card(x[0],number(x[1].length),'contratos',function(){detailsForContracts(x[0],x[1]);}));}); var timeline=section('Linha do tempo — 11 dias');timeline.appendChild(barList(b.timeline,function(i){detailsForContracts(i.label,data.contratos.filter(function(c){return -dayDiff(parseDate(c.vencimento),today())===i.day;}));})); var heat=section('Mapa do mês');heat.appendChild(barList(['1–7','8–15','16–23','24–fim'].map(function(l,i){return{label:l,value:b.month[i]};})));return[grid,timeline,heat]; }
