@@ -1,6 +1,6 @@
 # Design do POP da pasta 01_ENTRADA
 
-**Data:** 19/07/2026  
+**Data:** 19/07/2026
 **Status:** aprovado para implementação
 
 ## Objetivo

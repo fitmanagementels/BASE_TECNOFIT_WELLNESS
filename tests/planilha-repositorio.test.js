@@ -10,6 +10,10 @@ class RangeMock {
     this.rows = rows;
     this.columns = columns;
   }
+  getValues() {
+    return this.sheet.values.slice(this.row - 1, this.row - 1 + this.rows)
+      .map(linha => linha.slice(this.column - 1, this.column - 1 + this.columns));
+  }
   setValues(values) {
     this.sheet.calls.push(['setValues', this.row, this.column, values]);
     return this;
@@ -34,6 +38,7 @@ class SheetMock {
     this.calls = [];
   }
   getName() { return this.name; }
+  getLastRow() { return this.values.length; }
   getDataRange() { return { getValues: () => this.values.map(row => row.slice()) }; }
   getRange(row, column, rows = 1, columns = 1) { return new RangeMock(this, row, column, rows, columns); }
   clearContents() { this.calls.push(['clear']); return this; }
@@ -92,4 +97,23 @@ test('backup e restauração preservam os valores anteriores', () => {
   gas.restaurarBackupAbasGerenciadas(backup);
   const restoreCall = spreadsheet.sheets.CONTRATOS.calls.find(call => call[0] === 'setValues');
   assert.equal(restoreCall[3][0][0], 'old-CONTRATOS');
+});
+
+test('garantirEstruturaPlanilha cria as abas de Fluxo sem limpar registros manuais', () => {
+  const spreadsheet = createSpreadsheet();
+  const manual = spreadsheet.insertSheet('FLUXO_LEADS');
+  manual.values = [['registro manual']];
+  const gas = load(spreadsheet);
+
+  gas.garantirEstruturaPlanilha();
+
+  assert.equal(manual.calls.some(call => call[0] === 'clear'), false);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(manual.calls.find(call => call[0] === 'setValues')[3][0])),
+    Array.from(gas.CONFIG.cabecalhos.fluxoLeads)
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(spreadsheet.sheets.FLUXO_CHURNS.calls.find(call => call[0] === 'setValues')[3][0])),
+    Array.from(gas.CONFIG.cabecalhos.fluxoChurns)
+  );
 });

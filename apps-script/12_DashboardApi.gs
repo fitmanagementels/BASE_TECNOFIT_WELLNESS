@@ -189,9 +189,23 @@ function obterDadosPaginaDashboard(pagina, filtros) {
   }
 }
 
-function versaoBootstrapDashboard_(ultimaImportacao) {
+function assinaturaAbaFluxoDashboard_(planilha, nomeAba, cabecalhos) {
+  var aba = planilha.getSheetByName(nomeAba);
+  if (!aba) return nomeAba + ':ausente';
+  var ultimaLinha = aba.getLastRow();
+  if (ultimaLinha < 1) return nomeAba + ':vazia';
+  var valores = aba.getRange(1, 1, ultimaLinha, cabecalhos.length).getDisplayValues();
+  return nomeAba + ':' + ultimaLinha + ':' + hashTextoDashboard_(JSON.stringify(valores));
+}
+
+function assinaturaFluxoDashboard_(planilha) {
+  return assinaturaAbaFluxoDashboard_(planilha, CONFIG.abas.fluxoLeads, CONFIG.cabecalhos.fluxoLeads) + '|' +
+    assinaturaAbaFluxoDashboard_(planilha, CONFIG.abas.fluxoChurns, CONFIG.cabecalhos.fluxoChurns);
+}
+
+function versaoBootstrapDashboard_(ultimaImportacao, assinaturaFluxo) {
   var importacao = ultimaImportacao && ultimaImportacao.execucaoId ? ultimaImportacao.execucaoId : 'sem-importacao';
-  return 'importacao:' + importacao + '|config:' + obterVersaoDashboard_();
+  return 'importacao:' + importacao + '|config:' + obterVersaoDashboard_() + '|fluxo:' + (assinaturaFluxo || 'sem-fluxo');
 }
 
 function chaveBootstrapDashboard_(versao) {
@@ -210,7 +224,8 @@ function respostaBootstrapDashboardValida_(resposta, versao) {
   return objetoDashboardValido_(resposta) && resposta.versao === versao &&
     typeof resposta.atualizadoEm === 'string' && objetoDashboardValido_(resposta.filtrosPadrao) &&
     objetoDashboardValido_(resposta.configuracao) && Array.isArray(resposta.alunos) &&
-    Array.isArray(resposta.contratos);
+    Array.isArray(resposta.contratos) && objetoDashboardValido_(resposta.fluxo) &&
+    Array.isArray(resposta.fluxo.leads) && Array.isArray(resposta.fluxo.churns);
 }
 
 function normalizarPoloDashboard_(valor) {
@@ -249,14 +264,15 @@ function montarBootstrapDashboard_(base, configuracao, versao) {
       opcoesPerfilPagamento: DASHBOARD_CONFIGURACAO_PADRAO.perfisPagamento
     },
     alunos: base.alunos.map(alunoSeguroParaDashboard_),
-    contratos: base.contratos.map(contratoSeguroParaDashboard_)
+    contratos: base.contratos.map(contratoSeguroParaDashboard_),
+    fluxo: lerFluxoDashboardDaPlanilha_(base.planilha)
   };
 }
 
 function obterBootstrapDashboard() {
   try {
     var base = lerBaseDashboard_();
-    var versao = versaoBootstrapDashboard_(base.ultimaImportacao);
+    var versao = versaoBootstrapDashboard_(base.ultimaImportacao, assinaturaFluxoDashboard_(base.planilha));
     var cache = obterCacheDashboard_();
     var chave = chaveBootstrapDashboard_(versao);
     if (cache) {
@@ -292,11 +308,82 @@ function obterVersaoDashboard() {
     var planilha = obterPlanilhaMestre_();
     var ultimaImportacao = obterUltimaImportacaoDashboard_(planilha);
     return {
-      versao: versaoBootstrapDashboard_(ultimaImportacao),
+      versao: versaoBootstrapDashboard_(ultimaImportacao, assinaturaFluxoDashboard_(planilha)),
       atualizadoEm: ultimaImportacao ? ultimaImportacao.concluidaEm : ''
     };
   } catch (erro) {
     console.error('dashboard_version_error', { tipo: tipoErroDashboardSeguro_(erro) });
     throw new Error('Não foi possível verificar a atualização do dashboard.');
+  }
+}
+
+function dataFiltroAnaliseChurns_(valor) {
+  var texto = String(valor == null ? '' : valor).trim();
+  var data = inicioDiaDashboard_(texto);
+  return data && formatarDataDashboard_(data) === texto ? texto : '';
+}
+
+function mesFiltroAnaliseChurns_(valor) {
+  var texto = String(valor == null ? '' : valor).trim();
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(texto) ? texto : '';
+}
+
+function normalizarFiltrosAnaliseChurns_(recebidos) {
+  recebidos = objetoDashboardValido_(recebidos) ? recebidos : {};
+  return {
+    mesInicio: mesFiltroAnaliseChurns_(recebidos.mesInicio),
+    mesFim: mesFiltroAnaliseChurns_(recebidos.mesFim),
+    semanaInicio: dataFiltroAnaliseChurns_(recebidos.semanaInicio),
+    semanaFim: dataFiltroAnaliseChurns_(recebidos.semanaFim)
+  };
+}
+
+function limitesSemanaisPadraoChurns_(filtros) {
+  var hoje = inicioDiaDashboard_(new Date());
+  var inicioDaSemana = inicioSemanaChurnFluxo_(hoje);
+  var fimDaSemana = new Date(
+    inicioDaSemana.getFullYear(), inicioDaSemana.getMonth(), inicioDaSemana.getDate() + 6, 12
+  );
+  var fim = filtros.semanaFim ? inicioDiaDashboard_(filtros.semanaFim) : fimDaSemana;
+  var inicio = filtros.semanaInicio ? inicioDiaDashboard_(filtros.semanaInicio) :
+    new Date(inicioSemanaChurnFluxo_(fim).getFullYear(), inicioSemanaChurnFluxo_(fim).getMonth(), inicioSemanaChurnFluxo_(fim).getDate() - (25 * 7), 12);
+  return { inicio: formatarDataDashboard_(inicio), fim: formatarDataDashboard_(fim) };
+}
+
+function chaveCacheAnaliseChurns_(filtros, versaoChurn) {
+  return 'dashboard:churn:analytics:v1:' + hashTextoDashboard_(
+    String(versaoChurn) + '|' + JSON.stringify(filtros)
+  );
+}
+
+function obterAnaliseChurnsDashboard(filtros) {
+  try {
+    filtros = normalizarFiltrosAnaliseChurns_(filtros);
+    var limitesSemana = limitesSemanaisPadraoChurns_(filtros);
+    filtros.semanaInicio = limitesSemana.inicio;
+    filtros.semanaFim = limitesSemana.fim;
+    var cache = obterCacheDashboard_();
+    var chave = chaveCacheAnaliseChurns_(filtros, obterVersaoChurnDashboard_());
+    if (cache) {
+      try {
+        var existente = cache.get(chave);
+        if (existente) return JSON.parse(existente);
+      } catch (erroCacheLeitura) {
+        // Cache descartável inválido nunca impede a análise da fonte oficial.
+      }
+    }
+    var planilha = obterPlanilhaMestre_();
+    var analise = analiseChurnFluxo_(
+      filtrarChurnsFluxoParaDashboard_(lerChurnsDashboardDaPlanilha_(planilha)), filtros
+    );
+    if (cache) {
+      try { cache.put(chave, JSON.stringify(analise), CONFIG.dashboard.cacheSegundos); } catch (erroCacheGravacao) {
+        // Cache é apenas uma otimização.
+      }
+    }
+    return analise;
+  } catch (erro) {
+    console.error('dashboard_churn_analytics_error', { tipo: tipoErroDashboardSeguro_(erro) });
+    throw new Error('Não foi possível carregar a análise de churns.');
   }
 }

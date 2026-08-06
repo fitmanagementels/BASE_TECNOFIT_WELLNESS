@@ -1,6 +1,6 @@
 # Detalhamentos de Financeiro e filtro Matriculados
 
-**Data:** 28/07/2026  
+**Data:** 28/07/2026
 **Status:** aprovado pelo usuário para implementação.
 
 ## Objetivo

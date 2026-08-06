@@ -1,0 +1,33 @@
+name: Deploy Apps Script
+
+on:
+  push:
+    branches: [main]
+    paths: [apps-script/**, .github/workflows/deploy-apps-script.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ vars.APPS_SCRIPT_AUTODEPLOY == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm install --global @google/clasp@2.5.0
+      - run: |
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          printf '{"scriptId":"%s","rootDir":"apps-script"}\n' "$APPS_SCRIPT_ID" > .clasp.json
+          clasp push --force
+          clasp deploy --deploymentId "$APPS_SCRIPT_API_DEPLOYMENT_ID" --description "GitHub ${GITHUB_SHA}"
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+          APPS_SCRIPT_API_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_API_DEPLOYMENT_ID }}

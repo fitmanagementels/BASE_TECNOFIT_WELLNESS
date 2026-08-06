@@ -9,7 +9,9 @@ var CONFIG = Object.freeze({
     diasAvaliacao: 90,
     cacheSegundos: 300,
     chartJsUrl: 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js',
-    propriedadeVersao: 'tecnofit.dashboard.versao'
+    propriedadeVersao: 'tecnofit.dashboard.versao',
+    propriedadeVersaoChurn: 'tecnofit.dashboard.churn.versao',
+    propriedadeUrlPwa: 'tecnofit.dashboard.public_url'
   }),
   tiposObrigatorios: Object.freeze(['vencimentos', 'fichas', 'avaliacao_fisica']),
   abas: Object.freeze({
@@ -19,7 +21,9 @@ var CONFIG = Object.freeze({
     importacoes: 'IMPORTACOES',
     configDashboard: 'CONFIG_DASHBOARD',
     configAlertas: 'CONFIG_ALERTAS',
-    gestaoPagamentos: 'GESTAO_PAGAMENTOS'
+    gestaoPagamentos: 'GESTAO_PAGAMENTOS',
+    fluxoLeads: 'FLUXO_LEADS',
+    fluxoChurns: 'FLUXO_CHURNS'
   }),
   cabecalhos: Object.freeze({
     alunos: Object.freeze([
@@ -49,6 +53,15 @@ var CONFIG = Object.freeze({
     ]),
     gestaoPagamentos: Object.freeze([
       'id', 'aluno', 'perfil_pagamento', 'observacao', 'atualizado_em'
+    ]),
+    fluxoLeads: Object.freeze([
+      'lead_id', 'nome', 'telefone', 'origem', 'indicacao', 'primeiro_contato',
+      'experimental', 'professor_experimental', 'entrada_como_cliente', 'status',
+      'plano_contratado', 'valor_pacote', 'minirrelatorio_venda', 'criado_em', 'atualizado_em'
+    ]),
+    fluxoChurns: Object.freeze([
+      'churn_id', 'aluno_id', 'nome', 'telefone', 'data_saida', 'profissional_responsavel',
+      'ultimo_personal', 'motivo_saida', 'sinais_contexto', 'acao_retencao', 'criado_em', 'atualizado_em'
     ])
   })
 });

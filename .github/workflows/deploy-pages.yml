@@ -1,0 +1,42 @@
+name: Deploy PWA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pwa/**'
+      - 'scripts/gerar-runtime-config.js'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    if: ${{ vars.PUBLIC_OAUTH_CLIENT_ID != '' && vars.PUBLIC_APPS_SCRIPT_DEPLOYMENT_ID != '' && vars.PUBLIC_OAUTH_SCOPES != '' }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: node scripts/gerar-runtime-config.js
+        env:
+          PUBLIC_OAUTH_CLIENT_ID: ${{ vars.PUBLIC_OAUTH_CLIENT_ID }}
+          PUBLIC_APPS_SCRIPT_DEPLOYMENT_ID: ${{ vars.PUBLIC_APPS_SCRIPT_DEPLOYMENT_ID }}
+          PUBLIC_OAUTH_SCOPES: ${{ vars.PUBLIC_OAUTH_SCOPES }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: pwa
+      - id: deployment
+        uses: actions/deploy-pages@v4

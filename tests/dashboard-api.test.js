@@ -9,6 +9,7 @@ const FILES = [
   'apps-script/09_DashboardMetricas.gs',
   'apps-script/10_DashboardPaginas.gs',
   'apps-script/11_DashboardRepositorio.gs',
+  'apps-script/15_DashboardFluxo.gs',
   'apps-script/13_DashboardConfiguracao.gs',
   'apps-script/12_DashboardApi.gs'
 ];
@@ -51,18 +52,117 @@ function criarCache() {
 
 function carregarComPlanilha(planilha, cache, extras = {}) {
   let aberturas = 0;
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const fluxo = {
+    FLUXO_LEADS: criarAba([Array.from(config.cabecalhos.fluxoLeads)]),
+    FLUXO_CHURNS: criarAba([Array.from(config.cabecalhos.fluxoChurns)])
+  };
   const gas = loadGas(FILES, {
     SpreadsheetApp: {
       openById() {
         aberturas += 1;
-        return planilha;
+        return {
+          getSheetByName: nome => planilha.getSheetByName(nome) || fluxo[nome] || null
+        };
       }
     },
     CacheService: { getScriptCache: () => cache },
     ...extras
   });
-  return { gas, aberturas: () => aberturas };
+  return { gas, aberturas: () => aberturas, fluxo };
 }
+
+test('bootstrap inclui o payload manual de Fluxo sem expor contato da base mestre', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const abas = {
+    BASE_ALUNOS: criarAba([Array.from(config.cabecalhos.alunos), ['1', 'ALUNO TESTE', '85900000001', 'Ativo', '', '', '', 'exec-1']]),
+    CONTRATOS: criarAba([Array.from(config.cabecalhos.contratos)]),
+    IMPORTACOES: criarAba([Array.from(config.cabecalhos.importacoes)]),
+    CONFIG_DASHBOARD: criarAba([Array.from(config.cabecalhos.configDashboard)]),
+    CONFIG_ALERTAS: criarAba([Array.from(config.cabecalhos.configAlertas)]),
+    GESTAO_PAGAMENTOS: criarAba([Array.from(config.cabecalhos.gestaoPagamentos)])
+  };
+  const { gas } = carregarComPlanilha(
+    { getSheetByName: nome => abas[nome] || null },
+    criarCache(),
+    { PropertiesService: { getDocumentProperties: () => ({ getProperty: () => null }) } }
+  );
+
+  const resultado = gas.obterBootstrapDashboard();
+
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado.fluxo)), { leads: [], churns: [] });
+  assert.equal(JSON.stringify(resultado.alunos).includes('85900000001'), false);
+});
+
+test('obterAnaliseChurnsDashboard devolve séries de todos os churns manuais', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const abas = {
+    FLUXO_CHURNS: criarAba([
+      Array.from(config.cabecalhos.fluxoChurns),
+      ['churn-1', '1', 'ALUNO TESTE A', '', '05/01/2026', 'Elohim', 'Wallyson', 'Horário', '', '', '', ''],
+      ['churn-2', '2', 'ALUNO TESTE B', '', '20/01/2026', 'Xico', 'Iranildo', '', '', 'Ligação', '', ''],
+      ['churn-3', '3', 'ALUNO TESTE C', '', '21/01/2026', '', '', 'Preço', '', '', '', '']
+    ])
+  };
+  const { gas } = carregarComPlanilha(
+    { getSheetByName: nome => abas[nome] || null },
+    criarCache(),
+    { PropertiesService: { getDocumentProperties: () => ({ getProperty: () => null }) } }
+  );
+
+  const resultado = gas.obterAnaliseChurnsDashboard({
+    mesInicio: '2026-01', mesFim: '2026-01', semanaInicio: '05/01/2026', semanaFim: '25/01/2026'
+  });
+
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado.mensal.map(item => item.valor))), [3]);
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado.semanal.map(item => item.valor))), [1, 0, 2]);
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado.diagnosticos.retencao)), {
+    comAcao: 1, semAcao: 2, coberturaPercentual: 33.3
+  });
+});
+
+test('análise de Churn lê somente Churns e reutiliza o cache do mesmo filtro', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const abas = {
+    FLUXO_CHURNS: criarAba([
+      Array.from(config.cabecalhos.fluxoChurns),
+      ['churn-cache', '1', 'ALUNO TESTE', '', '05/01/2026', '', '', '', '', '', '', '']
+    ])
+  };
+  const { gas, fluxo } = carregarComPlanilha(
+    { getSheetByName: nome => abas[nome] || null },
+    criarCache(),
+    { PropertiesService: { getDocumentProperties: () => ({ getProperty: () => null }) } }
+  );
+  const filtros = { mesInicio: '2026-01', mesFim: '2026-01', semanaInicio: '05/01/2026', semanaFim: '11/01/2026' };
+
+  gas.obterAnaliseChurnsDashboard(filtros);
+  const leiturasChurnAntes = fluxo.FLUXO_CHURNS.chamadas.length;
+  gas.obterAnaliseChurnsDashboard(filtros);
+
+  assert.equal(fluxo.FLUXO_LEADS.chamadas.length, 0);
+  assert.equal(fluxo.FLUXO_CHURNS.chamadas.length, leiturasChurnAntes);
+});
+
+test('versão do dashboard muda quando uma linha manual é incluída em Churn', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const linhasChurn = [Array.from(config.cabecalhos.fluxoChurns)];
+  const abas = {
+    FLUXO_CHURNS: criarAba(linhasChurn),
+    IMPORTACOES: criarAba([Array.from(config.cabecalhos.importacoes)])
+  };
+  const { gas } = carregarComPlanilha(
+    { getSheetByName: nome => abas[nome] || null },
+    criarCache(),
+    { PropertiesService: { getDocumentProperties: () => ({ getProperty: () => null }) } }
+  );
+
+  const antes = gas.obterVersaoDashboard().versao;
+  linhasChurn.push(['churn-manual-1', '1', 'ALUNO TESTE', '', '05/01/2026', '', '', '', '', '', '', '']);
+  const depois = gas.obterVersaoDashboard().versao;
+
+  assert.notEqual(depois, antes);
+});
 
 test('lerTabelaDashboard_ mapeia cabeçalhos exatos e limita a faixa lida', () => {
   const cabecalhos = ['id', 'aluno'];
@@ -512,7 +612,10 @@ test('bootstrap inclui versão e configuração, mas nunca envia contato ao nave
 
   const resposta = gas.obterBootstrapDashboard();
 
-  assert.equal(resposta.versao, 'importacao:exec-1|config:7');
+  assert.match(
+    resposta.versao,
+    /^importacao:exec-1\|config:7\|fluxo:FLUXO_LEADS:1:[a-z0-9]+\|FLUXO_CHURNS:1:[a-z0-9]+$/
+  );
   assert.equal(resposta.atualizadoEm, '27/07/2026 19:34');
   assert.deepEqual(JSON.parse(JSON.stringify(resposta.filtrosPadrao)), { status: 'Ativo', polo: 'Wellness' });
   assert.equal(Object.hasOwn(resposta.alunos[0], 'contato'), false);

@@ -82,3 +82,15 @@ function incrementarVersaoDashboard_() {
   propriedades.setProperty(CONFIG.dashboard.propriedadeVersao, String(proximaVersao));
   return proximaVersao;
 }
+
+function obterVersaoChurnDashboard_() {
+  var propriedades = PropertiesService.getDocumentProperties();
+  return Number(propriedades.getProperty(CONFIG.dashboard.propriedadeVersaoChurn) || 0);
+}
+
+function incrementarVersaoChurnDashboard_() {
+  var propriedades = PropertiesService.getDocumentProperties();
+  var proximaVersao = obterVersaoChurnDashboard_() + 1;
+  propriedades.setProperty(CONFIG.dashboard.propriedadeVersaoChurn, String(proximaVersao));
+  return proximaVersao;
+}

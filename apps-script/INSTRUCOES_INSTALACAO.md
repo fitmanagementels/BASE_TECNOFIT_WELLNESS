@@ -233,3 +233,19 @@ npm run validate:real -- --dir /tmp/tecnofit-validacao
 ```
 
 A validação deve terminar sem erros e não deve modificar a planilha mestre. Execute-a somente quando os três arquivos autorizados estiverem presentes. Por privacidade, não copie esses exports para o repositório, não registre no relatório nomes, contatos ou outras linhas de dados e apague a cópia temporária ao final. Se os três arquivos não estiverem disponíveis, registre a validação operacional como pendente; não substitua os dados reais por fixtures para declarar esse item concluído.
+
+## 15. Aplicar a página Fluxo
+
+1. No projeto Apps Script, atualize `00_Config`, `04_PlanilhaRepositorio`, `08_Main`, `12_DashboardApi`, `14_DashboardMutacoes`, `DashboardClient`, `DashboardComponents` e `DashboardStyles` com os arquivos locais correspondentes.
+2. Crie um novo arquivo de script chamado `15_DashboardFluxo` e copie integralmente `apps-script/15_DashboardFluxo.gs`.
+3. Salve o projeto e execute `garantirEstruturaPlanilha` uma vez, com a conta proprietária da planilha. Isso cria `FLUXO_LEADS` e atualiza o cabeçalho vazio de `FLUXO_CHURNS`; não apaga a base semanal nem os registros manuais existentes.
+4. Confirme na planilha o cabeçalho de Churn: `churn_id`, `aluno_id`, `nome`, `telefone`, `data_saida`, `profissional_responsavel`, `ultimo_personal`, `motivo_saida`, `sinais_contexto`, `acao_retencao`, `criado_em`, `atualizado_em`. As linhas criadas pelo dashboard recebem ID e timestamps automaticamente. Para linhas incluídas manualmente, use **TecnoFit > Preencher IDs pendentes de Fluxo**: ele preenche apenas a coluna A das linhas com dados e atualiza o cache do dashboard.
+5. Em **Implantar > Gerenciar implantações**, edite a implantação do Web App, selecione uma nova versão e publique. Esta etapa precisa incluir tanto `12_DashboardApi.gs` quanto `DashboardClient.html`; publicar apenas o backend mantém a interface antiga incompatível com a análise de Churn.
+6. Feche a aba antiga do dashboard, abra novamente a URL `/exec` e faça uma recarga forte (`Ctrl+Shift+R`). A versão do bootstrap agora inclui uma assinatura compacta de `FLUXO_LEADS` e `FLUXO_CHURNS`, portanto alterações manuais nessas abas invalidam automaticamente o cache na próxima atualização do dashboard.
+7. Abra **Fluxo > Leads**, cadastre um Lead fictício e confirme o status, datas e link de WhatsApp sem enviar mensagem.
+8. Abra **Fluxo > Churns**, cadastre e edite um Churn fictício; confirme data de saída, os menus **Profissional responsável** e **Último personal**, e que a exclusão pede confirmação antes de remover o registro. Todos os churns manuais são mostrados; os filtros globais ficam ocultos nesta página.
+
+9. Para aplicar o refinamento visual de listas e pop-ups de Fluxo, copie também as versões atuais de `DashboardClient.html` e `DashboardStyles.html` para o projeto Apps Script. Salve e publique uma nova versão do Web App antes de testar os novos campos de data, as ações Editar/Apagar e o rodapé Salvar.
+10. Em **Churns**, confirme que **Saídas registradas** abre a lista em pop-up. Clique em uma barra do gráfico mensal para abrir somente o mês selecionado e em um ponto da linha semanal para abrir somente aquela semana. O mensal inicia com todo o histórico; o semanal inicia nas últimas 26 semanas. Os campos de mês e de data alteram apenas o gráfico correspondente.
+
+O telefone do Lead é apresentado somente em Fluxo para construir o atalho operacional do WhatsApp. Mantenha o Web App restrito aos usuários autorizados.

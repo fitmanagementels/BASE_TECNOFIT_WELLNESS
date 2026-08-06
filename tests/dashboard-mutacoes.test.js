@@ -44,24 +44,28 @@ function setup() {
       ['alertas', 'prescricoes', true, 10, '{"laranja":90,"vermelho":180,"roxo":270}', 'Prescrições', ''],
       ['alertas', 'avaliacoes', true, 20, '{"laranja":90,"vermelho":120,"roxo":180,"critico":270}', 'Avaliações', '']
     ]),
-    GESTAO_PAGAMENTOS: new SheetMock([Array.from(config.cabecalhos.gestaoPagamentos)])
+    GESTAO_PAGAMENTOS: new SheetMock([Array.from(config.cabecalhos.gestaoPagamentos)]),
+    FLUXO_LEADS: new SheetMock([Array.from(config.cabecalhos.fluxoLeads)]),
+    FLUXO_CHURNS: new SheetMock([Array.from(config.cabecalhos.fluxoChurns)])
   };
   const properties = new Map();
   const calls = [];
+  const sheetCalls = [];
   const gas = loadGas([
     'apps-script/00_Config.gs',
+    'apps-script/15_DashboardFluxo.gs',
     'apps-script/13_DashboardConfiguracao.gs',
     'apps-script/14_DashboardMutacoes.gs'
   ], {
-    SpreadsheetApp: { openById: () => ({ getSheetByName: name => sheets[name] }), flush() {} },
+    SpreadsheetApp: { openById: () => ({ getSheetByName: name => { sheetCalls.push(name); return sheets[name]; } }), flush() {} },
     LockService: { getScriptLock: () => ({ waitLock: () => calls.push('lock'), releaseLock: () => calls.push('release') }) },
     PropertiesService: { getDocumentProperties: () => ({
       getProperty: key => properties.get(key) || null,
       setProperty: (key, value) => properties.set(key, value)
     }) },
-    Utilities: { formatDate: () => '27/07/2026 20:00' }
+    Utilities: { formatDate: () => '27/07/2026 20:00', getUuid: () => 'uuid-teste' }
   });
-  return { gas, sheets, calls };
+  return { gas, sheets, calls, sheetCalls };
 }
 
 test('rejeita limites não crescentes sem gravar', () => {
@@ -103,4 +107,62 @@ test('salvar cartões da Home preserva os filtros padrão já configurados', () 
 
   const filtros = sheets.CONFIG_DASHBOARD.values.find(row => row[0] === 'filtros');
   assert.equal(filtros[4], '{"status":"Ativo","polo":"Wellness"}');
+});
+
+test('salva Lead manual com status manual e preserva o registro ao repetir a solicitação', () => {
+  const { gas, sheets } = setup();
+  const lote = {
+    requestId: 'lead-1',
+    patches: [{ tipo: 'fluxoLead', valores: {
+      nome: 'LEAD TESTE', telefone: '85900000000', primeiroContato: '01/07/2026',
+      entradaComoCliente: '05/07/2026', status: 'Em contato', planoContratado: '2x/sem', valorPacote: 300
+    } }]
+  };
+
+  gas.salvarMutacoesDashboard(lote);
+  const repetido = gas.salvarMutacoesDashboard(lote);
+
+  assert.equal(sheets.FLUXO_LEADS.values.length, 2);
+  assert.equal(sheets.FLUXO_LEADS.values[1][9], 'Em contato');
+  assert.equal(sheets.FLUXO_LEADS.values[1][10], '2x/sem');
+  assert.equal(repetido.idempotente, true);
+});
+
+test('salvar Lead lê somente a aba de leads necessária para a mutação', () => {
+  const { gas, sheetCalls } = setup();
+  gas.salvarMutacoesDashboard({
+    requestId: 'lead-leitura-minima',
+    patches: [{ tipo: 'fluxoLead', valores: {
+      id: 'lead-local', criar: true, nome: 'LEAD RÁPIDO', telefone: '85900000000',
+      primeiroContato: '01/07/2026', status: 'Novo'
+    } }]
+  });
+
+  assert.ok(sheetCalls.length >= 1);
+  assert.ok(sheetCalls.every(name => name === 'FLUXO_LEADS'));
+});
+
+test('permite excluir Churn, mas rejeita qualquer operação de exclusão de Lead', () => {
+  const { gas, sheets } = setup();
+  sheets.FLUXO_CHURNS.values.push(['churn-1', '1', 'ALUNO TESTE', 'XSTEAM WELLNESS CLUB', '01/07/2026', '', '', '', '', '']);
+
+  gas.salvarMutacoesDashboard({ requestId: 'churn-delete', patches: [{ tipo: 'excluirFluxoChurn', valores: { id: 'churn-1' } }] });
+  assert.equal(sheets.FLUXO_CHURNS.values.length, 1);
+  assert.throws(() => gas.salvarMutacoesDashboard({ requestId: 'lead-delete', patches: [{ tipo: 'excluirFluxoLead', valores: { id: 'lead-1' } }] }), /Tipo de alteração inválido/);
+});
+
+test('salva profissionais de Churn nas colunas corretas e rejeita opções inválidas', () => {
+  const { gas, sheets } = setup();
+  gas.salvarMutacoesDashboard({ requestId: 'churn-profissionais', patches: [{ tipo: 'fluxoChurn', valores: {
+    alunoId: '42', nome: 'ALUNO TESTE', telefone: '85900000000', dataSaida: '02/07/2026',
+    profissionalResponsavel: 'Elohim', ultimoPersonal: 'Wallyson'
+  } }] });
+
+  const linha = sheets.FLUXO_CHURNS.values[1];
+  assert.equal(linha[4], '02/07/2026');
+  assert.equal(linha[5], 'Elohim');
+  assert.equal(linha[6], 'Wallyson');
+  assert.throws(() => gas.salvarMutacoesDashboard({ requestId: 'churn-profissional-invalido', patches: [{ tipo: 'fluxoChurn', valores: {
+    alunoId: '43', nome: 'ALUNO TESTE B', dataSaida: '03/07/2026', profissionalResponsavel: 'Pessoa inválida'
+  } }] }), /Churn inválido/);
 });

@@ -1,6 +1,6 @@
 # Polimento visual do dashboard XSTEAM
 
-**Data:** 28/07/2026  
+**Data:** 28/07/2026
 **Status:** aprovado para especificação; aguardando revisão do usuário antes da implementação.
 
 ## Objetivo

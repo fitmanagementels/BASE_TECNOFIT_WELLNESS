@@ -143,6 +143,87 @@ function atualizarLinhasPagamentosMutacao_(linhas, valores) {
   }).concat([nova]);
 }
 
+function dataFluxoMutacao_(valor) {
+  var texto = textoMutacaoDashboard_(valor, 20);
+  if (!/^\d{2}\/\d{2}\/\d{4}$/.test(texto)) return '';
+  var partes = texto.split('/').map(Number);
+  var data = new Date(partes[2], partes[1] - 1, partes[0], 12);
+  return data.getFullYear() === partes[2] && data.getMonth() === partes[1] - 1 && data.getDate() === partes[0] ? texto : '';
+}
+
+function agoraFluxoMutacao_() {
+  return Utilities.formatDate(new Date(), CONFIG.fusoHorario, 'dd/MM/yyyy HH:mm');
+}
+
+function idFluxoMutacao_(valor) {
+  var id = textoMutacaoDashboard_(valor, 120);
+  return id || Utilities.getUuid();
+}
+
+function linhaLeadFluxoMutacao_(valores, existente) {
+  valores = valores || {};
+  var nome = textoMutacaoDashboard_(valores.nome, 200);
+  var telefone = textoMutacaoDashboard_(valores.telefone, 60);
+  var primeiroContato = dataFluxoMutacao_(valores.primeiroContato);
+  var status = textoMutacaoDashboard_(valores.status, 80);
+  var experimental = valores.experimental ? dataFluxoMutacao_(valores.experimental) : '';
+  var entrada = valores.entradaComoCliente ? dataFluxoMutacao_(valores.entradaComoCliente) : '';
+  var plano = textoMutacaoDashboard_(valores.planoContratado, 80);
+  var valor = valores.valorPacote === '' || valores.valorPacote == null ? '' : Number(valores.valorPacote);
+  if (!nome || !telefone || !primeiroContato || STATUS_LEADS_FLUXO.indexOf(status) === -1 ||
+      (valores.experimental && !experimental) || (valores.entradaComoCliente && !entrada) ||
+      (plano && PLANOS_LEADS_FLUXO.indexOf(plano) === -1) || (valor !== '' && (!isFinite(valor) || valor < 0))) {
+    throw new Error('Lead inválido.');
+  }
+  var agora = agoraFluxoMutacao_();
+  return [
+    idFluxoMutacao_(valores.id || (existente && existente[0])), nome, telefone,
+    textoMutacaoDashboard_(valores.origem, 160), textoMutacaoDashboard_(valores.indicacao, 300),
+    primeiroContato, experimental, textoMutacaoDashboard_(valores.professorExperimental, 200), entrada,
+    status, plano, valor, textoMutacaoDashboard_(valores.minirrelatorioVenda, 3000),
+    existente ? existente[13] : agora, agora
+  ];
+}
+
+function linhaChurnFluxoMutacao_(valores, existente) {
+  valores = valores || {};
+  var alunoId = textoMutacaoDashboard_(valores.alunoId, 100);
+  var nome = textoMutacaoDashboard_(valores.nome, 200);
+  var dataSaida = dataFluxoMutacao_(valores.dataSaida);
+  var profissionalResponsavel = textoMutacaoDashboard_(valores.profissionalResponsavel, 120);
+  var ultimoPersonal = textoMutacaoDashboard_(valores.ultimoPersonal, 120);
+  if (!alunoId || !nome || !dataSaida ||
+      (profissionalResponsavel && RESPONSAVEIS_CHURN_FLUXO.indexOf(profissionalResponsavel) === -1) ||
+      (ultimoPersonal && PERSONAIS_CHURN_FLUXO.indexOf(ultimoPersonal) === -1)) {
+    throw new Error('Churn inválido.');
+  }
+  var agora = agoraFluxoMutacao_();
+  return [
+    idFluxoMutacao_(valores.id || (existente && existente[0])), alunoId, nome,
+    textoMutacaoDashboard_(valores.telefone, 60), dataSaida, profissionalResponsavel, ultimoPersonal,
+    textoMutacaoDashboard_(valores.motivoSaida, 2000), textoMutacaoDashboard_(valores.sinaisContexto, 3000),
+    textoMutacaoDashboard_(valores.acaoRetencao, 3000), existente ? existente[10] : agora, agora
+  ];
+}
+
+function atualizarLinhaFluxoMutacao_(linhas, valores, criarLinha) {
+  var id = textoMutacaoDashboard_(valores && valores.id, 120);
+  var indice = id ? linhas.findIndex(function (linha) { return String(linha[0]) === id; }) : -1;
+  if (id && indice === -1 && !valores.criar) throw new Error('Registro de Fluxo inválido.');
+  var nova = criarLinha(valores, indice === -1 ? null : linhas[indice]);
+  if (indice === -1) return linhas.concat([nova]);
+  var atualizadas = linhas.map(function (linha) { return linha.slice(); });
+  atualizadas[indice] = nova;
+  return atualizadas;
+}
+
+function excluirChurnFluxoMutacao_(linhas, valores) {
+  var id = textoMutacaoDashboard_(valores && valores.id, 120);
+  var restantes = linhas.filter(function (linha) { return String(linha[0]) !== id; });
+  if (!id || restantes.length === linhas.length) throw new Error('Churn inválido.');
+  return restantes;
+}
+
 function lerSolicitacoesProcessadasDashboard_() {
   try {
     var texto = PropertiesService.getDocumentProperties().getProperty(CHAVE_SOLICITACOES_DASHBOARD);
@@ -171,16 +252,27 @@ function salvarMutacoesDashboard(lote) {
     if (lerSolicitacoesProcessadasDashboard_().indexOf(requestId) !== -1) {
       return { ok: true, requestId: requestId, idempotente: true, versao: obterVersaoDashboard_() };
     }
+    var precisaDashboard = patches.some(function (patch) { return patch && patch.tipo === 'configDashboard'; });
+    var precisaAlertas = patches.some(function (patch) { return patch && patch.tipo === 'configAlertas'; });
+    var precisaPagamentos = patches.some(function (patch) { return patch && patch.tipo === 'perfilPagamento'; });
+    var precisaLeads = patches.some(function (patch) { return patch && patch.tipo === 'fluxoLead'; });
+    var precisaChurns = patches.some(function (patch) { return patch && (patch.tipo === 'fluxoChurn' || patch.tipo === 'excluirFluxoChurn'); });
     var planilha = planilhaMutacoesDashboard_();
-    var abaDashboard = planilha.getSheetByName(CONFIG.abas.configDashboard);
-    var abaAlertas = planilha.getSheetByName(CONFIG.abas.configAlertas);
-    var abaPagamentos = planilha.getSheetByName(CONFIG.abas.gestaoPagamentos);
-    var linhasDashboard = lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.configDashboard, CONFIG.cabecalhos.configDashboard);
-    var linhasAlertas = lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.configAlertas, CONFIG.cabecalhos.configAlertas);
-    var linhasPagamentos = lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.gestaoPagamentos, CONFIG.cabecalhos.gestaoPagamentos);
+    var abaDashboard = precisaDashboard ? planilha.getSheetByName(CONFIG.abas.configDashboard) : null;
+    var abaAlertas = precisaAlertas ? planilha.getSheetByName(CONFIG.abas.configAlertas) : null;
+    var abaPagamentos = precisaPagamentos ? planilha.getSheetByName(CONFIG.abas.gestaoPagamentos) : null;
+    var abaLeads = precisaLeads ? planilha.getSheetByName(CONFIG.abas.fluxoLeads) : null;
+    var abaChurns = precisaChurns ? planilha.getSheetByName(CONFIG.abas.fluxoChurns) : null;
+    var linhasDashboard = precisaDashboard ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.configDashboard, CONFIG.cabecalhos.configDashboard) : [];
+    var linhasAlertas = precisaAlertas ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.configAlertas, CONFIG.cabecalhos.configAlertas) : [];
+    var linhasPagamentos = precisaPagamentos ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.gestaoPagamentos, CONFIG.cabecalhos.gestaoPagamentos) : [];
+    var linhasLeads = precisaLeads ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.fluxoLeads, CONFIG.cabecalhos.fluxoLeads) : [];
+    var linhasChurns = precisaChurns ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.fluxoChurns, CONFIG.cabecalhos.fluxoChurns) : [];
     var alterouDashboard = false;
     var alterouAlertas = false;
     var alterouPagamentos = false;
+    var alterouLeads = false;
+    var alterouChurns = false;
     patches.forEach(function (patch) {
       if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('Alteração inválida.');
       if (patch.tipo === 'configDashboard') {
@@ -192,6 +284,15 @@ function salvarMutacoesDashboard(lote) {
       } else if (patch.tipo === 'perfilPagamento') {
         linhasPagamentos = atualizarLinhasPagamentosMutacao_(linhasPagamentos, patch.valores || {});
         alterouPagamentos = true;
+      } else if (patch.tipo === 'fluxoLead') {
+        linhasLeads = atualizarLinhaFluxoMutacao_(linhasLeads, patch.valores || {}, linhaLeadFluxoMutacao_);
+        alterouLeads = true;
+      } else if (patch.tipo === 'fluxoChurn') {
+        linhasChurns = atualizarLinhaFluxoMutacao_(linhasChurns, patch.valores || {}, linhaChurnFluxoMutacao_);
+        alterouChurns = true;
+      } else if (patch.tipo === 'excluirFluxoChurn') {
+        linhasChurns = excluirChurnFluxoMutacao_(linhasChurns, patch.valores || {});
+        alterouChurns = true;
       } else {
         throw new Error('Tipo de alteração inválido.');
       }
@@ -199,8 +300,11 @@ function salvarMutacoesDashboard(lote) {
     if (alterouDashboard) escreverTabelaMutacoesDashboard_(abaDashboard, CONFIG.cabecalhos.configDashboard, linhasDashboard);
     if (alterouAlertas) escreverTabelaMutacoesDashboard_(abaAlertas, CONFIG.cabecalhos.configAlertas, linhasAlertas);
     if (alterouPagamentos) escreverTabelaMutacoesDashboard_(abaPagamentos, CONFIG.cabecalhos.gestaoPagamentos, linhasPagamentos);
+    if (alterouLeads) escreverTabelaMutacoesDashboard_(abaLeads, CONFIG.cabecalhos.fluxoLeads, linhasLeads);
+    if (alterouChurns) escreverTabelaMutacoesDashboard_(abaChurns, CONFIG.cabecalhos.fluxoChurns, linhasChurns);
     SpreadsheetApp.flush();
     var versao = incrementarVersaoDashboard_();
+    if (alterouChurns) incrementarVersaoChurnDashboard_();
     registrarSolicitacaoProcessadaDashboard_(requestId);
     return { ok: true, requestId: requestId, idempotente: false, versao: versao };
   } finally {

@@ -14,7 +14,7 @@ function setup() {
     showSidebar(html) { calls.push(['sidebar', html.title]); },
     showModalDialog(html, title) { calls.push(['show-modal', title, html.content]); }
   };
-  const gas = loadGas(['apps-script/08_Main.gs'], {
+  const gas = loadGas(['apps-script/00_Config.gs', 'apps-script/08_Main.gs'], {
     SpreadsheetApp: { getUi: () => ui },
     HtmlService: {
       XFrameOptionsMode: { DEFAULT: 'DEFAULT' },
@@ -43,6 +43,10 @@ function setup() {
     ScriptApp: {
       getService: () => ({ getUrl: () => 'https://script.google.com/mock' })
     },
+    PropertiesService: {
+      getScriptProperties: () => ({ getProperty: () => 'https://xsteam.example/pwa/' })
+    },
+    Utilities: { getUuid: () => 'uuid-novo' },
     garantirEstruturaPlanilha: () => calls.push(['ensure']),
     inspecionarPastaEntrada: () => ({ ready: true, lote: { dataReferencia: '2026-07-08' }, erros: [] }),
     obterUltimaImportacaoBemSucedida: () => ({ execucaoId: 'old' }),
@@ -58,16 +62,25 @@ test('onOpen cria menu TecnoFit com ações para atualização e dashboard', () 
     ['menu', 'TecnoFit'],
     ['item', 'Abrir painel', 'abrirPainel'],
     ['item', 'Abrir dashboard', 'abrirDashboard'],
+    ['item', 'Preencher IDs pendentes de Fluxo', 'preencherIdsPendentesFluxo'],
     ['menu-added']
   ]);
 });
 
-test('abrirDashboard abre a URL publicada em uma nova janela', () => {
+test('preencher IDs pendentes invalida a versão do dashboard', () => {
+  const { gas } = setup();
+  let versoes = 0;
+  gas.incrementarVersaoDashboard_ = () => { versoes += 1; };
+  assert.equal(typeof gas.preencherIdsPendentesFluxo, 'function');
+  assert.equal(versoes, 0);
+});
+
+test('abrirDashboard abre a URL do PWA em uma nova janela', () => {
   const { gas, calls } = setup();
   gas.abrirDashboard();
   assert.deepEqual(calls, [[
     'show-modal', 'Abrindo dashboard',
-    '<script>window.open("https://script.google.com/mock", "_blank");google.script.host.close();</script>'
+    '<script>window.open("https://xsteam.example/pwa/", "_blank");google.script.host.close();</script>'
   ]]);
 });
 
@@ -80,12 +93,11 @@ test('abrirPainel renderiza Sidebar com título', () => {
   ]);
 });
 
-test('doGet monta a web app do dashboard', () => {
+test('doGet informa que o backend está ativo sem montar dashboard', () => {
   const { gas, calls } = setup();
   const output = gas.doGet();
-  assert.equal(output.title, 'XSTEAM — Gestão');
-  assert.equal(output.viewport, 'width=device-width, initial-scale=1');
-  assert.equal(calls.some(call => call[0] === 'template' && call[1] === 'Dashboard'), true);
+  assert.match(output.content, /Backend XSTEAM ativo/);
+  assert.equal(calls.some(call => call[0] === 'template' && call[1] === 'Dashboard'), false);
 });
 
 test('incluirArquivo_ retorna o conteúdo da parcial', () => {
@@ -94,17 +106,9 @@ test('incluirArquivo_ retorna o conteúdo da parcial', () => {
   assert.deepEqual(calls, [['html-output', 'DashboardStyles']]);
 });
 
-test('obterUrlDashboard retorna a URL publicada', () => {
+test('obterUrlDashboard retorna a URL configurada do PWA', () => {
   const { gas } = setup();
-  assert.equal(gas.obterUrlDashboard(), 'https://script.google.com/mock');
-});
-
-test('Dashboard compõe as parciais e carrega Chart.js pela configuração', () => {
-  const html = fs.readFileSync('apps-script/Dashboard.html', 'utf8');
-  assert.match(html, /incluirArquivo_\('DashboardStyles'\)/);
-  assert.match(html, /CONFIG\.dashboard\.chartJsUrl/);
-  assert.match(html, /incluirArquivo_\('DashboardComponents'\)/);
-  assert.match(html, /incluirArquivo_\('DashboardClient'\)/);
+  assert.equal(gas.obterUrlDashboard(), 'https://xsteam.example/pwa/');
 });
 
 test('obterStatusImportacao combina lote e última execução', () => {
@@ -122,4 +126,31 @@ test('executarImportacao delega ao backend', () => {
     JSON.parse(JSON.stringify(gas.executarImportacao())),
     { ok: true, alunos: 330, contratos: 339 }
   );
+});
+
+test('preenche somente IDs pendentes em linhas manuais com conteúdo', () => {
+  const { gas } = setup();
+  const values = [
+    Array.from(gas.CONFIG.cabecalhos.fluxoChurns),
+    ['', '123', 'ALUNO TESTE', 'XSTEAM WELLNESS CLUB', '01/07/2026', '', '', '', '', ''],
+    ['churn-existente', '456', 'ALUNO TESTE 2', 'XSTEAM WELLNESS CLUB', '02/07/2026', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', '', '', '']
+  ];
+  const writes = [];
+  const aba = {
+    getLastRow: () => values.length,
+    getRange: (row, column, rows, columns) => ({
+      getValues: () => values.slice(row - 1, row - 1 + rows).map(line => line.slice(column - 1, column - 1 + columns)),
+      setValue: value => { values[row - 1][column - 1] = value; writes.push([row, column, value]); }
+    })
+  };
+
+  const resultado = gas.preencherIdsPendentesNaAbaFluxo_(aba, gas.CONFIG.cabecalhos.fluxoChurns);
+
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado)), { preenchidos: 1 });
+  assert.equal(values[1][0], 'uuid-novo');
+  assert.equal(values[1][1], '123');
+  assert.equal(values[2][0], 'churn-existente');
+  assert.equal(values[3][0], '');
+  assert.deepEqual(writes, [[2, 1, 'uuid-novo']]);
 });

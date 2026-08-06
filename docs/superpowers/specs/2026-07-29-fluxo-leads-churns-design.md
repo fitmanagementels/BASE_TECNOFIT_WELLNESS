@@ -1,6 +1,6 @@
 # Fluxo — Leads e Churns
 
-**Data:** 29/07/2026  
+**Data:** 29/07/2026
 **Estado:** desenho aprovado; aguardando revisão do documento antes do plano de implementação
 
 ## Objetivo

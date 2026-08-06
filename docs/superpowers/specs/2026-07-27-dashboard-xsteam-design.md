@@ -1,7 +1,7 @@
 # Dashboard XSTEAM — Design do MVP
 
-**Status:** aprovado para especificação; implementação ainda não iniciada.  
-**Data:** 27/07/2026  
+**Status:** aprovado para especificação; implementação ainda não iniciada.
+**Data:** 27/07/2026
 **Escopo:** web app Apps Script vinculado à planilha mestre TecnoFit.
 
 ## Objetivo

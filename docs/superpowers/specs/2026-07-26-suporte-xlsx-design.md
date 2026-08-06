@@ -1,7 +1,7 @@
 # Design — suporte a relatórios XLSX
 
-**Data:** 26/07/2026  
-**Estado:** aprovado para planejamento  
+**Data:** 26/07/2026
+**Estado:** aprovado para planejamento
 **Escopo:** importador da Base Central TecnoFit
 
 ## Objetivo
