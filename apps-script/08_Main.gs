@@ -72,8 +72,9 @@ function doGet() {
 }
 
 function obterUrlDashboard() {
-  return String(PropertiesService.getScriptProperties()
+  var urlConfigurada = String(PropertiesService.getScriptProperties()
     .getProperty(CONFIG.dashboard.propriedadeUrlPwa) || '').trim();
+  return urlConfigurada || 'https://fitmanagementels.github.io/BASE_TECNOFIT_WELLNESS/';
 }
 
 function abrirDashboard() {

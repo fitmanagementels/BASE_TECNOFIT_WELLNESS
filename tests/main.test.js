@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { loadGas } = require('./helpers/load-gas');
 
-function setup() {
+function setup(configuredDashboardUrl) {
   const calls = [];
   const menu = {
     addItem(label, fn) { calls.push(['item', label, fn]); return this; },
@@ -44,7 +44,9 @@ function setup() {
       getService: () => ({ getUrl: () => 'https://script.google.com/mock' })
     },
     PropertiesService: {
-      getScriptProperties: () => ({ getProperty: () => 'https://xsteam.example/pwa/' })
+      getScriptProperties: () => ({
+        getProperty: () => configuredDashboardUrl === undefined ? 'https://xsteam.example/pwa/' : configuredDashboardUrl
+      })
     },
     Utilities: { getUuid: () => 'uuid-novo' },
     garantirEstruturaPlanilha: () => calls.push(['ensure']),
@@ -109,6 +111,11 @@ test('incluirArquivo_ retorna o conteúdo da parcial', () => {
 test('obterUrlDashboard retorna a URL configurada do PWA', () => {
   const { gas } = setup();
   assert.equal(gas.obterUrlDashboard(), 'https://xsteam.example/pwa/');
+});
+
+test('obterUrlDashboard usa o GitHub Pages como padrão quando a propriedade estiver vazia', () => {
+  const { gas } = setup('');
+  assert.equal(gas.obterUrlDashboard(), 'https://fitmanagementels.github.io/BASE_TECNOFIT_WELLNESS/');
 });
 
 test('obterStatusImportacao combina lote e última execução', () => {
