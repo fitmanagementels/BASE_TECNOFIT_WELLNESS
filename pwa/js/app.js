@@ -9,6 +9,7 @@
       document.getElementById('authScreen').hidden = true;
       var app = document.getElementById('app');
       app.hidden = false;
+      document.getElementById('loading-screen').hidden = false;
       var script = document.createElement('script');
       script.src = './js/dashboard.js';
       script.onload = function () { window.iniciarDashboardPwa(); };

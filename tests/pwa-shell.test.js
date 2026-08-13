@@ -9,6 +9,7 @@ test('shell PWA pede login Google e possui manifesto e service worker', () => {
   assert.match(html, /accounts\.google\.com\/gsi\/client/);
   assert.match(html, /runtime-config\.js/);
   assert.match(html, /loginButton/);
+  assert.match(html, /id="loading-screen"[^>]*hidden/);
   assert.equal(manifest.display, 'standalone');
   assert.match(worker, /addAll\(STATIC_ASSETS\)/);
   assert.match(worker, /fetch\(event\.request\)/);
