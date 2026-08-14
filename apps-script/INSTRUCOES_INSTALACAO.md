@@ -1,5 +1,7 @@
 # Instalação do backend no Google Apps Script
 
+> **PWA atual:** o dashboard operacional é publicado no GitHub Pages e não usa mais login OAuth. Para configurá-lo, siga [CONFIGURACAO_PWA_PUBLICO.md](../docs/operacao/CONFIGURACAO_PWA_PUBLICO.md). As seções antigas de publicação com usuários Google autorizados permanecem apenas como histórico e não devem ser usadas para a operação atual.
+
 Estas instruções instalam o backend na planilha Google Sheets `TecnoFit_Base_Mestre`.
 
 Planilha:
@@ -144,7 +146,7 @@ Quando o lote for reconhecido, mas algum dado for inválido, os arquivos serão 
 
 Quando um arquivo desta pasta for alterado, copie novamente seu conteúdo integral para o arquivo de mesmo nome no editor Apps Script. Salve o projeto e recarregue a planilha.
 
-Não crie gatilhos agendados. O dashboard deve ser publicado somente como aplicativo da web e com acesso restrito às pessoas autorizadas no Google Workspace, conforme o procedimento abaixo.
+Não crie gatilhos agendados. Para a publicação atual do PWA público, use o procedimento em `docs/operacao/CONFIGURACAO_PWA_PUBLICO.md`.
 
 ## 11. Publicação do dashboard
 
