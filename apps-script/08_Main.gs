@@ -71,6 +71,10 @@ function doGet() {
   return HtmlService.createHtmlOutput('<!doctype html><title>XSTEAM API</title><p>Backend XSTEAM ativo.</p>');
 }
 
+function doPost(e) {
+  return responderApiPublicaDashboard_(e);
+}
+
 function obterUrlDashboard() {
   var urlConfigurada = String(PropertiesService.getScriptProperties()
     .getProperty(CONFIG.dashboard.propriedadeUrlPwa) || '').trim();
