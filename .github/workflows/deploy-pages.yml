@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   deploy:
-    if: ${{ vars.PUBLIC_OAUTH_CLIENT_ID != '' && vars.PUBLIC_APPS_SCRIPT_DEPLOYMENT_ID != '' && vars.PUBLIC_OAUTH_SCOPES != '' }}
+    if: ${{ vars.PUBLIC_WORKER_URL != '' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -31,9 +31,7 @@ jobs:
       - run: npm test
       - run: node scripts/gerar-runtime-config.js
         env:
-          PUBLIC_OAUTH_CLIENT_ID: ${{ vars.PUBLIC_OAUTH_CLIENT_ID }}
-          PUBLIC_APPS_SCRIPT_DEPLOYMENT_ID: ${{ vars.PUBLIC_APPS_SCRIPT_DEPLOYMENT_ID }}
-          PUBLIC_OAUTH_SCOPES: ${{ vars.PUBLIC_OAUTH_SCOPES }}
+          PUBLIC_WORKER_URL: ${{ vars.PUBLIC_WORKER_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

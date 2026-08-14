@@ -12,17 +12,13 @@ function gerarRuntimeConfig(env = process.env) {
     if (/secret|password|refresh_token/i.test(name)) throw new Error(`Variável não permitida na configuração pública: ${name}`);
   }
   return 'window.XSTEAM_RUNTIME_CONFIG = ' + JSON.stringify({
-    oauthClientId: required('PUBLIC_OAUTH_CLIENT_ID', env),
-    appsScriptDeploymentId: required('PUBLIC_APPS_SCRIPT_DEPLOYMENT_ID', env),
-    oauthScopes: required('PUBLIC_OAUTH_SCOPES', env).split(/\s+/)
+    workerUrl: required('PUBLIC_WORKER_URL', env).replace(/\/$/, '')
   }, null, 2) + ';\n';
 }
 
 if (require.main === module) {
   fs.writeFileSync(path.join(__dirname, '..', 'pwa', 'runtime-config.js'), gerarRuntimeConfig({
-    PUBLIC_OAUTH_CLIENT_ID: process.env.PUBLIC_OAUTH_CLIENT_ID,
-    PUBLIC_APPS_SCRIPT_DEPLOYMENT_ID: process.env.PUBLIC_APPS_SCRIPT_DEPLOYMENT_ID,
-    PUBLIC_OAUTH_SCOPES: process.env.PUBLIC_OAUTH_SCOPES
+    PUBLIC_WORKER_URL: process.env.PUBLIC_WORKER_URL
   }));
 }
 
