@@ -1,29 +1,26 @@
 (function () {
-  var loginButton = document.getElementById('loginButton');
-  var authError = document.getElementById('authError');
-  loginButton.addEventListener('click', async function () {
-    loginButton.disabled = true;
-    authError.textContent = '';
-    try {
-      var account = await XsteamApi.login();
-      document.getElementById('authScreen').hidden = true;
-      var app = document.getElementById('app');
-      app.hidden = false;
-      document.getElementById('loading-screen').hidden = false;
-      var script = document.createElement('script');
-      script.src = './js/dashboard.js';
-      script.onload = function () { window.iniciarDashboardPwa(); };
-      script.onerror = function () {
-        app.hidden = true;
-        document.getElementById('authScreen').hidden = false;
-        authError.textContent = 'Não foi possível preparar o dashboard.';
-      };
-      document.body.appendChild(script);
-    } catch (erro) {
-      authError.textContent = erro.message || 'Não foi possível entrar.';
-    } finally {
-      loginButton.disabled = false;
-    }
-  });
-  if ('serviceWorker' in navigator) window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function () {}); });
+  function mostrarFalha(message) {
+    var loading = document.getElementById('loading-screen');
+    var text = document.getElementById('loading-message');
+    if (loading) loading.hidden = false;
+    if (text) text.textContent = message;
+  }
+
+  function iniciar() {
+    var app = document.getElementById('app');
+    var loading = document.getElementById('loading-screen');
+    if (app) app.hidden = false;
+    if (loading) loading.hidden = false;
+    var script = document.createElement('script');
+    script.src = './js/dashboard.js';
+    script.onload = function () { window.iniciarDashboardPwa(); };
+    script.onerror = function () { mostrarFalha('Não foi possível preparar o dashboard.'); };
+    document.body.appendChild(script);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
+  else iniciar();
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('./sw.js').catch(function () {}); });
+  }
 }());

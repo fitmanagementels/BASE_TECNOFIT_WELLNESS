@@ -1,6 +1,6 @@
 (function () {
   var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, leadFilter: 'todos', mutationQueue: [], failedMutations: [], saving: false, churnFilters: null, churnCharts: [], churnAnalyticsRequest: 0, churnAnalyticsCache: Object.create(null), backgroundSyncTimer: null };
-  var cacheKey = 'xsteam-dashboard-bootstrap-v2:' + ((window.XsteamApi.account() || {}).accountId || 'sem-conta');
+  var cacheKey = 'xsteam-dashboard-bootstrap-v3:publico';
   var labels = { home: 'Home', financeiro: 'Financeiro', acompanhamento: 'Acompanhamento', fluxo: 'Fluxo', configuracoes: 'Configurações' };
 
   function el(tag, className, text) { var node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = String(text); return node; }
