@@ -22,6 +22,7 @@ test('workflows publicam Pages e Worker sem OAuth público', () => {
   assert.match(worker, /APPS_SCRIPT_SHARED_SECRET/);
   assert.match(worker, /name: Criar ou atualizar o Worker/);
   assert.match(worker, /name: Enviar segredos do Worker/);
+  assert.match(worker, /wranglerVersion: "4"/);
   assert.match(gas, /clasp push --force/);
   assert.match(gas, /APPS_SCRIPT_AUTODEPLOY/);
   assert.match(gas, /APPS_SCRIPT_API_DEPLOYMENT_ID/);
