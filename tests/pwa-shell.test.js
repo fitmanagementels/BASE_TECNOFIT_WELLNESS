@@ -11,6 +11,7 @@ test('shell PWA inicia sem login Google e possui manifesto e service worker', ()
   assert.doesNotMatch(html, /loginButton|authScreen/);
   assert.match(html, /id="loading-screen"/);
   assert.equal(manifest.display, 'standalone');
+  assert.match(worker, /xsteam-static-v3/);
   assert.match(worker, /addAll\(STATIC_ASSETS\)/);
   assert.match(worker, /fetch\(event\.request\)/);
   assert.doesNotMatch(worker, /script\.googleapis\.com/);
