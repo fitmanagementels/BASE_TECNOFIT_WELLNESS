@@ -6,6 +6,7 @@ test('shell PWA inicia sem login Google e possui manifesto e service worker', ()
   const html = fs.readFileSync('pwa/index.html', 'utf8');
   const manifest = JSON.parse(fs.readFileSync('pwa/manifest.webmanifest', 'utf8'));
   const worker = fs.readFileSync('pwa/sw.js', 'utf8');
+  const styles = fs.readFileSync('pwa/css/dashboard.css', 'utf8');
   assert.match(html, /runtime-config\.js/);
   assert.doesNotMatch(html, /accounts\.google\.com\/gsi\/client/);
   assert.doesNotMatch(html, /loginButton|authScreen/);
@@ -15,6 +16,7 @@ test('shell PWA inicia sem login Google e possui manifesto e service worker', ()
   assert.match(worker, /addAll\(STATIC_ASSETS\)/);
   assert.match(worker, /fetch\(event\.request\)/);
   assert.doesNotMatch(worker, /script\.googleapis\.com/);
+  assert.match(styles, /\.svg-symbol-definitions\s*\{[^}]*position:\s*absolute/);
 });
 
 test('configuração de exemplo contém somente endpoint público do Worker', () => {
