@@ -20,6 +20,8 @@ test('workflows publicam Pages e Worker sem OAuth público', () => {
   assert.doesNotMatch(pages, /PUBLIC_OAUTH_CLIENT_ID|PUBLIC_OAUTH_SCOPES/);
   assert.match(worker, /cloudflare\/wrangler-action@v3/);
   assert.match(worker, /APPS_SCRIPT_SHARED_SECRET/);
+  assert.match(worker, /name: Criar ou atualizar o Worker/);
+  assert.match(worker, /name: Enviar segredos do Worker/);
   assert.match(gas, /clasp push --force/);
   assert.match(gas, /APPS_SCRIPT_AUTODEPLOY/);
   assert.match(gas, /APPS_SCRIPT_API_DEPLOYMENT_ID/);
