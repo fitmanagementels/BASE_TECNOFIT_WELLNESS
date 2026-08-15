@@ -7,11 +7,14 @@ test('shell PWA inicia sem login Google e possui manifesto e service worker', ()
   const manifest = JSON.parse(fs.readFileSync('pwa/manifest.webmanifest', 'utf8'));
   const worker = fs.readFileSync('pwa/sw.js', 'utf8');
   const styles = fs.readFileSync('pwa/css/dashboard.css', 'utf8');
+  const appIcon = fs.readFileSync('pwa/assets/xsteam-gestao-icon.svg', 'utf8');
   assert.match(html, /runtime-config\.js/);
   assert.doesNotMatch(html, /accounts\.google\.com\/gsi\/client/);
   assert.doesNotMatch(html, /loginButton|authScreen/);
   assert.match(html, /id="loading-screen"/);
   assert.equal(manifest.display, 'standalone');
+  assert.equal(manifest.icons[0].src, './assets/xsteam-gestao-icon.svg');
+  assert.match(appIcon, /data-variant="gestao"/);
   assert.match(worker, /xsteam-static-v3/);
   assert.match(worker, /addAll\(STATIC_ASSETS\)/);
   assert.match(worker, /fetch\(event\.request\)/);
