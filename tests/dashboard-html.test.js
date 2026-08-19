@@ -205,6 +205,19 @@ test('Home renderiza duas filas separadas e financeiro secundário', () => {
   assert.match(css, /\.home-operation-grid/);
 });
 
+test('Acompanhamento usa lista operacional própria sem informações financeiras', () => {
+  const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
+  assert.match(client, /function renderFollowList\(kind, people\)/);
+  assert.match(client, /function showFollowDetail\(kind, person\)/);
+  assert.match(client, /follow-list/);
+  const detail = client.match(/function showFollowDetail[\s\S]*?\n  \}/)[0];
+  assert.doesNotMatch(detail, /money\(|valorMensal|perfilPagamento|contratos/);
+  assert.doesNotMatch(client, /b\.valorMensal-a\.valorMensal/);
+  assert.match(client, /daysA=a\.classification\.days/);
+  assert.match(client, /daysB=b\.classification\.days/);
+  assert.match(client, /daysB-daysA/);
+});
+
 test('planos abre detalhes por frequência e informa hora-aula média', () => {
   const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
   assert.match(client, /function valorPorAula\(contrato\)/);

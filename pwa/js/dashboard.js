@@ -92,7 +92,7 @@
     if (!people.length) target.appendChild(el('p', 'body-copy', 'Nenhum registro neste recorte.'));
     people.forEach(function (item) { var row = el('article', 'student-row'); row.appendChild(el('h3', '', item.aluno)); if (item.classification) row.appendChild(chip(item.classification.state)); row.appendChild(el('p', 'body-copy', (item.classification && item.classification.days !== null ? item.classification.days + ' dias • ' : '') + money(item.valorMensal || 0) + ' • ' + (item.profile || 'Sem histórico'))); var list = el('ul', 'contract-list'); (item.contratos || []).forEach(function (c) { list.appendChild(el('li', '', (c.contrato || c.frequencia || 'Contrato') + ' — ' + money(c.valor) + (c.vencimento ? ' — ' + c.vencimento : ''))); }); row.appendChild(list); target.appendChild(row); }); dialog.showModal();
   }
-  function peopleFor(kind) { var f = filtered(), byId = groupedContracts(f.contratos), profiles = profileMap(); return f.alunos.map(function (p) { var cs = byId[p.id] || []; return { id:p.id, aluno:p.aluno, status:p.status, lastDate:kind === 'prescricoes' ? p.dataFicha : p.dataAvaliacao, contratos:cs, valorMensal:cs.reduce(function(s,c){return s+c.valor;},0), profile:(profiles[p.id]||{}).perfilPagamento || 'Sem histórico', classification: classify(p, kind) }; }).sort(function(a,b){ return a.classification.priority-b.classification.priority || b.valorMensal-a.valorMensal || a.aluno.localeCompare(b.aluno,'pt-BR'); }); }
+  function peopleFor(kind) { var f = filtered(), byId = groupedContracts(f.contratos), profiles = profileMap(); return f.alunos.map(function (p) { var cs = byId[p.id] || []; return { id:p.id, aluno:p.aluno, status:p.status, lastDate:kind === 'prescricoes' ? p.dataFicha : p.dataAvaliacao, contratos:cs, valorMensal:cs.reduce(function(s,c){return s+c.valor;},0), profile:(profiles[p.id]||{}).perfilPagamento || 'Sem histórico', classification: classify(p, kind) }; }).sort(function(a,b){ var daysA=a.classification.days==null?-1:a.classification.days,daysB=b.classification.days==null?-1:b.classification.days;return a.classification.priority-b.classification.priority || daysB-daysA || a.aluno.localeCompare(b.aluno,'pt-BR'); }); }
   function valorPorAula(contrato) {
     var match = /^(\d+)\s*x\b/i.exec(String(contrato.frequencia || '').trim());
     var vezesSemana = match ? Number(match[1]) : 0;
@@ -154,7 +154,64 @@
     heat.appendChild(barList(['1–7', '8–15', '16–23', '24–fim'].map(function (label, index) { return { label: label, value: b.month[index], quartile: index }; }), function (i) { detailsForContracts(i.label, contractsForMonthQuartile(data.contratos, i.quartile)); }));
     return [grid, timeline, heat];
   }
-  function renderFollow(kind) { var list=peopleFor(kind), grid=el('div','kpi-grid'), groups={verde:[],laranja:[],critico:[],sem:[]};list.forEach(function(x){var s=x.classification.state;if(s==='verde')groups.verde.push(x);else if(s==='laranja')groups.laranja.push(x);else if(s.indexOf('sem_')===0)groups.sem.push(x);else groups.critico.push(x);}); grid.appendChild(card('Em dia',number(groups.verde.length),'Até o prazo verde',function(){showDetail('Em dia',groups.verde);}));grid.appendChild(card('Atenção',number(groups.laranja.length),'Próximo ciclo',function(){showDetail('Atenção',groups.laranja);}));grid.appendChild(card('Prioridade',number(groups.critico.length),'Requer ação',function(){showDetail('Prioridades',groups.critico);}));grid.appendChild(card('Sem dado',number(groups.sem.length),'Prioridade máxima',function(){showDetail('Dados a regularizar',groups.sem);}));var chart=section(kind==='prescricoes'?'Prescrições por situação':'Avaliações por situação');var count={};list.forEach(function(x){count[x.classification.state]=(count[x.classification.state]||0)+1;});chart.appendChild(barList(Object.keys(count).map(function(k){return{label:stateLabel(k),value:count[k]};}),function(i){showDetail(i.label,list.filter(function(x){return stateLabel(x.classification.state)===i.label;}));}));return[grid,chart]; }
+  function showFollowDetail(kind, person) {
+    var dialog = document.getElementById('detailDialog'), target = document.getElementById('detailContent');
+    clear(target);
+    document.getElementById('detailTitle').textContent = kind === 'prescricoes' ? 'Detalhe da ficha' : 'Detalhe da avaliação';
+    var row = el('article', 'student-row follow-detail');
+    row.appendChild(el('h3', '', person.aluno));
+    row.appendChild(el('p', 'body-copy', person.id + ' • ' + (person.status || 'Status não informado')));
+    row.appendChild(chip(person.classification.state));
+    row.appendChild(el('p', 'body-copy', person.classification.days == null ? 'Sem registro interno' : person.classification.days + ' dias desde o último registro'));
+    row.appendChild(el('p', 'body-copy', 'Último registro: ' + (person.lastDate || '—')));
+    target.appendChild(row);
+    dialog.showModal();
+  }
+  function renderFollowFilters(kind, groups) {
+    var filters = el('div', 'follow-filter-row'), total = groups.reduce(function (sum, group) { return sum + group.people.length; }, 0);
+    [{ state: '', label: 'Todas', people: new Array(total) }].concat(groups).forEach(function (group) {
+      var button = el('button', 'follow-filter' + (state.followCategory === group.state ? ' active' : ''));
+      button.type = 'button';
+      button.setAttribute('aria-pressed', String(state.followCategory === group.state));
+      button.appendChild(el('span', '', group.label));
+      button.appendChild(el('strong', '', number(group.people.length)));
+      button.addEventListener('click', function () { state.followCategory = group.state; render(); });
+      filters.appendChild(button);
+    });
+    return filters;
+  }
+  function renderFollowList(kind, people) {
+    var box = el('section', 'section-card follow-list-card'), list = el('div', 'follow-list');
+    if (!people.length) {
+      list.appendChild(el('p', 'body-copy follow-empty', 'Nenhuma pendência neste recorte.'));
+    }
+    people.forEach(function (person) {
+      var row = el('article', 'follow-row'), identity = el('div', 'follow-identity');
+      identity.appendChild(el('strong', '', person.aluno));
+      identity.appendChild(el('small', '', person.id + ' • ' + (person.status || 'Status não informado')));
+      row.appendChild(identity);
+      row.appendChild(chip(person.classification.state));
+      row.appendChild(el('span', 'follow-days', person.classification.days == null ? 'Sem registro' : person.classification.days + ' dias'));
+      row.appendChild(el('span', 'follow-date', person.lastDate || '—'));
+      var action = el('button', 'secondary', kind === 'prescricoes' ? 'Ver ficha' : 'Ver avaliação');
+      action.type = 'button';
+      action.addEventListener('click', function () { showFollowDetail(kind, person); });
+      row.appendChild(action);
+      list.appendChild(row);
+    });
+    box.appendChild(list);
+    return box;
+  }
+  function renderFollow(kind) {
+    var all = peopleFor(kind), groups = groupFollowQueue(kind, all), actionable = [];
+    groups.forEach(function (group) { actionable = actionable.concat(group.people); });
+    var selected = state.followCategory ? actionable.filter(function (person) { return person.classification.state === state.followCategory; }) : actionable;
+    var hero = el('section', 'follow-hero');
+    hero.appendChild(el('span', 'eyebrow', 'PRIORIDADES DE HOJE'));
+    hero.appendChild(el('h2', '', kind === 'prescricoes' ? 'Fichas / prescrições' : 'Avaliações'));
+    hero.appendChild(el('p', 'body-copy', number(actionable.length) + ' registros precisam de revisão.'));
+    return [hero, renderFollowFilters(kind, groups), renderFollowList(kind, selected)];
+  }
   function renderHomeQueue(kind, people) {
     var isPrescription = kind === 'prescricoes';
     var queue = groupFollowQueue(kind, people);
@@ -335,5 +392,5 @@
   function flushQueue() { if(state.saving||!state.mutationQueue.length)return;enviarLoteMutacoes(criarLoteMutacoes(state.mutationQueue.splice(0))); }
   function tentarNovamenteMutacoes() { if(state.saving||!state.failedMutations.length)return;var lote=state.failedMutations.shift();lote.entries.forEach(function(entry){entry.rollback=aplicarMutacaoOtimista(entry.patch);});enviarLoteMutacoes(lote); }
   function start() { setProgress(8);var timer=setInterval(function(){var width=parseFloat(document.getElementById('loading-progress').style.width)||8;setProgress(Math.min(95,width+7));},150);setTimeout(function(){if(!state.bootstrap)document.getElementById('loading-message').textContent='A base está levando mais tempo que o normal…';},5000);var cached=safeCacheGet();if(cached&&cached.versao){applyBootstrap(cached);call('obterVersaoDashboard').then(function(v){if(v.versao!==cached.versao)return call('obterBootstrapDashboard');}).then(function(fresh){if(fresh)applyBootstrap(fresh);}).catch(function(){}).finally(function(){clearInterval(timer);});}else{call('obterBootstrapDashboard').then(applyBootstrap).catch(function(){document.getElementById('loading-message').textContent='Não foi possível carregar. Reabra o dashboard para tentar novamente.';}).finally(function(){clearInterval(timer);});} }
-  window.iniciarDashboardPwa=function(){ document.querySelectorAll('[data-page]').forEach(function(b){b.addEventListener('click',function(){activate(b.dataset.page);});});document.getElementById('subnav').addEventListener('click',function(e){if(e.target.dataset.subpage){state.subpage=e.target.dataset.subpage;render();}});document.getElementById('globalStatus').addEventListener('change',function(e){state.filters.status=e.target.value;render();});document.getElementById('globalPolo').addEventListener('change',function(e){state.filters.polo=e.target.value;render();});document.getElementById('detailClose').addEventListener('click',function(){document.getElementById('detailDialog').close();});var retry=document.getElementById('retryMutations');if(retry)retry.addEventListener('click',tentarNovamenteMutacoes);start(); };
+  window.iniciarDashboardPwa=function(){ document.querySelectorAll('[data-page]').forEach(function(b){b.addEventListener('click',function(){activate(b.dataset.page);});});document.getElementById('subnav').addEventListener('click',function(e){if(e.target.dataset.subpage){state.subpage=e.target.dataset.subpage;if(state.page==='acompanhamento')state.followCategory='';render();}});document.getElementById('globalStatus').addEventListener('change',function(e){state.filters.status=e.target.value;render();});document.getElementById('globalPolo').addEventListener('change',function(e){state.filters.polo=e.target.value;render();});document.getElementById('detailClose').addEventListener('click',function(){document.getElementById('detailDialog').close();});var retry=document.getElementById('retryMutations');if(retry)retry.addEventListener('click',tentarNovamenteMutacoes);start(); };
 }());
