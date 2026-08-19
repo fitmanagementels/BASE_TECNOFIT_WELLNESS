@@ -201,8 +201,15 @@ test('Home renderiza duas filas separadas e financeiro secundário', () => {
   assert.match(client, /function renderHomeQueue\(kind, people\)/);
   assert.match(client, /function renderFinancialHome\(data\)/);
   assert.match(client, /home-operation-grid/);
+  assert.match(client, /operationalBlocks\.sort\(function \(a, b\) \{ return a\.ordem - b\.ordem; \}\)/);
   assert.doesNotMatch(client, /var missing = prescriptions[^;]+concat\(evaluations/s);
   assert.match(css, /\.home-operation-grid/);
+});
+
+test('controles operacionais não herdam aparência nativa do navegador', () => {
+  const css = fs.readFileSync('pwa/css/dashboard.css', 'utf8');
+  assert.match(css, /button \{[^}]*border: 0;[^}]*background: transparent;/);
+  assert.match(css, /\.follow-row \.chip \{ justify-self: start; \}/);
 });
 
 test('Acompanhamento usa lista operacional própria sem informações financeiras', () => {
@@ -230,6 +237,19 @@ test('Configurações separa prazos, Home e perfil de pagamento', () => {
   assert.match(client, /beforeunload/);
   assert.match(client, /Prévia da Home/);
   assert.match(css, /\.settings-nav/);
+});
+
+test('história operacional conecta Home, filas dedicadas e Configurações', () => {
+  const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
+  const css = fs.readFileSync('pwa/css/dashboard.css', 'utf8');
+  assert.match(client, /renderHomeQueue\('prescricoes'/);
+  assert.match(client, /renderHomeQueue\('avaliacoes'/);
+  assert.match(client, /openFollowQueue\(kind, group\.state\)/);
+  assert.match(client, /renderFollowList\(kind,/);
+  assert.match(client, /renderAlertSettings\(\)/);
+  assert.match(client, /renderHomeSettings\(\)/);
+  assert.match(client, /renderPaymentSettings\(\)/);
+  assert.match(css, /@media \(max-width: 860px\)[^{]*\{[^}]*\.home-operation-grid/s);
 });
 
 test('planos abre detalhes por frequência e informa hora-aula média', () => {

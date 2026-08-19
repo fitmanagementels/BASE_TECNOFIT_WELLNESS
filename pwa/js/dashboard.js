@@ -258,22 +258,31 @@
   }
   function renderHome(data) {
     var prescriptions = peopleFor('prescricoes'), evaluations = peopleFor('avaliacoes');
-    var configured = state.bootstrap.configuracao.homeCards || [], operational = Object.create(null), hasOperational = false;
+    var configured = state.bootstrap.configuracao.homeCards || [];
+    var operationalBlocks = [
+      { chave: 'fila_prescricoes', ativo: true, ordem: 1 },
+      { chave: 'fila_avaliacoes', ativo: true, ordem: 2 },
+      { chave: 'agenda_financeira', ativo: true, ordem: 3 }
+    ];
     configured.forEach(function (item) {
-      if (['fila_prescricoes', 'fila_avaliacoes', 'agenda_financeira'].indexOf(item.chave) === -1) return;
-      operational[item.chave] = item.ativo;
-      hasOperational = true;
+      var block = operationalBlocks.find(function (candidate) { return candidate.chave === item.chave; });
+      if (!block) return;
+      block.ativo = item.ativo !== false;
+      block.ordem = Number(item.ordem) || block.ordem;
     });
+    operationalBlocks.sort(function (a, b) { return a.ordem - b.ordem; });
     var intro = el('section', 'home-operation-intro');
     intro.appendChild(el('span', 'eyebrow', 'OPERAÇÃO DE HOJE'));
     intro.appendChild(el('h2', '', 'O que precisa de ação'));
     intro.appendChild(el('p', 'body-copy', 'Prioridades calculadas com o último lote válido da planilha.'));
     var grid = el('div', 'home-operation-grid');
-    if (!hasOperational || operational.fila_prescricoes !== false) grid.appendChild(renderHomeQueue('prescricoes', prescriptions));
-    if (!hasOperational || operational.fila_avaliacoes !== false) grid.appendChild(renderHomeQueue('avaliacoes', evaluations));
-    var nodes = [intro, grid];
-    if (!hasOperational || operational.agenda_financeira !== false) nodes.push(renderFinancialHome(data));
-    return nodes;
+    operationalBlocks.forEach(function (block) {
+      if (!block.ativo) return;
+      if (block.chave === 'fila_prescricoes') grid.appendChild(renderHomeQueue('prescricoes', prescriptions));
+      if (block.chave === 'fila_avaliacoes') grid.appendChild(renderHomeQueue('avaliacoes', evaluations));
+      if (block.chave === 'agenda_financeira') grid.appendChild(renderFinancialHome(data));
+    });
+    return [intro, grid];
   }
   function markSettingsDirty() {
     state.settingsDirty = true;
