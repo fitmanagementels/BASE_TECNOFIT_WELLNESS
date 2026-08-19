@@ -114,7 +114,7 @@ function lerConfiguracaoDashboardPersistente_(planilha) {
   var linhasPagamentos = lerTabelaDashboardDaPlanilha_(
     planilha, CONFIG.abas.gestaoPagamentos, CONFIG.cabecalhos.gestaoPagamentos
   );
-  var filtrosPadrao = { status: 'Ativo', polo: 'XSTEAM WELLNESS CLUB' };
+  var filtrosPadrao = { status: '__matriculados__', polo: 'XSTEAM WELLNESS CLUB' };
   var linhaFiltros = linhasDashboard.filter(function (linha) {
     return linha.tipo === 'filtros' && linha.chave === 'globais';
   })[0];
@@ -123,6 +123,7 @@ function lerConfiguracaoDashboardPersistente_(planilha) {
     if (String(filtrosLidos.status || '').trim()) filtrosPadrao.status = String(filtrosLidos.status).trim();
     if (String(filtrosLidos.polo || '').trim()) filtrosPadrao.polo = String(filtrosLidos.polo).trim();
   }
+  if (filtrosPadrao.status === 'Ativo') filtrosPadrao.status = '__matriculados__';
   var alertas = configuracaoAlertaPadraoDashboard_();
   linhasAlertas.forEach(function (linha) {
     if (!Object.prototype.hasOwnProperty.call(alertas, linha.chave)) return;

@@ -1,6 +1,6 @@
 var DASHBOARD_CONFIGURACAO_PADRAO = Object.freeze({
   dashboard: Object.freeze([
-    Object.freeze(['filtros', 'globais', true, 0, '{"status":"Ativo","polo":"XSTEAM WELLNESS CLUB"}', 'Filtros padrão', '']),
+    Object.freeze(['filtros', 'globais', true, 0, '{"status":"__matriculados__","polo":"XSTEAM WELLNESS CLUB"}', 'Filtros padrão', '']),
     Object.freeze(['home_card', 'fila_prescricoes', true, 1, '', 'Fichas / prescrições', '[]']),
     Object.freeze(['home_card', 'fila_avaliacoes', true, 2, '', 'Avaliações', '[]']),
     Object.freeze(['home_card', 'agenda_financeira', true, 3, '', 'Agenda financeira', '[]'])

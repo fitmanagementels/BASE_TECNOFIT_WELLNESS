@@ -146,8 +146,8 @@ test('incrementa uma versão persistente para invalidar apenas dados já superad
 
 test('usa o nome exato do polo Wellness como padrão canônico', () => {
   const gas = loadGas(['apps-script/00_Config.gs', 'apps-script/13_DashboardConfiguracao.gs']);
-  assert.match(
-    gas.DASHBOARD_CONFIGURACAO_PADRAO.dashboard[0][4],
-    /XSTEAM WELLNESS CLUB/
+  assert.deepEqual(
+    JSON.parse(gas.DASHBOARD_CONFIGURACAO_PADRAO.dashboard[0][4]),
+    { status: '__matriculados__', polo: 'XSTEAM WELLNESS CLUB' }
   );
 });

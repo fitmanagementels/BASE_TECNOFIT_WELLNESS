@@ -629,7 +629,9 @@ test('bootstrap inclui perfis, catálogo e contato necessário ao detalhamento',
     /^importacao:exec-1\|config:7\|fluxo:FLUXO_LEADS:1:[a-z0-9]+\|FLUXO_CHURNS:1:[a-z0-9]+$/
   );
   assert.equal(resposta.atualizadoEm, '27/07/2026 19:34');
-  assert.deepEqual(JSON.parse(JSON.stringify(resposta.filtrosPadrao)), { status: 'Ativo', polo: 'Wellness' });
+  assert.deepEqual(JSON.parse(JSON.stringify(resposta.filtrosPadrao)), {
+    status: '__matriculados__', polo: 'Wellness'
+  });
   assert.equal(resposta.alunos[0].contato, '85999999999');
   assert.equal(resposta.perfisAlunos[0].id, '1');
   assert.deepEqual(JSON.parse(JSON.stringify(resposta.perfisAlunos[0].etiquetasPublico)), ['idoso', 'saude']);
