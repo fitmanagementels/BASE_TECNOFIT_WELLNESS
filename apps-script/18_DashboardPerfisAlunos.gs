@@ -120,3 +120,84 @@ function lerCatalogoPerfisAlunosDashboard_(planilha) {
       a.titulo.localeCompare(b.titulo, 'pt-BR');
   });
 }
+
+function chavesAtivasCatalogoPerfil_(catalogo, tipo, grupo) {
+  return catalogo.filter(function (item) {
+    return item.ativo && item.tipo === tipo && item.grupo === grupo;
+  }).map(function (item) { return item.chave; });
+}
+
+function titulosAtivosCatalogoPerfil_(catalogo, tipo, grupo) {
+  return catalogo.filter(function (item) {
+    return item.ativo && item.tipo === tipo && item.grupo === grupo;
+  }).map(function (item) { return item.titulo; });
+}
+
+function grupoProfessorPerfilAluno_(status) {
+  var normalizado = String(status || '').toLocaleLowerCase('pt-BR')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return normalizado.indexOf('cancel') !== -1 ? 'cancelados' : 'matriculados';
+}
+
+function validarListaCatalogoPerfil_(recebida, permitidas, rotulo) {
+  if (!Array.isArray(recebida)) throw new Error(rotulo + ' inválida.');
+  var vistas = Object.create(null);
+  return recebida.map(function (item) {
+    return textoMutacaoDashboard_(item, 80);
+  }).filter(function (item) {
+    if (!item || vistas[item]) return false;
+    if (permitidas.indexOf(item) === -1) throw new Error(rotulo + ' inválida.');
+    vistas[item] = true;
+    return true;
+  });
+}
+
+function atualizarLinhasPerfilAlunoMutacao_(linhas, valores, catalogo, alunos) {
+  valores = valores || {};
+  var id = textoMutacaoDashboard_(valores.id, 100);
+  var aluno = textoMutacaoDashboard_(valores.aluno, 200);
+  var anterior = linhas.filter(function (linha) { return String(linha[0]) === id; })[0] || null;
+  var alunoBase = alunos.filter(function (item) { return String(item.id) === id; })[0];
+  if (!id || !aluno || !alunoBase) throw new Error('Aluno inválido.');
+
+  var professor = textoMutacaoDashboard_(valores.professorResponsavel, 120);
+  var grupoProfessor = grupoProfessorPerfilAluno_(alunoBase.status);
+  var professores = titulosAtivosCatalogoPerfil_(catalogo, 'professor', grupoProfessor);
+  var professorHistorico = anterior ? String(anterior[2] || '') : '';
+  if (professor && professores.indexOf(professor) === -1 && professor !== professorHistorico) {
+    throw new Error('Professor responsável inválido.');
+  }
+
+  var perfilPagamento = textoMutacaoDashboard_(
+    valores.perfilPagamento || 'Sem histórico', 100
+  );
+  if (titulosAtivosCatalogoPerfil_(
+    catalogo, 'perfil_pagamento', 'global'
+  ).indexOf(perfilPagamento) === -1) {
+    throw new Error('Perfil de pagamento inválido.');
+  }
+  var etiquetasPublico = validarListaCatalogoPerfil_(
+    valores.etiquetasPublico || [],
+    chavesAtivasCatalogoPerfil_(catalogo, 'etiqueta', 'publico'),
+    'Etiqueta de Público'
+  );
+  var etiquetasComerciais = validarListaCatalogoPerfil_(
+    valores.etiquetasComerciais || [],
+    chavesAtivasCatalogoPerfil_(catalogo, 'etiqueta', 'comercial'),
+    'Etiqueta Comercial'
+  );
+  var nova = [
+    id,
+    aluno,
+    professor,
+    perfilPagamento,
+    textoMutacaoDashboard_(valores.observacaoPagamento, 1000),
+    JSON.stringify(etiquetasPublico),
+    JSON.stringify(etiquetasComerciais),
+    textoMutacaoDashboard_(valores.observacoesGerais, 3000),
+    Utilities.formatDate(new Date(), CONFIG.fusoHorario, 'dd/MM/yyyy HH:mm')
+  ];
+  return linhas.filter(function (linha) {
+    return String(linha[0]) !== id;
+  }).concat([nova]);
+}

@@ -45,6 +45,22 @@ function setup() {
       ['alertas', 'avaliacoes', true, 20, '{"laranja":90,"vermelho":120,"roxo":180,"critico":270}', 'Avaliações', '']
     ]),
     GESTAO_PAGAMENTOS: new SheetMock([Array.from(config.cabecalhos.gestaoPagamentos)]),
+    PERFIS_ALUNOS: new SheetMock([Array.from(config.cabecalhos.perfisAlunos)]),
+    CONFIG_PERFIS_ALUNOS: new SheetMock([
+      Array.from(config.cabecalhos.configPerfisAlunos),
+      ['professor', 'matriculados', 'aquiles', 'Aquiles', true, 10],
+      ['professor', 'cancelados', 'wallyson', 'Wallyson', true, 10],
+      ['perfil_pagamento', 'global', 'sem_historico', 'Sem histórico', true, 10],
+      ['perfil_pagamento', 'global', 'bom_pagador', 'Bom pagador', true, 20],
+      ['etiqueta', 'publico', 'idoso', 'Idoso', true, 10],
+      ['etiqueta', 'publico', 'saude', 'Saúde', true, 20],
+      ['etiqueta', 'comercial', 'risco_de_churn', 'Risco de Churn', true, 10]
+    ]),
+    BASE_ALUNOS: new SheetMock([
+      Array.from(config.cabecalhos.alunos),
+      ['42', 'ALUNA TESTE', '85999999999', 'Ativo', '', '', '', 'exec-1'],
+      ['43', 'ALUNO CANCELADO', '85999999998', 'Cancelado', '', '', '', 'exec-1']
+    ]),
     FLUXO_LEADS: new SheetMock([Array.from(config.cabecalhos.fluxoLeads)]),
     FLUXO_CHURNS: new SheetMock([Array.from(config.cabecalhos.fluxoChurns)])
   };
@@ -53,7 +69,9 @@ function setup() {
   const sheetCalls = [];
   const gas = loadGas([
     'apps-script/00_Config.gs',
+    'apps-script/11_DashboardRepositorio.gs',
     'apps-script/15_DashboardFluxo.gs',
+    'apps-script/18_DashboardPerfisAlunos.gs',
     'apps-script/13_DashboardConfiguracao.gs',
     'apps-script/14_DashboardMutacoes.gs'
   ], {
@@ -94,6 +112,56 @@ test('upsert de pagamento por ID é idempotente mesmo com a mesma solicitação 
   assert.equal(sheets.GESTAO_PAGAMENTOS.values[1][2], 'Bom pagador');
   assert.equal(repetido.idempotente, true);
   assert.deepEqual(calls, ['lock', 'release', 'lock', 'release']);
+});
+
+test('salva perfil completo por ID e preserva professor histórico', () => {
+  const { gas, sheets } = setup();
+  sheets.PERFIS_ALUNOS.values.push([
+    '42', 'ALUNA TESTE', 'Professor antigo', 'Sem histórico', '', '[]', '[]', '', ''
+  ]);
+
+  gas.salvarMutacoesDashboard({
+    requestId: 'perfil-aluno-42',
+    patches: [{ tipo: 'perfilAluno', valores: {
+      id: '42',
+      aluno: 'ALUNA TESTE',
+      professorResponsavel: 'Professor antigo',
+      perfilPagamento: 'Bom pagador',
+      observacaoPagamento: 'Paga em dia',
+      etiquetasPublico: ['idoso', 'saude'],
+      etiquetasComerciais: ['risco_de_churn'],
+      observacoesGerais: 'Prefere treinar cedo.'
+    } }]
+  });
+
+  const linha = sheets.PERFIS_ALUNOS.values.find(row => row[0] === '42');
+  assert.equal(linha[2], 'Professor antigo');
+  assert.equal(linha[3], 'Bom pagador');
+  assert.equal(linha[5], '["idoso","saude"]');
+  assert.equal(linha[6], '["risco_de_churn"]');
+  assert.equal(linha[7], 'Prefere treinar cedo.');
+});
+
+test('usa catálogo de cancelados e rejeita etiqueta no grupo errado sem gravar', () => {
+  const { gas, sheets } = setup();
+  gas.salvarMutacoesDashboard({
+    requestId: 'perfil-cancelado-43',
+    patches: [{ tipo: 'perfilAluno', valores: {
+      id: '43', aluno: 'ALUNO CANCELADO', professorResponsavel: 'Wallyson',
+      perfilPagamento: 'Sem histórico', etiquetasPublico: [], etiquetasComerciais: []
+    } }]
+  });
+  assert.equal(sheets.PERFIS_ALUNOS.values[1][2], 'Wallyson');
+
+  const writesBefore = sheets.PERFIS_ALUNOS.writes;
+  assert.throws(() => gas.salvarMutacoesDashboard({
+    requestId: 'perfil-invalido-42',
+    patches: [{ tipo: 'perfilAluno', valores: {
+      id: '42', aluno: 'ALUNA TESTE', professorResponsavel: 'Aquiles',
+      perfilPagamento: 'Bom pagador', etiquetasPublico: ['risco_de_churn'], etiquetasComerciais: []
+    } }]
+  }), /Etiqueta de Público inválida/);
+  assert.equal(sheets.PERFIS_ALUNOS.writes, writesBefore);
 });
 
 test('salvar cartões da Home preserva os filtros padrão já configurados', () => {

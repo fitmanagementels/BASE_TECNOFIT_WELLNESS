@@ -256,22 +256,28 @@ function salvarMutacoesDashboard(lote) {
     var precisaDashboard = patches.some(function (patch) { return patch && patch.tipo === 'configDashboard'; });
     var precisaAlertas = patches.some(function (patch) { return patch && patch.tipo === 'configAlertas'; });
     var precisaPagamentos = patches.some(function (patch) { return patch && patch.tipo === 'perfilPagamento'; });
+    var precisaPerfilAluno = patches.some(function (patch) { return patch && patch.tipo === 'perfilAluno'; });
     var precisaLeads = patches.some(function (patch) { return patch && patch.tipo === 'fluxoLead'; });
     var precisaChurns = patches.some(function (patch) { return patch && (patch.tipo === 'fluxoChurn' || patch.tipo === 'excluirFluxoChurn'); });
     var planilha = planilhaMutacoesDashboard_();
     var abaDashboard = precisaDashboard ? planilha.getSheetByName(CONFIG.abas.configDashboard) : null;
     var abaAlertas = precisaAlertas ? planilha.getSheetByName(CONFIG.abas.configAlertas) : null;
     var abaPagamentos = precisaPagamentos ? planilha.getSheetByName(CONFIG.abas.gestaoPagamentos) : null;
+    var abaPerfisAlunos = precisaPerfilAluno ? planilha.getSheetByName(CONFIG.abas.perfisAlunos) : null;
     var abaLeads = precisaLeads ? planilha.getSheetByName(CONFIG.abas.fluxoLeads) : null;
     var abaChurns = precisaChurns ? planilha.getSheetByName(CONFIG.abas.fluxoChurns) : null;
     var linhasDashboard = precisaDashboard ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.configDashboard, CONFIG.cabecalhos.configDashboard) : [];
     var linhasAlertas = precisaAlertas ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.configAlertas, CONFIG.cabecalhos.configAlertas) : [];
     var linhasPagamentos = precisaPagamentos ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.gestaoPagamentos, CONFIG.cabecalhos.gestaoPagamentos) : [];
+    var linhasPerfisAlunos = precisaPerfilAluno ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.perfisAlunos, CONFIG.cabecalhos.perfisAlunos) : [];
+    var catalogoPerfisAlunos = precisaPerfilAluno ? lerCatalogoPerfisAlunosDashboard_(planilha) : [];
+    var alunosPerfil = precisaPerfilAluno ? lerTabelaDashboardDaPlanilha_(planilha, CONFIG.abas.alunos, CONFIG.cabecalhos.alunos) : [];
     var linhasLeads = precisaLeads ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.fluxoLeads, CONFIG.cabecalhos.fluxoLeads) : [];
     var linhasChurns = precisaChurns ? lerTabelaMutacoesDashboard_(planilha, CONFIG.abas.fluxoChurns, CONFIG.cabecalhos.fluxoChurns) : [];
     var alterouDashboard = false;
     var alterouAlertas = false;
     var alterouPagamentos = false;
+    var alterouPerfilAluno = false;
     var alterouLeads = false;
     var alterouChurns = false;
     patches.forEach(function (patch) {
@@ -285,6 +291,11 @@ function salvarMutacoesDashboard(lote) {
       } else if (patch.tipo === 'perfilPagamento') {
         linhasPagamentos = atualizarLinhasPagamentosMutacao_(linhasPagamentos, patch.valores || {});
         alterouPagamentos = true;
+      } else if (patch.tipo === 'perfilAluno') {
+        linhasPerfisAlunos = atualizarLinhasPerfilAlunoMutacao_(
+          linhasPerfisAlunos, patch.valores || {}, catalogoPerfisAlunos, alunosPerfil
+        );
+        alterouPerfilAluno = true;
       } else if (patch.tipo === 'fluxoLead') {
         linhasLeads = atualizarLinhaFluxoMutacao_(linhasLeads, patch.valores || {}, linhaLeadFluxoMutacao_);
         alterouLeads = true;
@@ -301,6 +312,7 @@ function salvarMutacoesDashboard(lote) {
     if (alterouDashboard) escreverTabelaMutacoesDashboard_(abaDashboard, CONFIG.cabecalhos.configDashboard, linhasDashboard);
     if (alterouAlertas) escreverTabelaMutacoesDashboard_(abaAlertas, CONFIG.cabecalhos.configAlertas, linhasAlertas);
     if (alterouPagamentos) escreverTabelaMutacoesDashboard_(abaPagamentos, CONFIG.cabecalhos.gestaoPagamentos, linhasPagamentos);
+    if (alterouPerfilAluno) escreverTabelaMutacoesDashboard_(abaPerfisAlunos, CONFIG.cabecalhos.perfisAlunos, linhasPerfisAlunos);
     if (alterouLeads) escreverTabelaMutacoesDashboard_(abaLeads, CONFIG.cabecalhos.fluxoLeads, linhasLeads);
     if (alterouChurns) escreverTabelaMutacoesDashboard_(abaChurns, CONFIG.cabecalhos.fluxoChurns, linhasChurns);
     SpreadsheetApp.flush();
