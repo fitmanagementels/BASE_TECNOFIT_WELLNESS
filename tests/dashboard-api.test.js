@@ -10,6 +10,7 @@ const FILES = [
   'apps-script/10_DashboardPaginas.gs',
   'apps-script/11_DashboardRepositorio.gs',
   'apps-script/15_DashboardFluxo.gs',
+  'apps-script/18_DashboardPerfisAlunos.gs',
   'apps-script/13_DashboardConfiguracao.gs',
   'apps-script/12_DashboardApi.gs'
 ];
@@ -72,7 +73,7 @@ function carregarComPlanilha(planilha, cache, extras = {}) {
   return { gas, aberturas: () => aberturas, fluxo };
 }
 
-test('bootstrap inclui o payload manual de Fluxo sem expor contato da base mestre', () => {
+test('bootstrap inclui o payload manual de Fluxo e o contato necessário ao perfil', () => {
   const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
   const abas = {
     BASE_ALUNOS: criarAba([Array.from(config.cabecalhos.alunos), ['1', 'ALUNO TESTE', '85900000001', 'Ativo', '', '', '', 'exec-1']]),
@@ -91,7 +92,8 @@ test('bootstrap inclui o payload manual de Fluxo sem expor contato da base mestr
   const resultado = gas.obterBootstrapDashboard();
 
   assert.deepEqual(JSON.parse(JSON.stringify(resultado.fluxo)), { leads: [], churns: [] });
-  assert.equal(JSON.stringify(resultado.alunos).includes('85900000001'), false);
+  assert.equal(resultado.alunos[0].contato, '85900000001');
+  assert.deepEqual(JSON.parse(JSON.stringify(resultado.perfisAlunos)), []);
 });
 
 test('obterAnaliseChurnsDashboard devolve séries de todos os churns manuais', () => {
@@ -574,7 +576,7 @@ test('obterDadosPaginaDashboard devolve dados calculados quando a gravação do 
   assert.equal(resultado.pagina, 'planos');
 });
 
-test('bootstrap inclui versão e configuração, mas nunca envia contato ao navegador', () => {
+test('bootstrap inclui perfis, catálogo e contato necessário ao detalhamento', () => {
   const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
   const abas = {
     BASE_ALUNOS: criarAba([
@@ -601,6 +603,16 @@ test('bootstrap inclui versão e configuração, mas nunca envia contato ao nave
     GESTAO_PAGAMENTOS: criarAba([
       Array.from(config.cabecalhos.gestaoPagamentos),
       ['1', 'ALUNA TESTE', 'Bom pagador', 'Observação interna', '27/07/2026 19:30']
+    ]),
+    PERFIS_ALUNOS: criarAba([
+      Array.from(config.cabecalhos.perfisAlunos),
+      ['1', 'ALUNA TESTE', 'Elohim', 'Bom pagador', 'Observação interna', '["idoso","saude"]', '["risco_de_churn"]', 'Prefere manhã', '27/07/2026 19:30']
+    ]),
+    CONFIG_PERFIS_ALUNOS: criarAba([
+      Array.from(config.cabecalhos.configPerfisAlunos),
+      ['etiqueta', 'publico', 'idoso', 'Idoso', true, 10],
+      ['etiqueta', 'publico', 'saude', 'Saúde', true, 20],
+      ['etiqueta', 'comercial', 'risco_de_churn', 'Risco de Churn', true, 10]
     ])
   };
   const values = new Map([['tecnofit.dashboard.versao', '7']]);
@@ -618,8 +630,10 @@ test('bootstrap inclui versão e configuração, mas nunca envia contato ao nave
   );
   assert.equal(resposta.atualizadoEm, '27/07/2026 19:34');
   assert.deepEqual(JSON.parse(JSON.stringify(resposta.filtrosPadrao)), { status: 'Ativo', polo: 'Wellness' });
-  assert.equal(Object.hasOwn(resposta.alunos[0], 'contato'), false);
-  assert.equal(JSON.stringify(resposta).includes('85999999999'), false);
+  assert.equal(resposta.alunos[0].contato, '85999999999');
+  assert.equal(resposta.perfisAlunos[0].id, '1');
+  assert.deepEqual(JSON.parse(JSON.stringify(resposta.perfisAlunos[0].etiquetasPublico)), ['idoso', 'saude']);
+  assert.equal(resposta.catalogoPerfisAlunos.some(item => item.chave === 'risco_de_churn'), true);
   assert.equal(resposta.configuracao.perfisPagamento[0].perfilPagamento, 'Bom pagador');
 });
 

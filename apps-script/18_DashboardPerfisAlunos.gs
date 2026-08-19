@@ -66,3 +66,57 @@ function garantirPerfisAlunosNaPlanilha_(planilha) {
   );
   migrarGestaoPagamentosParaPerfisAlunos_(planilha, perfis);
 }
+
+function listaJsonPerfilAluno_(valor) {
+  var lista = jsonDashboardSeguro_(valor, []);
+  return Array.isArray(lista) ? lista.map(function (item) {
+    return String(item || '').trim();
+  }).filter(Boolean) : [];
+}
+
+function lerPerfisAlunosDashboard_(planilha) {
+  if (!planilha.getSheetByName(CONFIG.abas.perfisAlunos)) return [];
+  return lerTabelaDashboardDaPlanilha_(
+    planilha, CONFIG.abas.perfisAlunos, CONFIG.cabecalhos.perfisAlunos
+  ).map(function (linha) {
+    return {
+      id: String(linha.id || ''),
+      aluno: String(linha.aluno || ''),
+      professorResponsavel: String(linha.professor_responsavel || ''),
+      perfilPagamento: String(linha.perfil_pagamento || 'Sem histórico'),
+      observacaoPagamento: String(linha.observacao_pagamento || ''),
+      etiquetasPublico: listaJsonPerfilAluno_(linha.etiquetas_publico),
+      etiquetasComerciais: listaJsonPerfilAluno_(linha.etiquetas_comerciais),
+      observacoesGerais: String(linha.observacoes_gerais || ''),
+      atualizadoEm: String(linha.atualizado_em || '')
+    };
+  });
+}
+
+function catalogoPerfilAlunoSeguro_(linha) {
+  return {
+    tipo: String(linha.tipo || linha[0] || ''),
+    grupo: String(linha.grupo || linha[1] || ''),
+    chave: String(linha.chave || linha[2] || ''),
+    titulo: String(linha.titulo || linha[3] || ''),
+    ativo: linha.ativo === true || linha[4] === true ||
+      String(linha.ativo == null ? linha[4] : linha.ativo).toLowerCase() === 'true',
+    ordem: Number(linha.ordem == null ? linha[5] : linha.ordem) || 0
+  };
+}
+
+function lerCatalogoPerfisAlunosDashboard_(planilha) {
+  var linhas;
+  if (planilha.getSheetByName(CONFIG.abas.configPerfisAlunos)) {
+    linhas = lerTabelaDashboardDaPlanilha_(
+      planilha, CONFIG.abas.configPerfisAlunos, CONFIG.cabecalhos.configPerfisAlunos
+    );
+  } else {
+    linhas = CATALOGO_PERFIS_ALUNOS_PADRAO;
+  }
+  return linhas.map(catalogoPerfilAlunoSeguro_).sort(function (a, b) {
+    return a.tipo.localeCompare(b.tipo, 'pt-BR') ||
+      a.grupo.localeCompare(b.grupo, 'pt-BR') || a.ordem - b.ordem ||
+      a.titulo.localeCompare(b.titulo, 'pt-BR');
+  });
+}

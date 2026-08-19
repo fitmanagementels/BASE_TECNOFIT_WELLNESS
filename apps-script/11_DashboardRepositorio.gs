@@ -157,6 +157,7 @@ function alunoSeguroParaDashboard_(aluno) {
   return {
     id: String(aluno.id || ''),
     aluno: String(aluno.aluno || ''),
+    contato: String(aluno.contato || ''),
     status: String(aluno.status || ''),
     dataFicha: formatarDataDashboard_(aluno.data_ficha),
     dataAvaliacao: formatarDataDashboard_(aluno.data_avaliacao)

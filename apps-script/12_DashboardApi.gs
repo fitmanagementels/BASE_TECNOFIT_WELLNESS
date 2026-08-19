@@ -224,7 +224,8 @@ function respostaBootstrapDashboardValida_(resposta, versao) {
   return objetoDashboardValido_(resposta) && resposta.versao === versao &&
     typeof resposta.atualizadoEm === 'string' && objetoDashboardValido_(resposta.filtrosPadrao) &&
     objetoDashboardValido_(resposta.configuracao) && Array.isArray(resposta.alunos) &&
-    Array.isArray(resposta.contratos) && objetoDashboardValido_(resposta.fluxo) &&
+    Array.isArray(resposta.contratos) && Array.isArray(resposta.perfisAlunos) &&
+    Array.isArray(resposta.catalogoPerfisAlunos) && objetoDashboardValido_(resposta.fluxo) &&
     Array.isArray(resposta.fluxo.leads) && Array.isArray(resposta.fluxo.churns);
 }
 
@@ -265,6 +266,8 @@ function montarBootstrapDashboard_(base, configuracao, versao) {
     },
     alunos: base.alunos.map(alunoSeguroParaDashboard_),
     contratos: base.contratos.map(contratoSeguroParaDashboard_),
+    perfisAlunos: lerPerfisAlunosDashboard_(base.planilha),
+    catalogoPerfisAlunos: lerCatalogoPerfisAlunosDashboard_(base.planilha),
     fluxo: lerFluxoDashboardDaPlanilha_(base.planilha)
   };
 }
