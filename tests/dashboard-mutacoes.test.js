@@ -109,6 +109,23 @@ test('salvar cartões da Home preserva os filtros padrão já configurados', () 
   assert.equal(filtros[4], '{"status":"Ativo","polo":"Wellness"}');
 });
 
+test('aceita os três blocos operacionais da nova Home', () => {
+  const { gas, sheets } = setup();
+  gas.salvarMutacoesDashboard({
+    requestId: 'home-operacional-1',
+    patches: [{ tipo: 'configDashboard', valores: { homeCards: [
+      { chave: 'fila_prescricoes', ativo: true, ordem: 1, titulo: 'Fichas', estados: [] },
+      { chave: 'fila_avaliacoes', ativo: true, ordem: 2, titulo: 'Avaliações', estados: [] },
+      { chave: 'agenda_financeira', ativo: true, ordem: 3, titulo: 'Agenda financeira', estados: [] }
+    ] } }]
+  });
+
+  assert.deepEqual(
+    sheets.CONFIG_DASHBOARD.values.filter(row => row[0] === 'home_card').map(row => row[1]),
+    ['fila_prescricoes', 'fila_avaliacoes', 'agenda_financeira']
+  );
+});
+
 test('salva Lead manual com status manual e preserva o registro ao repetir a solicitação', () => {
   const { gas, sheets } = setup();
   const lote = {

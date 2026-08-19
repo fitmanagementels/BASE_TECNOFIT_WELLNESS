@@ -1,5 +1,6 @@
 var CHAVE_SOLICITACOES_DASHBOARD = 'tecnofit.dashboard.solicitacoes';
 var CARTOES_HOME_DASHBOARD = Object.freeze([
+  'fila_prescricoes', 'fila_avaliacoes', 'agenda_financeira',
   'dados_ausentes', 'prescricoes_criticas', 'avaliacoes_criticas',
   'vencidos_5_dias', 'vencem_hoje', 'vencem_5_dias',
   'operacao_prescricoes_em_dia', 'operacao_avaliacoes_em_dia', 'radar_valor_em_atencao'

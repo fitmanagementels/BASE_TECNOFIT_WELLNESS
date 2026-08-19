@@ -57,8 +57,20 @@ test('inicializa as três tabelas persistentes sem alterar as abas do retrato im
     JSON.parse(JSON.stringify(sheets.CONFIG_ALERTAS.writes[0].values[0])),
     ['tipo', 'chave', 'ativo', 'ordem', 'valor', 'titulo', 'estados']
   );
-  assert.equal(sheets.CONFIG_DASHBOARD.writes[1].values.length, 3);
+  assert.equal(sheets.CONFIG_DASHBOARD.writes[1].values.length, 4);
   assert.equal(sheets.CONFIG_ALERTAS.writes[1].values.length, 2);
+});
+
+test('configuração padrão separa as filas operacionais e mantém o financeiro secundário', () => {
+  const gas = loadGas(['apps-script/00_Config.gs', 'apps-script/13_DashboardConfiguracao.gs']);
+  const cards = gas.DASHBOARD_CONFIGURACAO_PADRAO.dashboard
+    .filter(row => row[0] === 'home_card')
+    .map(row => row[1]);
+
+  assert.deepEqual(
+    Array.from(cards),
+    ['fila_prescricoes', 'fila_avaliacoes', 'agenda_financeira']
+  );
 });
 
 test('incrementa uma versão persistente para invalidar apenas dados já superados', () => {
