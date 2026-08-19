@@ -155,25 +155,68 @@
     return [grid, timeline, heat];
   }
   function renderFollow(kind) { var list=peopleFor(kind), grid=el('div','kpi-grid'), groups={verde:[],laranja:[],critico:[],sem:[]};list.forEach(function(x){var s=x.classification.state;if(s==='verde')groups.verde.push(x);else if(s==='laranja')groups.laranja.push(x);else if(s.indexOf('sem_')===0)groups.sem.push(x);else groups.critico.push(x);}); grid.appendChild(card('Em dia',number(groups.verde.length),'Até o prazo verde',function(){showDetail('Em dia',groups.verde);}));grid.appendChild(card('Atenção',number(groups.laranja.length),'Próximo ciclo',function(){showDetail('Atenção',groups.laranja);}));grid.appendChild(card('Prioridade',number(groups.critico.length),'Requer ação',function(){showDetail('Prioridades',groups.critico);}));grid.appendChild(card('Sem dado',number(groups.sem.length),'Prioridade máxima',function(){showDetail('Dados a regularizar',groups.sem);}));var chart=section(kind==='prescricoes'?'Prescrições por situação':'Avaliações por situação');var count={};list.forEach(function(x){count[x.classification.state]=(count[x.classification.state]||0)+1;});chart.appendChild(barList(Object.keys(count).map(function(k){return{label:stateLabel(k),value:count[k]};}),function(i){showDetail(i.label,list.filter(function(x){return stateLabel(x.classification.state)===i.label;}));}));return[grid,chart]; }
+  function renderHomeQueue(kind, people) {
+    var isPrescription = kind === 'prescricoes';
+    var queue = groupFollowQueue(kind, people);
+    var total = queue.reduce(function (sum, group) { return sum + group.people.length; }, 0);
+    var box = el('section', 'section-card home-queue home-queue-' + kind);
+    var head = el('div', 'home-queue-head');
+    var copy = el('div');
+    copy.appendChild(el('span', 'label', isPrescription ? 'FICHAS / PRESCRIÇÕES' : 'AVALIAÇÕES'));
+    copy.appendChild(el('h3', '', number(total) + ' precisam de revisão'));
+    var open = el('button', isPrescription ? 'primary' : 'secondary', isPrescription ? 'Abrir fichas' : 'Abrir avaliações');
+    open.type = 'button';
+    open.addEventListener('click', function () { openFollowQueue(kind, ''); });
+    head.appendChild(copy);
+    head.appendChild(open);
+    box.appendChild(head);
+    queue.forEach(function (group) {
+      var row = el('button', 'home-priority-row');
+      row.type = 'button';
+      row.dataset.priority = group.state;
+      row.appendChild(el('span', 'priority-dot estado-' + group.state));
+      var text = el('span');
+      text.appendChild(el('strong', '', group.label));
+      text.appendChild(el('small', '', group.note));
+      row.appendChild(text);
+      row.appendChild(el('b', '', number(group.people.length) + ' ›'));
+      row.addEventListener('click', function () { openFollowQueue(kind, group.state); });
+      box.appendChild(row);
+    });
+    return box;
+  }
+  function renderFinancialHome(data) {
+    var due = dueBuckets(data), box = section('Agenda financeira'), summary = el('div', 'financial-home-summary');
+    [['Últimos 5 dias', due.previous], ['Vencem hoje', due.today], ['Próximos 5 dias', due.next]].forEach(function (item) {
+      var button = el('button', 'financial-home-item');
+      button.type = 'button';
+      button.appendChild(el('span', '', item[0]));
+      button.appendChild(el('strong', '', number(item[1].length)));
+      button.addEventListener('click', function () { detailsForContracts(item[0], item[1]); });
+      summary.appendChild(button);
+    });
+    box.classList.add('financial-home');
+    box.appendChild(summary);
+    return box;
+  }
   function renderHome(data) {
-    var prescriptions = peopleFor('prescricoes'); var evaluations = peopleFor('avaliacoes'); var due = dueBuckets(data); var grid = el('div', 'kpi-grid');
-    var missing = prescriptions.filter(function (x) { return x.classification.state === 'sem_ficha'; }).concat(evaluations.filter(function (x) { return x.classification.state === 'sem_avaliacao'; }));
-    var prescriptionActions = prescriptions.filter(function (x) { return x.classification.state !== 'verde'; });
-    var evaluationActions = evaluations.filter(function (x) { return x.classification.state !== 'verde'; });
-    var catalog = {
-      dados_ausentes: { title: 'Dados a regularizar', total: missing.length, note: 'Prioridade máxima', open: function () { showDetail('Dados a regularizar', missing); } },
-      prescricoes_criticas: { title: 'Prescrições em ação', total: prescriptionActions.length, note: 'Abrir recorte', open: function () { showDetail('Prescrições em ação', prescriptionActions); } },
-      avaliacoes_criticas: { title: 'Avaliações em ação', total: evaluationActions.length, note: 'Abrir recorte', open: function () { showDetail('Avaliações em ação', evaluationActions); } },
-      vencidos_5_dias: { title: 'Últimos 5 dias', total: due.previous.length, note: 'Acompanhar pagamentos', open: function () { detailsForContracts('Últimos 5 dias', due.previous); } },
-      vencem_hoje: { title: 'Vencem hoje', total: due.today.length, note: 'Acompanhar pagamentos', open: function () { detailsForContracts('Vencem hoje', due.today); } },
-      vencem_5_dias: { title: 'Próximos 5 dias', total: due.next.length, note: 'Acompanhar pagamentos', open: function () { detailsForContracts('Próximos 5 dias', due.next); } }
-    };
-    var configured = (state.bootstrap.configuracao.homeCards || []).filter(function (item) { return item.ativo && catalog[item.chave]; }).sort(function (a, b) { return a.ordem - b.ordem; });
-    if (!configured.length) configured = [{ chave: 'dados_ausentes' }, { chave: 'vencem_hoje' }];
-    configured.slice(0, 4).forEach(function (item) { var current = catalog[item.chave]; grid.appendChild(card(item.titulo || current.title, number(current.total), current.note, current.open)); });
-    var positive = section('Operação em dia');
-    positive.appendChild(el('p', 'body-copy', number(prescriptions.filter(function (x) { return x.classification.state === 'verde'; }).length) + ' prescrições e ' + number(evaluations.filter(function (x) { return x.classification.state === 'verde'; }).length) + ' avaliações estão dentro do prazo verde.'));
-    return [grid, positive];
+    var prescriptions = peopleFor('prescricoes'), evaluations = peopleFor('avaliacoes');
+    var configured = state.bootstrap.configuracao.homeCards || [], operational = Object.create(null), hasOperational = false;
+    configured.forEach(function (item) {
+      if (['fila_prescricoes', 'fila_avaliacoes', 'agenda_financeira'].indexOf(item.chave) === -1) return;
+      operational[item.chave] = item.ativo;
+      hasOperational = true;
+    });
+    var intro = el('section', 'home-operation-intro');
+    intro.appendChild(el('span', 'eyebrow', 'OPERAÇÃO DE HOJE'));
+    intro.appendChild(el('h2', '', 'O que precisa de ação'));
+    intro.appendChild(el('p', 'body-copy', 'Prioridades calculadas com o último lote válido da planilha.'));
+    var grid = el('div', 'home-operation-grid');
+    if (!hasOperational || operational.fila_prescricoes !== false) grid.appendChild(renderHomeQueue('prescricoes', prescriptions));
+    if (!hasOperational || operational.fila_avaliacoes !== false) grid.appendChild(renderHomeQueue('avaliacoes', evaluations));
+    var nodes = [intro, grid];
+    if (!hasOperational || operational.agenda_financeira !== false) nodes.push(renderFinancialHome(data));
+    return nodes;
   }
   function renderSettings() { var page=el('div','settings-grid'), config=state.bootstrap.configuracao; var alert=section('Alertas');['prescricoes','avaliacoes'].forEach(function(k){var r=config.alertas[k];var block=el('div','');block.appendChild(el('h3','',k==='prescricoes'?'Prescrições':'Avaliações'));Object.keys(r).forEach(function(field){var label=el('label','',field);var input=el('input');input.type='number';input.value=r[field];input.dataset.rule=k;input.dataset.field=field;label.appendChild(input);block.appendChild(label);});alert.appendChild(block);});var alertSave=el('button','primary','Salvar alertas');alertSave.type='button';alertSave.addEventListener('click',function(){var values={};alert.querySelectorAll('input').forEach(function(i){(values[i.dataset.rule]||(values[i.dataset.rule]={}))[i.dataset.field]=Number(i.value);}); enqueue({tipo:'configAlertas',valores:values});});alert.appendChild(alertSave);page.appendChild(alert);
     var payment=section('Perfil de pagamento');var selectStudent=el('select');state.bootstrap.alunos.slice().sort(function(a,b){return a.aluno.localeCompare(b.aluno,'pt-BR');}).forEach(function(p){writeOption(selectStudent,p.id,p.aluno+' · '+p.id);});var selectProfile=el('select');config.opcoesPerfilPagamento.forEach(function(p){writeOption(selectProfile,p,p);});var note=el('textarea');note.placeholder='Observação opcional';var paySave=el('button','primary','Salvar perfil');paySave.type='button';paySave.addEventListener('click',function(){var person=state.bootstrap.alunos.filter(function(p){return p.id===selectStudent.value;})[0];enqueue({tipo:'perfilPagamento',valores:{id:person.id,aluno:person.aluno,perfilPagamento:selectProfile.value,observacao:note.value}});});payment.appendChild(selectStudent);payment.appendChild(selectProfile);payment.appendChild(note);payment.appendChild(paySave);page.appendChild(payment);

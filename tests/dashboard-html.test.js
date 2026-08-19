@@ -195,6 +195,16 @@ test('cliente mantém filas e categorias independentes para fichas e avaliaçõe
   assert.match(client, /sem_avaliacao/);
 });
 
+test('Home renderiza duas filas separadas e financeiro secundário', () => {
+  const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
+  const css = fs.readFileSync('pwa/css/dashboard.css', 'utf8');
+  assert.match(client, /function renderHomeQueue\(kind, people\)/);
+  assert.match(client, /function renderFinancialHome\(data\)/);
+  assert.match(client, /home-operation-grid/);
+  assert.doesNotMatch(client, /var missing = prescriptions[^;]+concat\(evaluations/s);
+  assert.match(css, /\.home-operation-grid/);
+});
+
 test('planos abre detalhes por frequência e informa hora-aula média', () => {
   const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
   assert.match(client, /function valorPorAula\(contrato\)/);
