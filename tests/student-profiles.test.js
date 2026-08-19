@@ -46,3 +46,35 @@ test('aplica e reverte criação e atualização otimistas', () => {
   profiles.rollbackProfilePatch(bootstrap, createRollback);
   assert.equal(bootstrap.perfisAlunos.length, 1);
 });
+
+test('monta opções por status, preserva professor histórico e cria patch completo', () => {
+  const catalog = [
+    { tipo: 'professor', grupo: 'matriculados', chave: 'aquiles', titulo: 'Aquiles', ativo: true, ordem: 10 },
+    { tipo: 'professor', grupo: 'cancelados', chave: 'wallyson', titulo: 'Wallyson', ativo: true, ordem: 10 },
+    { tipo: 'perfil_pagamento', grupo: 'global', chave: 'bom_pagador', titulo: 'Bom pagador', ativo: true, ordem: 10 },
+    { tipo: 'etiqueta', grupo: 'publico', chave: 'idoso', titulo: 'Idoso', ativo: true, ordem: 10 },
+    { tipo: 'etiqueta', grupo: 'comercial', chave: 'risco_de_churn', titulo: 'Risco de Churn', ativo: true, ordem: 10 }
+  ];
+  const card = {
+    id: '43', aluno: 'ALUNO CANCELADO', status: 'Cancelado',
+    perfil: { professorResponsavel: 'Professor antigo' }
+  };
+
+  const options = profiles.profileFormOptions(card, catalog);
+  assert.deepEqual(options.professores.map(item => item.titulo), ['Wallyson', 'Professor antigo (histórico)']);
+  assert.equal(options.pagamentos[0].titulo, 'Bom pagador');
+
+  assert.deepEqual(profiles.createProfilePatch(card, {
+    professorResponsavel: 'Wallyson', perfilPagamento: 'Bom pagador',
+    observacaoPagamento: 'Paga em dia', etiquetasPublico: ['idoso'],
+    etiquetasComerciais: ['risco_de_churn'], observacoesGerais: 'Treina cedo'
+  }), {
+    tipo: 'perfilAluno',
+    valores: {
+      id: '43', aluno: 'ALUNO CANCELADO', professorResponsavel: 'Wallyson',
+      perfilPagamento: 'Bom pagador', observacaoPagamento: 'Paga em dia',
+      etiquetasPublico: ['idoso'], etiquetasComerciais: ['risco_de_churn'],
+      observacoesGerais: 'Treina cedo'
+    }
+  });
+});

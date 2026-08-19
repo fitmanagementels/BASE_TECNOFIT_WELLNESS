@@ -206,6 +206,24 @@ test('Home renderiza duas filas separadas e financeiro secundário', () => {
   assert.match(css, /\.home-operation-grid/);
 });
 
+test('perfis usam módulo próprio, diálogo com abas e grade responsiva', () => {
+  const html = fs.readFileSync('pwa/index.html', 'utf8');
+  const client = fs.readFileSync('pwa/js/student-profiles.js', 'utf8');
+  const css = fs.readFileSync('pwa/css/student-profiles.css', 'utf8');
+  assert.match(html, /student-profiles\.css/);
+  assert.match(html, /student-profiles\.js/);
+  assert.match(client, /Perfis dos alunos/);
+  assert.match(client, /Informações/);
+  assert.match(client, /Configuração/);
+  assert.match(client, /Agenda/);
+  assert.match(client, /Em breve/);
+  assert.match(client, /Mostrar mais/);
+  assert.doesNotMatch(client, /innerHTML\s*=/);
+  assert.match(css, /grid-template-columns:\s*repeat\(4/);
+  assert.match(css, /@media\s*\(max-width:\s*1100px\)/);
+  assert.match(css, /@media\s*\(max-width:\s*620px\)/);
+});
+
 test('controles operacionais não herdam aparência nativa do navegador', () => {
   const css = fs.readFileSync('pwa/css/dashboard.css', 'utf8');
   assert.match(css, /button \{[^}]*border: 0;[^}]*background: transparent;/);
