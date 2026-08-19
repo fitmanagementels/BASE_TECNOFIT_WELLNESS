@@ -1,5 +1,5 @@
 (function () {
-  var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, leadFilter: 'todos', mutationQueue: [], failedMutations: [], saving: false, churnFilters: null, churnCharts: [], churnAnalyticsRequest: 0, churnAnalyticsCache: Object.create(null), backgroundSyncTimer: null };
+  var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, leadFilter: 'todos', followCategory: '', mutationQueue: [], failedMutations: [], saving: false, churnFilters: null, churnCharts: [], churnAnalyticsRequest: 0, churnAnalyticsCache: Object.create(null), backgroundSyncTimer: null };
   var cacheKey = 'xsteam-dashboard-bootstrap-v3:publico';
   var labels = { home: 'Home', financeiro: 'Financeiro', acompanhamento: 'Acompanhamento', fluxo: 'Fluxo', configuracoes: 'Configurações' };
 
@@ -55,6 +55,34 @@
   }
   function chip(value) { return el('span', 'chip estado-' + value, stateLabel(value)); }
   function stateLabel(v) { return ({ verde:'Em dia', laranja:'Atenção', vermelho:'Prioridade alta', roxo:'Prioridade máxima', falha_critica:'Falha crítica de processo', sem_ficha:'Sem ficha registrada', sem_avaliacao:'Sem avaliação registrada' })[v] || v; }
+  function followDefinitions(kind) {
+    return kind === 'prescricoes' ? [
+      { state: 'sem_ficha', label: 'Sem ficha', note: 'Nunca registrada' },
+      { state: 'roxo', label: 'Crítico', note: 'Acima do maior limite' },
+      { state: 'vermelho', label: 'Muito atrasado', note: 'Intervenção necessária' },
+      { state: 'laranja', label: 'Atrasado', note: 'Entrou na fila de revisão' }
+    ] : [
+      { state: 'sem_avaliacao', label: 'Sem avaliação', note: 'Nunca registrada' },
+      { state: 'falha_critica', label: 'Falha crítica', note: 'Acima do limite crítico' },
+      { state: 'roxo', label: 'Crítico', note: 'Prioridade máxima' },
+      { state: 'vermelho', label: 'Muito atrasada', note: 'Intervenção necessária' },
+      { state: 'laranja', label: 'Atrasada', note: 'Entrou na fila de revisão' }
+    ];
+  }
+  function groupFollowQueue(kind, people) {
+    return followDefinitions(kind).map(function (definition) {
+      return Object.assign({}, definition, {
+        people: people.filter(function (person) {
+          return person.classification.state === definition.state;
+        })
+      });
+    });
+  }
+  function openFollowQueue(kind, stateName) {
+    state.subpage = kind;
+    state.followCategory = stateName || '';
+    activate('acompanhamento');
+  }
   function card(label, value, note, action) { var b = el('button', 'kpi'); b.type = 'button'; b.appendChild(el('span', 'label', label)); b.appendChild(el('strong', '', value)); if (note) b.appendChild(el('em', '', note)); if (action) b.addEventListener('click', action); return b; }
   function section(title) { var box = el('section', 'section-card'); box.appendChild(el('h3', '', title)); return box; }
   function barList(items, select) { var list = el('div', 'bar-list'); var max = Math.max.apply(null, items.map(function (x) { return x.value; }).concat([1])); items.forEach(function (item) { var row = el('button', 'bar-row'); row.type = 'button'; row.appendChild(el('span', '', item.label)); var bar = el('span', 'bar'); var fill = el('span'); fill.style.width = (item.value / max * 100) + '%'; bar.appendChild(fill); row.appendChild(bar); row.appendChild(el('strong', '', number(item.value))); if (select) row.addEventListener('click', function () { select(item); }); list.appendChild(row); }); return list; }
@@ -64,7 +92,7 @@
     if (!people.length) target.appendChild(el('p', 'body-copy', 'Nenhum registro neste recorte.'));
     people.forEach(function (item) { var row = el('article', 'student-row'); row.appendChild(el('h3', '', item.aluno)); if (item.classification) row.appendChild(chip(item.classification.state)); row.appendChild(el('p', 'body-copy', (item.classification && item.classification.days !== null ? item.classification.days + ' dias • ' : '') + money(item.valorMensal || 0) + ' • ' + (item.profile || 'Sem histórico'))); var list = el('ul', 'contract-list'); (item.contratos || []).forEach(function (c) { list.appendChild(el('li', '', (c.contrato || c.frequencia || 'Contrato') + ' — ' + money(c.valor) + (c.vencimento ? ' — ' + c.vencimento : ''))); }); row.appendChild(list); target.appendChild(row); }); dialog.showModal();
   }
-  function peopleFor(kind) { var f = filtered(), byId = groupedContracts(f.contratos), profiles = profileMap(); return f.alunos.map(function (p) { var cs = byId[p.id] || []; return { id:p.id, aluno:p.aluno, contratos:cs, valorMensal:cs.reduce(function(s,c){return s+c.valor;},0), profile:(profiles[p.id]||{}).perfilPagamento || 'Sem histórico', classification: classify(p, kind) }; }).sort(function(a,b){ return a.classification.priority-b.classification.priority || b.valorMensal-a.valorMensal || a.aluno.localeCompare(b.aluno,'pt-BR'); }); }
+  function peopleFor(kind) { var f = filtered(), byId = groupedContracts(f.contratos), profiles = profileMap(); return f.alunos.map(function (p) { var cs = byId[p.id] || []; return { id:p.id, aluno:p.aluno, status:p.status, lastDate:kind === 'prescricoes' ? p.dataFicha : p.dataAvaliacao, contratos:cs, valorMensal:cs.reduce(function(s,c){return s+c.valor;},0), profile:(profiles[p.id]||{}).perfilPagamento || 'Sem histórico', classification: classify(p, kind) }; }).sort(function(a,b){ return a.classification.priority-b.classification.priority || b.valorMensal-a.valorMensal || a.aluno.localeCompare(b.aluno,'pt-BR'); }); }
   function valorPorAula(contrato) {
     var match = /^(\d+)\s*x\b/i.exec(String(contrato.frequencia || '').trim());
     var vezesSemana = match ? Number(match[1]) : 0;

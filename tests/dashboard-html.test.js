@@ -185,6 +185,16 @@ test('cliente oferece filtro Matriculados e normaliza os três status elegíveis
   assert.match(client, /ativo.*bloqueado.*licenca/s);
 });
 
+test('cliente mantém filas e categorias independentes para fichas e avaliações', () => {
+  const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
+  assert.match(client, /function followDefinitions\(kind\)/);
+  assert.match(client, /function groupFollowQueue\(kind, people\)/);
+  assert.match(client, /function openFollowQueue\(kind, stateName\)/);
+  assert.match(client, /followCategory/);
+  assert.match(client, /sem_ficha/);
+  assert.match(client, /sem_avaliacao/);
+});
+
 test('planos abre detalhes por frequência e informa hora-aula média', () => {
   const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
   assert.match(client, /function valorPorAula\(contrato\)/);
