@@ -1,5 +1,5 @@
 (function () {
-  var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, leadFilter: 'todos', followCategory: '', mutationQueue: [], failedMutations: [], saving: false, churnFilters: null, churnCharts: [], churnAnalyticsRequest: 0, churnAnalyticsCache: Object.create(null), backgroundSyncTimer: null };
+  var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, leadFilter: 'todos', followCategory: '', settingsSection: 'alertas', settingsAlertKind: 'prescricoes', settingsDirty: false, settingsAlertDraft: null, settingsHomeDraft: null, settingsPaymentDraft: null, mutationQueue: [], failedMutations: [], saving: false, churnFilters: null, churnCharts: [], churnAnalyticsRequest: 0, churnAnalyticsCache: Object.create(null), backgroundSyncTimer: null };
   var cacheKey = 'xsteam-dashboard-bootstrap-v3:publico';
   var labels = { home: 'Home', financeiro: 'Financeiro', acompanhamento: 'Acompanhamento', fluxo: 'Fluxo', configuracoes: 'Configurações' };
 
@@ -43,9 +43,9 @@
   }
   function groupedContracts(contracts) { return contracts.reduce(function (m, c) { (m[c.id] || (m[c.id] = [])).push(c); return m; }, Object.create(null)); }
   function profileMap() { return (state.bootstrap.configuracao.perfisPagamento || []).reduce(function (m, p) { m[p.id] = p; return m; }, Object.create(null)); }
-  function classify(person, kind) {
+  function classify(person, kind, rulesOverride) {
     var data = parseDate(kind === 'prescricoes' ? person.dataFicha : person.dataAvaliacao); var days = dayDiff(data, today());
-    var r = state.bootstrap.configuracao.alertas[kind] || {};
+    var r = rulesOverride || state.bootstrap.configuracao.alertas[kind] || {};
     if (days === null) return { state: kind === 'prescricoes' ? 'sem_ficha' : 'sem_avaliacao', days: null, priority: 0 };
     if (days <= r.laranja) return { state: 'verde', days: days, priority: 5 };
     if (days <= r.vermelho) return { state: 'laranja', days: days, priority: 4 };
@@ -275,9 +275,195 @@
     if (!hasOperational || operational.agenda_financeira !== false) nodes.push(renderFinancialHome(data));
     return nodes;
   }
-  function renderSettings() { var page=el('div','settings-grid'), config=state.bootstrap.configuracao; var alert=section('Alertas');['prescricoes','avaliacoes'].forEach(function(k){var r=config.alertas[k];var block=el('div','');block.appendChild(el('h3','',k==='prescricoes'?'Prescrições':'Avaliações'));Object.keys(r).forEach(function(field){var label=el('label','',field);var input=el('input');input.type='number';input.value=r[field];input.dataset.rule=k;input.dataset.field=field;label.appendChild(input);block.appendChild(label);});alert.appendChild(block);});var alertSave=el('button','primary','Salvar alertas');alertSave.type='button';alertSave.addEventListener('click',function(){var values={};alert.querySelectorAll('input').forEach(function(i){(values[i.dataset.rule]||(values[i.dataset.rule]={}))[i.dataset.field]=Number(i.value);}); enqueue({tipo:'configAlertas',valores:values});});alert.appendChild(alertSave);page.appendChild(alert);
-    var payment=section('Perfil de pagamento');var selectStudent=el('select');state.bootstrap.alunos.slice().sort(function(a,b){return a.aluno.localeCompare(b.aluno,'pt-BR');}).forEach(function(p){writeOption(selectStudent,p.id,p.aluno+' · '+p.id);});var selectProfile=el('select');config.opcoesPerfilPagamento.forEach(function(p){writeOption(selectProfile,p,p);});var note=el('textarea');note.placeholder='Observação opcional';var paySave=el('button','primary','Salvar perfil');paySave.type='button';paySave.addEventListener('click',function(){var person=state.bootstrap.alunos.filter(function(p){return p.id===selectStudent.value;})[0];enqueue({tipo:'perfilPagamento',valores:{id:person.id,aluno:person.aluno,perfilPagamento:selectProfile.value,observacao:note.value}});});payment.appendChild(selectStudent);payment.appendChild(selectProfile);payment.appendChild(note);payment.appendChild(paySave);page.appendChild(payment);
-    var home=section('Home');home.appendChild(el('p','body-copy','Defina quais recortes aparecem primeiro no resumo operacional.'));var catalog=[['dados_ausentes','Dados a regularizar'],['prescricoes_criticas','Prescrições em ação'],['avaliacoes_criticas','Avaliações em ação'],['vencidos_5_dias','Últimos 5 dias'],['vencem_hoje','Vencem hoje'],['vencem_5_dias','Próximos 5 dias']];var stored={};config.homeCards.forEach(function(c){stored[c.chave]=c;});catalog.forEach(function(item,index){var line=el('label','');var active=el('input');active.type='checkbox';active.checked=stored[item[0]]?stored[item[0]].ativo:false;active.dataset.home=item[0];var order=el('input');order.type='number';order.value=stored[item[0]]?stored[item[0]].ordem:index+1;order.dataset.order=item[0];line.appendChild(active);line.appendChild(el('span','',item[1]));line.appendChild(order);home.appendChild(line);});var homeSave=el('button','primary','Salvar Home');homeSave.type='button';homeSave.addEventListener('click',function(){var cards=catalog.map(function(item,index){var active=home.querySelector('[data-home="'+item[0]+'"]').checked;var order=Number(home.querySelector('[data-order="'+item[0]+'"]').value)||index+1;return{chave:item[0],ativo:active,ordem:order,titulo:item[1],estados:[]};});enqueue({tipo:'configDashboard',valores:{homeCards:cards}});});home.appendChild(homeSave);page.appendChild(home);return[page]; }
+  function markSettingsDirty() {
+    state.settingsDirty = true;
+    setSave('Alterações não salvas');
+  }
+  function validateAlertRules(kind, rules) {
+    var fields = kind === 'avaliacoes' ? ['laranja', 'vermelho', 'roxo', 'critico'] : ['laranja', 'vermelho', 'roxo'];
+    var previous = 0;
+    for (var i = 0; i < fields.length; i += 1) {
+      var value = Number(rules[fields[i]]);
+      if (!Number.isInteger(value) || value <= previous) return { ok: false, message: 'Use dias inteiros, positivos e crescentes.' };
+      previous = value;
+    }
+    return { ok: true, message: '' };
+  }
+  function ensureAlertSettingsDraft() {
+    if (state.settingsAlertDraft) return state.settingsAlertDraft;
+    state.settingsAlertDraft = {
+      prescricoes: Object.assign({}, state.bootstrap.configuracao.alertas.prescricoes),
+      avaliacoes: Object.assign({}, state.bootstrap.configuracao.alertas.avaliacoes)
+    };
+    return state.settingsAlertDraft;
+  }
+  function alertFields(kind) {
+    return kind === 'avaliacoes' ? [
+      { key: 'laranja', label: 'Em dia até' },
+      { key: 'vermelho', label: 'Atenção até' },
+      { key: 'roxo', label: 'Prioridade alta até' },
+      { key: 'critico', label: 'Prioridade máxima até' }
+    ] : [
+      { key: 'laranja', label: 'Em dia até' },
+      { key: 'vermelho', label: 'Atenção até' },
+      { key: 'roxo', label: 'Prioridade alta até' }
+    ];
+  }
+  function renderAlertPreview(kind, rules) {
+    var box = el('div', 'settings-preview'), counts = Object.create(null);
+    filtered().alunos.forEach(function (person) {
+      var classification = classify(person, kind, rules);
+      counts[classification.state] = (counts[classification.state] || 0) + 1;
+    });
+    box.appendChild(el('span', 'label', 'Prévia da Home'));
+    var values = el('div', 'settings-preview-values');
+    followDefinitions(kind).forEach(function (definition) {
+      var item = el('span');
+      item.appendChild(el('small', '', definition.label));
+      item.appendChild(el('strong', '', number(counts[definition.state] || 0)));
+      values.appendChild(item);
+    });
+    box.appendChild(values);
+    return box;
+  }
+  function renderAlertSettings() {
+    var kind = state.settingsAlertKind, drafts = ensureAlertSettingsDraft(), rules = drafts[kind], panel = section('Prazos das fichas');
+    panel.classList.add('settings-panel');
+    panel.appendChild(el('p', 'body-copy', 'Defina quando cada processo muda de prioridade. As faixas são exclusivas e calculadas automaticamente.'));
+    var tabs = el('div', 'settings-tabs');
+    [['prescricoes', 'Fichas / prescrições'], ['avaliacoes', 'Avaliações']].forEach(function (item) {
+      var tab = el('button', 'settings-tab' + (kind === item[0] ? ' active' : ''), item[1]);
+      tab.type = 'button';
+      tab.addEventListener('click', function () { state.settingsAlertKind = item[0]; render(); });
+      tabs.appendChild(tab);
+    });
+    panel.appendChild(tabs);
+    var list = el('div', 'settings-rule-list'), fields = alertFields(kind);
+    fields.forEach(function (field, index) {
+      var row = el('label', 'settings-rule-row'), copy = el('span');
+      copy.appendChild(el('strong', '', field.label));
+      var previous = index ? Number(rules[fields[index - 1].key]) + 1 : 0;
+      copy.appendChild(el('small', '', index ? previous + '–' + Number(rules[field.key]) + ' dias' : '0–' + Number(rules[field.key]) + ' dias'));
+      var inputWrap = el('span', 'settings-days-input'), input = el('input');
+      input.type = 'number'; input.min = '1'; input.step = '1'; input.value = rules[field.key];
+      inputWrap.appendChild(input); inputWrap.appendChild(el('span', '', 'dias'));
+      row.appendChild(copy); row.appendChild(inputWrap); row.appendChild(el('span', 'settings-order', String(index + 1)));
+      input.addEventListener('input', function () {
+        rules[field.key] = input.value === '' ? '' : Number(input.value);
+        markSettingsDirty();
+      });
+      input.addEventListener('change', render);
+      list.appendChild(row);
+    });
+    panel.appendChild(list);
+    panel.appendChild(renderAlertPreview(kind, rules));
+    var validation = validateAlertRules(kind, rules), message = el('p', 'form-message', validation.message);
+    panel.appendChild(message);
+    var save = el('button', 'primary', kind === 'prescricoes' ? 'Salvar prazos das fichas' : 'Salvar prazos das avaliações');
+    save.type = 'button';
+    save.disabled = !validation.ok;
+    save.addEventListener('click', function () {
+      var result = validateAlertRules(kind, rules);
+      if (!result.ok) { message.textContent = result.message; return; }
+      var values = {}; values[kind] = Object.assign({}, rules);
+      state.bootstrap.configuracao.alertas[kind] = Object.assign({}, rules);
+      state.settingsDirty = false;
+      enqueue({ tipo: 'configAlertas', valores: values });
+    });
+    panel.appendChild(save);
+    return panel;
+  }
+  function homeSettingDefinitions() {
+    return [
+      { chave: 'fila_prescricoes', titulo: 'Fichas / prescrições', helper: 'Fila de fichas por prioridade' },
+      { chave: 'fila_avaliacoes', titulo: 'Avaliações', helper: 'Fila independente de avaliações' },
+      { chave: 'agenda_financeira', titulo: 'Agenda financeira', helper: 'Resumo secundário de vencimentos' }
+    ];
+  }
+  function ensureHomeSettingsDraft() {
+    if (state.settingsHomeDraft) return state.settingsHomeDraft;
+    var stored = Object.create(null);
+    (state.bootstrap.configuracao.homeCards || []).forEach(function (item) { stored[item.chave] = item; });
+    state.settingsHomeDraft = homeSettingDefinitions().map(function (definition, index) {
+      var current = stored[definition.chave];
+      return Object.assign({}, definition, { ativo: current ? current.ativo : true, ordem: current ? current.ordem : index + 1 });
+    }).sort(function (a, b) { return a.ordem - b.ordem; });
+    return state.settingsHomeDraft;
+  }
+  function moveHomeSetting(index, direction) {
+    var draft = ensureHomeSettingsDraft(), target = index + direction;
+    if (target < 0 || target >= draft.length) return;
+    var current = draft[index]; draft[index] = draft[target]; draft[target] = current;
+    markSettingsDirty(); render();
+  }
+  function renderHomeSettings() {
+    var panel = section('Prioridades da Home'), list = el('div', 'settings-home-list'), draft = ensureHomeSettingsDraft();
+    panel.classList.add('settings-panel');
+    panel.appendChild(el('p', 'body-copy', 'Escolha quais blocos aparecem e ajuste sua ordem sem misturar fichas, avaliações e financeiro.'));
+    draft.forEach(function (item, index) {
+      var row = el('div', 'settings-home-row'), toggle = el('label', 'settings-home-toggle'), active = el('input'), copy = el('span'), actions = el('span', 'settings-order-actions');
+      active.type = 'checkbox'; active.checked = item.ativo;
+      copy.appendChild(el('strong', '', item.titulo)); copy.appendChild(el('small', '', item.helper));
+      toggle.appendChild(active); toggle.appendChild(copy); row.appendChild(toggle);
+      var up = el('button', 'secondary', 'Subir'), down = el('button', 'secondary', 'Descer');
+      up.type = 'button'; down.type = 'button'; up.disabled = index === 0; down.disabled = index === draft.length - 1;
+      up.addEventListener('click', function () { moveHomeSetting(index, -1); });
+      down.addEventListener('click', function () { moveHomeSetting(index, 1); });
+      actions.appendChild(up); actions.appendChild(down); row.appendChild(actions);
+      active.addEventListener('change', function () { item.ativo = active.checked; markSettingsDirty(); });
+      list.appendChild(row);
+    });
+    panel.appendChild(list);
+    var save = el('button', 'primary', 'Salvar prioridades da Home');
+    save.type = 'button';
+    save.addEventListener('click', function () {
+      var cards = draft.map(function (item, index) { return { chave: item.chave, ativo: item.ativo, ordem: index + 1, titulo: item.titulo, estados: [] }; });
+      state.bootstrap.configuracao.homeCards = cards.slice();
+      state.settingsDirty = false;
+      enqueue({ tipo: 'configDashboard', valores: { homeCards: cards } });
+    });
+    panel.appendChild(save);
+    return panel;
+  }
+  function renderPaymentSettings() {
+    var config = state.bootstrap.configuracao, panel = section('Perfil de pagamento'), selectStudent = el('select'), selectProfile = el('select'), note = el('textarea');
+    panel.classList.add('settings-panel');
+    panel.appendChild(el('p', 'body-copy', 'Registre a classificação financeira sem alterar as regras de fichas ou da Home.'));
+    state.bootstrap.alunos.slice().sort(function (a, b) { return a.aluno.localeCompare(b.aluno, 'pt-BR'); }).forEach(function (person) { writeOption(selectStudent, person.id, person.aluno + ' · ' + person.id); });
+    config.opcoesPerfilPagamento.forEach(function (profile) { writeOption(selectProfile, profile, profile); });
+    if (!state.settingsPaymentDraft) state.settingsPaymentDraft = { id: selectStudent.value, profile: selectProfile.value, note: '' };
+    selectStudent.value = state.settingsPaymentDraft.id;
+    selectProfile.value = state.settingsPaymentDraft.profile;
+    note.value = state.settingsPaymentDraft.note;
+    note.placeholder = 'Observação opcional';
+    selectStudent.addEventListener('change', function () { state.settingsPaymentDraft.id = selectStudent.value; markSettingsDirty(); });
+    selectProfile.addEventListener('change', function () { state.settingsPaymentDraft.profile = selectProfile.value; markSettingsDirty(); });
+    note.addEventListener('input', function () { state.settingsPaymentDraft.note = note.value; markSettingsDirty(); });
+    var save = el('button', 'primary', 'Salvar perfil'); save.type = 'button';
+    save.addEventListener('click', function () {
+      var person = state.bootstrap.alunos.filter(function (item) { return item.id === state.settingsPaymentDraft.id; })[0];
+      if (!person) return;
+      state.settingsDirty = false;
+      enqueue({ tipo: 'perfilPagamento', valores: { id: person.id, aluno: person.aluno, perfilPagamento: state.settingsPaymentDraft.profile, observacao: state.settingsPaymentDraft.note } });
+    });
+    panel.appendChild(selectStudent); panel.appendChild(selectProfile); panel.appendChild(note); panel.appendChild(save);
+    return panel;
+  }
+  function renderSettings() {
+    var shell = el('div', 'settings-shell'), nav = el('nav', 'settings-nav'), content = el('div', 'settings-content');
+    nav.setAttribute('aria-label', 'Áreas de configuração');
+    [['alertas', 'Prazos das fichas'], ['home', 'Prioridades da Home'], ['pagamentos', 'Perfil de pagamento']].forEach(function (item) {
+      var button = el('button', state.settingsSection === item[0] ? 'active' : '', item[1]);
+      button.type = 'button';
+      button.addEventListener('click', function () { state.settingsSection = item[0]; render(); });
+      nav.appendChild(button);
+    });
+    if (state.settingsSection === 'home') content.appendChild(renderHomeSettings());
+    else if (state.settingsSection === 'pagamentos') content.appendChild(renderPaymentSettings());
+    else content.appendChild(renderAlertSettings());
+    shell.appendChild(nav); shell.appendChild(content);
+    return [shell];
+  }
   function fluxoCampo(form, label, key, value, type, options, obrigatorio) {
     var box=el('label',obrigatorio?'field-required':''), caption=el('span','field-label',label), isDate=type==='date', input=el(options?'select':(type==='texto'?'textarea':'input'));
     input.name=key;
@@ -354,7 +540,7 @@
   function renderFluxo() { var lead=state.subpage==='leads',items=((state.bootstrap.fluxo||{})[lead?'leads':'churns']||[]);return lead?renderFluxoLeads(items):renderFluxoChurns(items); }
   function render() { if(!state.bootstrap)return; var content=document.getElementById('pageContent');if(!(state.page==='fluxo'&&state.subpage==='churns')){state.churnAnalyticsRequest+=1;destruirGraficosChurn();}clear(content);var data=filtered(), nodes=[];document.getElementById('pageTitle').textContent=labels[state.page];document.getElementById('lastUpdate').textContent=state.bootstrap.atualizadoEm?'Base atualizada em '+state.bootstrap.atualizadoEm:'Nenhuma importação válida';var sub=document.getElementById('subnav'), global=document.querySelector('.global-filters');sub.hidden=!(state.page==='financeiro'||state.page==='acompanhamento'||state.page==='fluxo');if(global)global.hidden=state.page==='fluxo';sub.querySelectorAll('button').forEach(function(b){var finance=b.dataset.subpage==='planos'||b.dataset.subpage==='vencimentos', follow=b.dataset.subpage==='prescricoes'||b.dataset.subpage==='avaliacoes', flow=b.dataset.subpage==='leads'||b.dataset.subpage==='churns';b.hidden=(state.page==='financeiro')?!finance:(state.page==='acompanhamento')?!follow:(state.page==='fluxo')?!flow:true;b.classList.toggle('active',b.dataset.subpage===state.subpage);});if(state.page==='home')nodes=renderHome(data);else if(state.page==='financeiro')nodes=state.subpage==='planos'?renderPlans(data):renderDue(data);else if(state.page==='acompanhamento')nodes=renderFollow(state.subpage);else if(state.page==='fluxo')nodes=renderFluxo();else nodes=renderSettings();nodes.forEach(function(n){content.appendChild(n);});if(state.page==='fluxo'&&state.subpage==='churns')renderChurnAnalytics((state.bootstrap.fluxo||{}).churns||[]); }
   function syncFilters() { var status=document.getElementById('globalStatus'), polo=document.getElementById('globalPolo'), b=state.bootstrap;clear(status);clear(polo);var statuses=Array.from(new Set(b.alunos.map(function(p){return p.status;}))).sort();var polos=Array.from(new Set(b.contratos.map(function(c){return c.polo;}))).sort();writeOption(status,'__matriculados__','Matriculados');statuses.forEach(function(v){writeOption(status,v,v);});polos.forEach(function(v){writeOption(polo,v,v);});status.value=state.filters.status||'';polo.value=state.filters.polo||''; }
-  function activate(page) { state.page=page;if(page==='financeiro'&&['planos','vencimentos'].indexOf(state.subpage)<0)state.subpage='planos';if(page==='acompanhamento'&&['prescricoes','avaliacoes'].indexOf(state.subpage)<0)state.subpage='prescricoes';if(page==='fluxo'&&['leads','churns'].indexOf(state.subpage)<0)state.subpage='leads';document.querySelectorAll('[data-page]').forEach(function(b){b.classList.toggle('active',b.dataset.page===page);});render(); }
+  function activate(page) { if(state.page==='configuracoes'&&page!=='configuracoes'&&state.settingsDirty&&!window.confirm('Descartar alterações não salvas?'))return;state.page=page;if(page==='financeiro'&&['planos','vencimentos'].indexOf(state.subpage)<0)state.subpage='planos';if(page==='acompanhamento'&&['prescricoes','avaliacoes'].indexOf(state.subpage)<0)state.subpage='prescricoes';if(page==='fluxo'&&['leads','churns'].indexOf(state.subpage)<0)state.subpage='leads';document.querySelectorAll('[data-page]').forEach(function(b){b.classList.toggle('active',b.dataset.page===page);});render(); }
   function applyBootstrap(data) { state.bootstrap=data;state.filters={status:data.filtrosPadrao.status,polo:data.filtrosPadrao.polo};syncFilters();render();safeCacheSet(data);finishLoading(); }
   function aplicarMutacaoOtimista(patch) {
     if(!state.bootstrap||!patch||!patch.valores)return null;
@@ -392,5 +578,5 @@
   function flushQueue() { if(state.saving||!state.mutationQueue.length)return;enviarLoteMutacoes(criarLoteMutacoes(state.mutationQueue.splice(0))); }
   function tentarNovamenteMutacoes() { if(state.saving||!state.failedMutations.length)return;var lote=state.failedMutations.shift();lote.entries.forEach(function(entry){entry.rollback=aplicarMutacaoOtimista(entry.patch);});enviarLoteMutacoes(lote); }
   function start() { setProgress(8);var timer=setInterval(function(){var width=parseFloat(document.getElementById('loading-progress').style.width)||8;setProgress(Math.min(95,width+7));},150);setTimeout(function(){if(!state.bootstrap)document.getElementById('loading-message').textContent='A base está levando mais tempo que o normal…';},5000);var cached=safeCacheGet();if(cached&&cached.versao){applyBootstrap(cached);call('obterVersaoDashboard').then(function(v){if(v.versao!==cached.versao)return call('obterBootstrapDashboard');}).then(function(fresh){if(fresh)applyBootstrap(fresh);}).catch(function(){}).finally(function(){clearInterval(timer);});}else{call('obterBootstrapDashboard').then(applyBootstrap).catch(function(){document.getElementById('loading-message').textContent='Não foi possível carregar. Reabra o dashboard para tentar novamente.';}).finally(function(){clearInterval(timer);});} }
-  window.iniciarDashboardPwa=function(){ document.querySelectorAll('[data-page]').forEach(function(b){b.addEventListener('click',function(){activate(b.dataset.page);});});document.getElementById('subnav').addEventListener('click',function(e){if(e.target.dataset.subpage){state.subpage=e.target.dataset.subpage;if(state.page==='acompanhamento')state.followCategory='';render();}});document.getElementById('globalStatus').addEventListener('change',function(e){state.filters.status=e.target.value;render();});document.getElementById('globalPolo').addEventListener('change',function(e){state.filters.polo=e.target.value;render();});document.getElementById('detailClose').addEventListener('click',function(){document.getElementById('detailDialog').close();});var retry=document.getElementById('retryMutations');if(retry)retry.addEventListener('click',tentarNovamenteMutacoes);start(); };
+  window.iniciarDashboardPwa=function(){ document.querySelectorAll('[data-page]').forEach(function(b){b.addEventListener('click',function(){activate(b.dataset.page);});});document.getElementById('subnav').addEventListener('click',function(e){if(e.target.dataset.subpage){state.subpage=e.target.dataset.subpage;if(state.page==='acompanhamento')state.followCategory='';render();}});document.getElementById('globalStatus').addEventListener('change',function(e){state.filters.status=e.target.value;render();});document.getElementById('globalPolo').addEventListener('change',function(e){state.filters.polo=e.target.value;render();});document.getElementById('detailClose').addEventListener('click',function(){document.getElementById('detailDialog').close();});var retry=document.getElementById('retryMutations');if(retry)retry.addEventListener('click',tentarNovamenteMutacoes);window.addEventListener('beforeunload',function(event){if(!state.settingsDirty)return;event.preventDefault();event.returnValue='';});start(); };
 }());

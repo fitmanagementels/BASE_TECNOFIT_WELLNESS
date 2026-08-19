@@ -218,6 +218,20 @@ test('Acompanhamento usa lista operacional própria sem informações financeira
   assert.match(client, /daysB-daysA/);
 });
 
+test('Configurações separa prazos, Home e perfil de pagamento', () => {
+  const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
+  const css = fs.readFileSync('pwa/css/dashboard.css', 'utf8');
+  for (const fn of ['renderAlertSettings', 'renderHomeSettings', 'renderPaymentSettings', 'validateAlertRules']) {
+    assert.match(client, new RegExp(`function ${fn}\\(`));
+  }
+  assert.match(client, /settingsSection/);
+  assert.match(client, /settingsDirty/);
+  assert.match(client, /settingsPaymentDraft/);
+  assert.match(client, /beforeunload/);
+  assert.match(client, /Prévia da Home/);
+  assert.match(css, /\.settings-nav/);
+});
+
 test('planos abre detalhes por frequência e informa hora-aula média', () => {
   const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
   assert.match(client, /function valorPorAula\(contrato\)/);
