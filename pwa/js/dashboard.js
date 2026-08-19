@@ -1,6 +1,6 @@
 (function () {
-  var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, leadFilter: 'todos', followCategory: '', settingsSection: 'alertas', settingsAlertKind: 'prescricoes', settingsDirty: false, settingsAlertDraft: null, settingsHomeDraft: null, settingsPaymentDraft: null, mutationQueue: [], failedMutations: [], saving: false, churnFilters: null, churnCharts: [], churnAnalyticsRequest: 0, churnAnalyticsCache: Object.create(null), backgroundSyncTimer: null };
-  var cacheKey = 'xsteam-dashboard-bootstrap-v3:publico';
+  var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, leadFilter: 'todos', followCategory: '', settingsSection: 'alertas', settingsAlertKind: 'prescricoes', settingsDirty: false, settingsAlertDraft: null, settingsHomeDraft: null, mutationQueue: [], failedMutations: [], saving: false, churnFilters: null, churnCharts: [], churnAnalyticsRequest: 0, churnAnalyticsCache: Object.create(null), backgroundSyncTimer: null };
+  var cacheKey = 'xsteam-dashboard-bootstrap-v4:publico';
   var labels = { home: 'Home', financeiro: 'Financeiro', acompanhamento: 'Acompanhamento', fluxo: 'Fluxo', configuracoes: 'Configurações' };
 
   function el(tag, className, text) { var node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = String(text); return node; }
@@ -282,7 +282,15 @@
       if (block.chave === 'fila_avaliacoes') grid.appendChild(renderHomeQueue('avaliacoes', evaluations));
       if (block.chave === 'agenda_financeira') grid.appendChild(renderFinancialHome(data));
     });
-    return [intro, grid];
+    return [
+      intro,
+      grid,
+      window.XSteamStudentProfiles.renderSection({
+        data: data,
+        bootstrap: state.bootstrap,
+        onSave: enqueue
+      })
+    ];
   }
   function markSettingsDirty() {
     state.settingsDirty = true;
@@ -435,27 +443,22 @@
     return panel;
   }
   function renderPaymentSettings() {
-    var config = state.bootstrap.configuracao, panel = section('Perfil de pagamento'), selectStudent = el('select'), selectProfile = el('select'), note = el('textarea');
+    var panel = section('Perfis de pagamento'), list = el('div', 'settings-home-list');
     panel.classList.add('settings-panel');
-    panel.appendChild(el('p', 'body-copy', 'Registre a classificação financeira sem alterar as regras de fichas ou da Home.'));
-    state.bootstrap.alunos.slice().sort(function (a, b) { return a.aluno.localeCompare(b.aluno, 'pt-BR'); }).forEach(function (person) { writeOption(selectStudent, person.id, person.aluno + ' · ' + person.id); });
-    config.opcoesPerfilPagamento.forEach(function (profile) { writeOption(selectProfile, profile, profile); });
-    if (!state.settingsPaymentDraft) state.settingsPaymentDraft = { id: selectStudent.value, profile: selectProfile.value, note: '' };
-    selectStudent.value = state.settingsPaymentDraft.id;
-    selectProfile.value = state.settingsPaymentDraft.profile;
-    note.value = state.settingsPaymentDraft.note;
-    note.placeholder = 'Observação opcional';
-    selectStudent.addEventListener('change', function () { state.settingsPaymentDraft.id = selectStudent.value; markSettingsDirty(); });
-    selectProfile.addEventListener('change', function () { state.settingsPaymentDraft.profile = selectProfile.value; markSettingsDirty(); });
-    note.addEventListener('input', function () { state.settingsPaymentDraft.note = note.value; markSettingsDirty(); });
-    var save = el('button', 'primary', 'Salvar perfil'); save.type = 'button';
-    save.addEventListener('click', function () {
-      var person = state.bootstrap.alunos.filter(function (item) { return item.id === state.settingsPaymentDraft.id; })[0];
-      if (!person) return;
-      state.settingsDirty = false;
-      enqueue({ tipo: 'perfilPagamento', valores: { id: person.id, aluno: person.aluno, perfilPagamento: state.settingsPaymentDraft.profile, observacao: state.settingsPaymentDraft.note } });
+    panel.appendChild(el('p', 'body-copy', 'Opções disponíveis para todos os perfis de alunos. A classificação individual agora é feita no perfil do aluno na Home.'));
+    (state.bootstrap.catalogoPerfisAlunos || []).filter(function (item) {
+      return item.ativo && item.tipo === 'perfil_pagamento' && item.grupo === 'global';
+    }).sort(function (a, b) {
+      return a.ordem - b.ordem || a.titulo.localeCompare(b.titulo, 'pt-BR');
+    }).forEach(function (item) {
+      var row = el('div', 'settings-home-row'), copy = el('span');
+      copy.appendChild(el('strong', '', item.titulo));
+      copy.appendChild(el('small', '', 'Opção global ativa'));
+      row.appendChild(copy);
+      list.appendChild(row);
     });
-    panel.appendChild(selectStudent); panel.appendChild(selectProfile); panel.appendChild(note); panel.appendChild(save);
+    if (!list.childNodes.length) list.appendChild(el('p', 'body-copy', 'Nenhuma opção ativa.'));
+    panel.appendChild(list);
     return panel;
   }
   function renderSettings() {
@@ -550,9 +553,14 @@
   function render() { if(!state.bootstrap)return; var content=document.getElementById('pageContent');if(!(state.page==='fluxo'&&state.subpage==='churns')){state.churnAnalyticsRequest+=1;destruirGraficosChurn();}clear(content);var data=filtered(), nodes=[];document.getElementById('pageTitle').textContent=labels[state.page];document.getElementById('lastUpdate').textContent=state.bootstrap.atualizadoEm?'Base atualizada em '+state.bootstrap.atualizadoEm:'Nenhuma importação válida';var sub=document.getElementById('subnav'), global=document.querySelector('.global-filters');sub.hidden=!(state.page==='financeiro'||state.page==='acompanhamento'||state.page==='fluxo');if(global)global.hidden=state.page==='fluxo';sub.querySelectorAll('button').forEach(function(b){var finance=b.dataset.subpage==='planos'||b.dataset.subpage==='vencimentos', follow=b.dataset.subpage==='prescricoes'||b.dataset.subpage==='avaliacoes', flow=b.dataset.subpage==='leads'||b.dataset.subpage==='churns';b.hidden=(state.page==='financeiro')?!finance:(state.page==='acompanhamento')?!follow:(state.page==='fluxo')?!flow:true;b.classList.toggle('active',b.dataset.subpage===state.subpage);});if(state.page==='home')nodes=renderHome(data);else if(state.page==='financeiro')nodes=state.subpage==='planos'?renderPlans(data):renderDue(data);else if(state.page==='acompanhamento')nodes=renderFollow(state.subpage);else if(state.page==='fluxo')nodes=renderFluxo();else nodes=renderSettings();nodes.forEach(function(n){content.appendChild(n);});if(state.page==='fluxo'&&state.subpage==='churns')renderChurnAnalytics((state.bootstrap.fluxo||{}).churns||[]); }
   function syncFilters() { var status=document.getElementById('globalStatus'), polo=document.getElementById('globalPolo'), b=state.bootstrap;clear(status);clear(polo);var statuses=Array.from(new Set(b.alunos.map(function(p){return p.status;}))).sort();var polos=Array.from(new Set(b.contratos.map(function(c){return c.polo;}))).sort();writeOption(status,'__matriculados__','Matriculados');statuses.forEach(function(v){writeOption(status,v,v);});polos.forEach(function(v){writeOption(polo,v,v);});status.value=state.filters.status||'';polo.value=state.filters.polo||''; }
   function activate(page) { if(state.page==='configuracoes'&&page!=='configuracoes'&&state.settingsDirty&&!window.confirm('Descartar alterações não salvas?'))return;state.page=page;if(page==='financeiro'&&['planos','vencimentos'].indexOf(state.subpage)<0)state.subpage='planos';if(page==='acompanhamento'&&['prescricoes','avaliacoes'].indexOf(state.subpage)<0)state.subpage='prescricoes';if(page==='fluxo'&&['leads','churns'].indexOf(state.subpage)<0)state.subpage='leads';document.querySelectorAll('[data-page]').forEach(function(b){b.classList.toggle('active',b.dataset.page===page);});render(); }
-  function applyBootstrap(data) { state.bootstrap=data;state.filters={status:data.filtrosPadrao.status,polo:data.filtrosPadrao.polo};syncFilters();render();safeCacheSet(data);finishLoading(); }
+  function applyBootstrap(data) { data.perfisAlunos=data.perfisAlunos||[];data.catalogoPerfisAlunos=data.catalogoPerfisAlunos||[];state.bootstrap=data;state.filters={status:data.filtrosPadrao.status==='Ativo'?'__matriculados__':(data.filtrosPadrao.status||'__matriculados__'),polo:data.filtrosPadrao.polo||'XSTEAM WELLNESS CLUB'};syncFilters();render();safeCacheSet(data);finishLoading(); }
   function aplicarMutacaoOtimista(patch) {
     if(!state.bootstrap||!patch||!patch.valores)return null;
+    if(patch.tipo==='perfilAluno'){
+      var rollbackPerfil=window.XSteamStudentProfiles.applyProfilePatch(state.bootstrap,patch.valores);
+      render();safeCacheSet(state.bootstrap);
+      return {tipo:'perfilAluno',valor:rollbackPerfil};
+    }
     var fluxo=state.bootstrap.fluxo||(state.bootstrap.fluxo={leads:[],churns:[]}), chave=patch.tipo==='fluxoLead'?'leads':patch.tipo==='fluxoChurn'?'churns':'';
     if(!chave)return null;
     var lista=fluxo[chave]||(fluxo[chave]=[]), valores=patch.valores, indice=lista.findIndex(function(item){return item.id===valores.id;}), anterior=indice===-1?null:Object.assign({},lista[indice]);
@@ -564,7 +572,12 @@
     return {chave:chave,id:valores.id,indice:indice,anterior:anterior};
   }
   function reverterMutacaoOtimista(rollback) {
-    if(!rollback||!state.bootstrap||!state.bootstrap.fluxo)return;
+    if(!rollback||!state.bootstrap)return;
+    if(rollback.tipo==='perfilAluno'){
+      window.XSteamStudentProfiles.rollbackProfilePatch(state.bootstrap,rollback.valor);
+      render();safeCacheSet(state.bootstrap);return;
+    }
+    if(!state.bootstrap.fluxo)return;
     var lista=state.bootstrap.fluxo[rollback.chave]||[], indice=lista.findIndex(function(item){return item.id===rollback.id;});
     if(rollback.anterior){if(indice===-1)lista.splice(Math.max(0,rollback.indice),0,rollback.anterior);else lista[indice]=rollback.anterior;}
     else if(indice!==-1)lista.splice(indice,1);

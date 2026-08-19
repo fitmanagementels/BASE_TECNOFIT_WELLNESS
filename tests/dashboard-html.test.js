@@ -251,10 +251,21 @@ test('Configurações separa prazos, Home e perfil de pagamento', () => {
   }
   assert.match(client, /settingsSection/);
   assert.match(client, /settingsDirty/);
-  assert.match(client, /settingsPaymentDraft/);
   assert.match(client, /beforeunload/);
   assert.match(client, /Prévia da Home/);
   assert.match(css, /\.settings-nav/);
+});
+
+test('Home integra perfis à fila otimista e Configurações mantém apenas o catálogo', () => {
+  const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
+  assert.match(client, /XSteamStudentProfiles\.renderSection/);
+  assert.match(client, /patch\.tipo\s*===\s*'perfilAluno'/);
+  assert.match(client, /XSteamStudentProfiles\.applyProfilePatch/);
+  assert.match(client, /XSteamStudentProfiles\.rollbackProfilePatch/);
+  assert.match(client, /xsteam-dashboard-bootstrap-v4/);
+  assert.match(client, /Opções disponíveis para todos os perfis de alunos/);
+  assert.doesNotMatch(client, /tipo:'perfilPagamento'/);
+  assert.doesNotMatch(client, /settingsPaymentDraft/);
 });
 
 test('história operacional conecta Home, filas dedicadas e Configurações', () => {
