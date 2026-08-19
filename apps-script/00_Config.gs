@@ -22,6 +22,8 @@ var CONFIG = Object.freeze({
     configDashboard: 'CONFIG_DASHBOARD',
     configAlertas: 'CONFIG_ALERTAS',
     gestaoPagamentos: 'GESTAO_PAGAMENTOS',
+    perfisAlunos: 'PERFIS_ALUNOS',
+    configPerfisAlunos: 'CONFIG_PERFIS_ALUNOS',
     fluxoLeads: 'FLUXO_LEADS',
     fluxoChurns: 'FLUXO_CHURNS'
   }),
@@ -53,6 +55,14 @@ var CONFIG = Object.freeze({
     ]),
     gestaoPagamentos: Object.freeze([
       'id', 'aluno', 'perfil_pagamento', 'observacao', 'atualizado_em'
+    ]),
+    perfisAlunos: Object.freeze([
+      'id', 'aluno', 'professor_responsavel', 'perfil_pagamento',
+      'observacao_pagamento', 'etiquetas_publico', 'etiquetas_comerciais',
+      'observacoes_gerais', 'atualizado_em'
+    ]),
+    configPerfisAlunos: Object.freeze([
+      'tipo', 'grupo', 'chave', 'titulo', 'ativo', 'ordem'
     ]),
     fluxoLeads: Object.freeze([
       'lead_id', 'nome', 'telefone', 'origem', 'indicacao', 'primeiro_contato',

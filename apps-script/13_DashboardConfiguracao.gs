@@ -65,6 +65,7 @@ function garantirConfiguracoesDashboardNaPlanilha_(planilha) {
     CONFIG.cabecalhos.gestaoPagamentos,
     []
   );
+  garantirPerfisAlunosNaPlanilha_(planilha);
   SpreadsheetApp.flush();
 }
 
