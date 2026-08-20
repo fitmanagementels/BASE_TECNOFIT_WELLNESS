@@ -23,16 +23,23 @@ class RangeMock {
     this.sheet.writes += 1;
     return this;
   }
+  setFontWeight() { return this; }
+  setBackground() { return this; }
+  setFontColor() { return this; }
+  protect() { return { setDescription() { return this; }, setWarningOnly() { return this; } }; }
 }
 
 class SheetMock {
   constructor(values) { this.values = values.map(row => row.slice()); this.writes = 0; }
+  getMaxColumns() { return 20; }
   getLastRow() { return this.values.length; }
   getRange(row, column, rows = 1, columns = 1) { return new RangeMock(this, row, column, rows, columns); }
   clearContents() { this.values = []; return this; }
+  getProtections() { return []; }
+  setFrozenRows() { return this; }
 }
 
-function setup() {
+function setup(options = {}) {
   const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
   const sheets = {
     CONFIG_DASHBOARD: new SheetMock([
@@ -64,6 +71,10 @@ function setup() {
     FLUXO_LEADS: new SheetMock([Array.from(config.cabecalhos.fluxoLeads)]),
     FLUXO_CHURNS: new SheetMock([Array.from(config.cabecalhos.fluxoChurns)])
   };
+  if (options.withoutProfileSchema) {
+    delete sheets.PERFIS_ALUNOS;
+    delete sheets.CONFIG_PERFIS_ALUNOS;
+  }
   const properties = new Map();
   const calls = [];
   const sheetCalls = [];
@@ -75,7 +86,14 @@ function setup() {
     'apps-script/13_DashboardConfiguracao.gs',
     'apps-script/14_DashboardMutacoes.gs'
   ], {
-    SpreadsheetApp: { openById: () => ({ getSheetByName: name => { sheetCalls.push(name); return sheets[name]; } }), flush() {} },
+    SpreadsheetApp: {
+      ProtectionType: { RANGE: 'RANGE' },
+      openById: () => ({
+        getSheetByName: name => { sheetCalls.push(name); return sheets[name] || null; },
+        insertSheet: name => (sheets[name] = new SheetMock([]))
+      }),
+      flush() {}
+    },
     LockService: { getScriptLock: () => ({ waitLock: () => calls.push('lock'), releaseLock: () => calls.push('release') }) },
     PropertiesService: { getDocumentProperties: () => ({
       getProperty: key => properties.get(key) || null,
@@ -140,6 +158,23 @@ test('salva perfil completo por ID e preserva professor histórico', () => {
   assert.equal(linha[5], '["idoso","saude"]');
   assert.equal(linha[6], '["risco_de_churn"]');
   assert.equal(linha[7], 'Prefere treinar cedo.');
+});
+
+test('primeiro salvamento de perfil cria a estrutura persistente ausente', () => {
+  const { gas, sheets } = setup({ withoutProfileSchema: true });
+
+  gas.salvarMutacoesDashboard({
+    requestId: 'perfil-primeiro-salvamento',
+    patches: [{ tipo: 'perfilAluno', valores: {
+      id: '42', aluno: 'ALUNA TESTE', professorResponsavel: 'Aquiles',
+      perfilPagamento: 'Sem histórico', etiquetasPublico: ['idoso'], etiquetasComerciais: []
+    } }]
+  });
+
+  assert.ok(sheets.PERFIS_ALUNOS);
+  assert.ok(sheets.CONFIG_PERFIS_ALUNOS);
+  assert.equal(sheets.PERFIS_ALUNOS.values[1][0], '42');
+  assert.equal(sheets.PERFIS_ALUNOS.values[1][2], 'Aquiles');
 });
 
 test('usa catálogo de cancelados e rejeita etiqueta no grupo errado sem gravar', () => {

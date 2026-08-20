@@ -260,6 +260,10 @@ function salvarMutacoesDashboard(lote) {
     var precisaLeads = patches.some(function (patch) { return patch && patch.tipo === 'fluxoLead'; });
     var precisaChurns = patches.some(function (patch) { return patch && (patch.tipo === 'fluxoChurn' || patch.tipo === 'excluirFluxoChurn'); });
     var planilha = planilhaMutacoesDashboard_();
+    if (precisaPerfilAluno && (
+      !planilha.getSheetByName(CONFIG.abas.perfisAlunos) ||
+      !planilha.getSheetByName(CONFIG.abas.configPerfisAlunos)
+    )) garantirPerfisAlunosNaPlanilha_(planilha);
     var abaDashboard = precisaDashboard ? planilha.getSheetByName(CONFIG.abas.configDashboard) : null;
     var abaAlertas = precisaAlertas ? planilha.getSheetByName(CONFIG.abas.configAlertas) : null;
     var abaPagamentos = precisaPagamentos ? planilha.getSheetByName(CONFIG.abas.gestaoPagamentos) : null;
