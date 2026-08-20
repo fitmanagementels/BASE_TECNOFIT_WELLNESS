@@ -1,8 +1,18 @@
-# Contenção dos cartões e atalho de WhatsApp nos perfis
+# Bloco retrátil, contenção dos cartões e WhatsApp nos perfis
 
 ## Objetivo
 
-Corrigir os cartões de perfis de alunos que deixam nomes ou etiquetas de status ultrapassarem seus limites e oferecer um acesso rápido ao WhatsApp ao lado do telefone no pop-up do aluno.
+Organizar a Home com o bloco de perfis inicialmente recolhido, corrigir cartões que deixam nomes ou etiquetas de status ultrapassarem seus limites e oferecer acesso rápido ao WhatsApp ao lado do telefone no pop-up do aluno.
+
+## Bloco retrátil na Home
+
+- O cabeçalho **Perfis dos alunos** permanecerá visível na Home.
+- Um botão com ícone de seta ficará no canto superior direito do cabeçalho.
+- O bloco sempre iniciará recolhido quando a Home for renderizada, inclusive ao retornar de outra página ou aplicar filtros.
+- Busca, quantidade no recorte, grade de cartões e botão **Mostrar mais** ficarão dentro do painel controlado e serão ocultados enquanto ele estiver recolhido.
+- A preferência não será gravada em `localStorage` nem na planilha.
+- O controle será um botão associado ao painel por `aria-controls`, com `aria-expanded` e rótulo acessível atualizado entre **Expandir perfis dos alunos** e **Recolher perfis dos alunos**.
+- O ícone indicará o estado e acompanhará a transição sem impedir o uso quando a redução de movimento estiver ativada.
 
 ## Escopo visual
 
@@ -24,7 +34,8 @@ Corrigir os cartões de perfis de alunos que deixam nomes ou etiquetas de status
 ## Arquitetura e fluxo
 
 - `pwa/js/student-profiles.js` concentrará a normalização do telefone, a geração da URL e a renderização específica do contato.
-- `pwa/css/student-profiles.css` receberá as regras de contenção do cartão e o alinhamento do telefone com o botão.
+- `pwa/js/student-profiles.js` também controlará o botão retrátil e o painel de perfis, sempre criado no estado recolhido.
+- `pwa/css/student-profiles.css` receberá as regras de contenção do cartão, o estado retrátil e o alinhamento do telefone com o botão.
 - O estilo visual do botão reutilizará o padrão `.whatsapp-button` já usado no módulo de Leads.
 - O HTML base continuará carregando os mesmos módulos; somente a versão do cache estático em `pwa/sw.js` será incrementada para distribuir os arquivos corrigidos.
 - Não haverá mudança na planilha, no contrato do Apps Script ou na persistência dos perfis.
@@ -37,6 +48,7 @@ Corrigir os cartões de perfis de alunos que deixam nomes ou etiquetas de status
 ## Testes e validação
 
 - Testes unitários para telefones brasileiros formatados, já prefixados e inválidos.
+- Teste do estado inicial recolhido e dos atributos acessíveis durante expansão e recolhimento.
 - Teste estrutural para garantir as regras de contenção e a atualização do cache do PWA.
 - Suíte completa do projeto após a alteração.
 - Inspeção visual em desktop e celular com nomes e status longos, além do pop-up com o atalho ao lado do telefone.
@@ -45,4 +57,5 @@ Corrigir os cartões de perfis de alunos que deixam nomes ou etiquetas de status
 
 - Envio automático de mensagem ou texto pré-preenchido.
 - Botão de WhatsApp diretamente nos cartões da Home.
+- Persistência da preferência de expansão entre renderizações da Home.
 - Alterações na planilha, no cadastro do aluno ou no número armazenado.
