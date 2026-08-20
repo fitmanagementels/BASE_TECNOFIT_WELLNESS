@@ -430,6 +430,17 @@
     dialog.showModal();
   }
 
+  function setProfilesExpanded(toggle, panel, expanded) {
+    var open = expanded === true;
+    panel.hidden = !open;
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute(
+      'aria-label',
+      open ? 'Recolher perfis dos alunos' : 'Expandir perfis dos alunos'
+    );
+    toggle.classList.toggle('is-expanded', open);
+  }
+
   function renderSection(options) {
     var doc = options.document || document;
     var all = buildStudentCards({
@@ -442,20 +453,37 @@
     var section = uiElement(doc, 'section', 'section-card student-profiles-section');
     var heading = uiElement(doc, 'div', 'student-profiles-heading');
     var copy = uiElement(doc, 'div');
+    var panelId = 'student-profiles-content';
+    var toggle = uiElement(doc, 'button', 'student-profiles-collapse');
+    var toggleIcon = uiElement(doc, 'span', 'student-profiles-collapse-icon', '⌄');
     copy.appendChild(uiElement(doc, 'span', 'eyebrow', 'GESTÃO INDIVIDUAL'));
     copy.appendChild(uiElement(doc, 'h2', '', 'Perfis dos alunos'));
     copy.appendChild(uiElement(doc, 'p', 'body-copy', 'Consulte dados e organize responsáveis, pagamentos e etiquetas.'));
+    toggle.type = 'button';
+    toggle.setAttribute('aria-controls', panelId);
+    toggle.appendChild(toggleIcon);
+    heading.appendChild(copy);
+    heading.appendChild(toggle);
+    section.appendChild(heading);
+
     var search = uiElement(doc, 'input', 'student-profile-search');
     search.type = 'search';
     search.placeholder = 'Buscar por nome ou ID';
     search.setAttribute('aria-label', 'Buscar aluno por nome ou ID');
-    heading.appendChild(copy); heading.appendChild(search); section.appendChild(heading);
     var summary = uiElement(doc, 'p', 'student-profile-summary');
     summary.setAttribute('aria-live', 'polite');
     var grid = uiElement(doc, 'div', 'student-profile-grid');
     var more = uiElement(doc, 'button', 'secondary student-profile-more', 'Mostrar mais');
     more.type = 'button';
-    section.appendChild(summary); section.appendChild(grid); section.appendChild(more);
+    var content = uiElement(doc, 'div', 'student-profiles-content');
+    var toolbar = uiElement(doc, 'div', 'student-profiles-toolbar');
+    content.id = panelId;
+    toolbar.appendChild(search);
+    content.appendChild(toolbar);
+    content.appendChild(summary);
+    content.appendChild(grid);
+    content.appendChild(more);
+    section.appendChild(content);
 
     function refresh() {
       var filtered = filterStudentCards(all, search.value);
@@ -499,6 +527,10 @@
 
     search.addEventListener('input', function () { visible = 24; refresh(); });
     more.addEventListener('click', function () { visible += 24; refresh(); });
+    toggle.addEventListener('click', function () {
+      setProfilesExpanded(toggle, content, content.hidden);
+    });
+    setProfilesExpanded(toggle, content, false);
     refresh();
     return section;
   }
@@ -514,6 +546,7 @@
     activeCatalog: activeCatalog,
     profileFormOptions: profileFormOptions,
     createProfilePatch: createProfilePatch,
+    setProfilesExpanded: setProfilesExpanded,
     renderSection: renderSection,
     openProfileDialog: openProfileDialog
   };

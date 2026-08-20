@@ -25,6 +25,42 @@ test('contato do perfil oferece ação acessível e segura de WhatsApp', () => {
   assert.match(client, /student-profile-contact-value/);
 });
 
+test('perfis começam recolhidos e o controle anuncia os dois estados', () => {
+  const attributes = {};
+  const classes = new Set();
+  const toggle = {
+    setAttribute(name, value) { attributes[name] = String(value); },
+    classList: {
+      toggle(name, active) {
+        if (active) classes.add(name);
+        else classes.delete(name);
+      }
+    }
+  };
+  const panel = { hidden: false };
+
+  profiles.setProfilesExpanded(toggle, panel, false);
+  assert.equal(panel.hidden, true);
+  assert.equal(attributes['aria-expanded'], 'false');
+  assert.equal(attributes['aria-label'], 'Expandir perfis dos alunos');
+  assert.equal(classes.has('is-expanded'), false);
+
+  profiles.setProfilesExpanded(toggle, panel, true);
+  assert.equal(panel.hidden, false);
+  assert.equal(attributes['aria-expanded'], 'true');
+  assert.equal(attributes['aria-label'], 'Recolher perfis dos alunos');
+  assert.equal(classes.has('is-expanded'), true);
+});
+
+test('seção liga o botão retrátil ao painel sem persistir preferência', () => {
+  const client = fs.readFileSync('pwa/js/student-profiles.js', 'utf8');
+  assert.match(client, /student-profiles-collapse/);
+  assert.match(client, /student-profiles-content/);
+  assert.match(client, /aria-controls/);
+  assert.match(client, /setProfilesExpanded\(toggle, content, false\)/);
+  assert.doesNotMatch(client, /localStorage/);
+});
+
 test('seleciona contrato ativo mais recente e filtra por nome ou ID', () => {
   const cards = profiles.buildStudentCards({
     alunos: [{

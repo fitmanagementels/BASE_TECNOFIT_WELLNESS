@@ -1,6 +1,24 @@
 .student-profiles-section { display: grid; gap: 18px; }
-.student-profiles-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+.student-profiles-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .student-profiles-heading h2 { margin: 4px 0 5px; font-size: clamp(22px, 2.5vw, 30px); letter-spacing: -.035em; }
+.student-profiles-collapse {
+  display: grid;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--muted-strong);
+  background: rgba(255, 255, 255, .03);
+}
+.student-profiles-collapse:hover,
+.student-profiles-collapse:focus-visible { border-color: var(--lime); color: var(--lime); }
+.student-profiles-collapse-icon { font-size: 22px; line-height: 1; transition: transform var(--ease); }
+.student-profiles-collapse.is-expanded .student-profiles-collapse-icon { transform: rotate(180deg); }
+.student-profiles-content { display: grid; gap: 18px; }
+.student-profiles-content[hidden] { display: none; }
+.student-profiles-toolbar { display: flex; justify-content: flex-end; }
 .student-profile-search {
   width: min(320px, 100%);
   min-height: 44px;
@@ -109,7 +127,6 @@
   .student-profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 620px) {
-  .student-profiles-heading { align-items: stretch; flex-direction: column; }
   .student-profile-search { width: 100%; }
   .student-profile-grid { grid-template-columns: 1fr; }
   .student-profile-dialog { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; }
@@ -119,4 +136,7 @@
   .student-profile-info-grid, .student-profile-form { grid-template-columns: 1fr; }
   .student-profile-actions { position: sticky; bottom: -16px; margin: 0 -16px -16px; padding: 12px 16px; background: #111616; border-top: 1px solid var(--line); }
   .student-profile-actions .primary, .student-profile-actions .secondary { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .student-profiles-collapse-icon { transition: none; }
 }
