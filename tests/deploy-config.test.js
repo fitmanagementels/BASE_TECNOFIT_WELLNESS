@@ -34,3 +34,11 @@ test('workflows publicam Pages e Worker sem OAuth público', () => {
   assert.match(gas, /Verificar API pública/);
   assert.match(gas, /action:\s*'versao'/);
 });
+
+test('manifesto preserva o Web App público ao atualizar a implantação', () => {
+  const manifest = JSON.parse(fs.readFileSync('apps-script/appsscript.json', 'utf8'));
+  assert.deepEqual(manifest.webapp, {
+    access: 'ANYONE_ANONYMOUS',
+    executeAs: 'USER_DEPLOYING'
+  });
+});
