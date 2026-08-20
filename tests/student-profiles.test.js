@@ -3,10 +3,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const profiles = require('../pwa/js/student-profiles.js');
 
-test('gera a rota direta do WhatsApp Web no desktop e wa.me no celular', () => {
+test('gera a rota canônica de conversa no WhatsApp Web e wa.me no celular', () => {
   assert.equal(
     profiles.whatsappUrl('(85) 98840-0309', false),
-    'https://web.whatsapp.com/send?phone=5585988400309'
+    'https://web.whatsapp.com/send/?phone=5585988400309&text=&type=phone_number&app_absent=0'
   );
   assert.equal(
     profiles.whatsappUrl('+55 (85) 98840-0309', true),
