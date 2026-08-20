@@ -1,5 +1,5 @@
 (function () {
-  var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, leadFilter: 'todos', followCategory: '', settingsSection: 'alertas', settingsAlertKind: 'prescricoes', settingsDirty: false, settingsAlertDraft: null, settingsHomeDraft: null, mutationQueue: [], failedMutations: [], saving: false, churnFilters: null, churnCharts: [], churnAnalyticsRequest: 0, churnAnalyticsCache: Object.create(null), backgroundSyncTimer: null };
+  var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, leadFilter: 'todos', followCategory: '', settingsSection: 'alertas', settingsAlertKind: 'prescricoes', settingsDirty: false, settingsAlertDraft: null, settingsHomeDraft: null, profilesExpanded: false, mutationQueue: [], failedMutations: [], saving: false, churnFilters: null, churnCharts: [], churnAnalyticsRequest: 0, churnAnalyticsCache: Object.create(null), backgroundSyncTimer: null };
   var cacheKey = 'xsteam-dashboard-bootstrap-v4:publico';
   var labels = { home: 'Home', financeiro: 'Financeiro', acompanhamento: 'Acompanhamento', fluxo: 'Fluxo', configuracoes: 'Configurações' };
 
@@ -288,6 +288,8 @@
       window.XSteamStudentProfiles.renderSection({
         data: data,
         bootstrap: state.bootstrap,
+        expanded: state.profilesExpanded,
+        onExpandedChange: function (expanded) { state.profilesExpanded = expanded; },
         onSave: enqueue
       })
     ];

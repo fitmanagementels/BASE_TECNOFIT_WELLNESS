@@ -275,6 +275,9 @@ test('Home integra perfis à fila otimista e Configurações mantém apenas o ca
   assert.match(client, /patch\.tipo\s*===\s*'perfilAluno'/);
   assert.match(client, /XSteamStudentProfiles\.applyProfilePatch/);
   assert.match(client, /XSteamStudentProfiles\.rollbackProfilePatch/);
+  assert.match(client, /profilesExpanded:\s*false/);
+  assert.match(client, /expanded:\s*state\.profilesExpanded/);
+  assert.match(client, /onExpandedChange:\s*function\s*\(expanded\)\s*\{\s*state\.profilesExpanded\s*=\s*expanded;/);
   assert.match(client, /xsteam-dashboard-bootstrap-v4/);
   assert.match(client, /Opções disponíveis para todos os perfis de alunos/);
   assert.doesNotMatch(client, /tipo:'perfilPagamento'/);

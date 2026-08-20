@@ -441,14 +441,8 @@
         etiquetasComerciais: checkedValues(commercialTags),
         observacoesGerais: generalNotes.value
       });
-      Promise.resolve(options.onSave(patch)).then(function () {
-        dialog.close();
-      }).catch(function (error) {
-        save.disabled = false;
-        save.textContent = 'Salvar configurações';
-        feedback.textContent = profileSaveErrorMessage(error);
-        feedback.hidden = false;
-      });
+      try { Promise.resolve(options.onSave(patch)).catch(function () {}); } catch (_) {}
+      dialog.close();
     });
     configPanel.appendChild(form);
     dialog.appendChild(infoPanel); dialog.appendChild(configPanel);
@@ -560,8 +554,9 @@
     more.addEventListener('click', function () { visible += 24; refresh(); });
     toggle.addEventListener('click', function () {
       setProfilesExpanded(toggle, content, content.hidden);
+      if (typeof options.onExpandedChange === 'function') options.onExpandedChange(!content.hidden);
     });
-    setProfilesExpanded(toggle, content, false);
+    setProfilesExpanded(toggle, content, options.expanded === true);
     refresh();
     return section;
   }

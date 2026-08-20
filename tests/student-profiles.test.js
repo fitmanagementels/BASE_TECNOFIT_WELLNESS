@@ -35,12 +35,12 @@ test('contato do perfil oferece ação acessível e segura de WhatsApp', () => {
   assert.match(client, /student-profile-contact-value/);
 });
 
-test('configuração do perfil aguarda a confirmação do servidor antes de fechar o diálogo', () => {
+test('configuração do perfil fecha sem aguardar o servidor e deixa o erro para a fila global', () => {
   const client = fs.readFileSync('pwa/js/student-profiles.js', 'utf8');
   assert.match(client, /function profileSaveErrorMessage\(error\)/);
-  assert.match(client, /Promise\.resolve\(options\.onSave\(patch\)\)/);
-  assert.match(client, /feedback\.textContent = profileSaveErrorMessage\(error\)/);
-  assert.match(client, /save\.disabled = false/);
+  assert.match(client, /Promise\.resolve\(options\.onSave\(patch\)\)\.catch\(function \(\) \{\}\);/);
+  assert.match(client, /dialog\.close\(\);/);
+  assert.doesNotMatch(client, /Promise\.resolve\(options\.onSave\(patch\)\)\.then/);
 });
 
 test('perfis começam recolhidos e o controle anuncia os dois estados', () => {
@@ -75,7 +75,8 @@ test('seção liga o botão retrátil ao painel sem persistir preferência', () 
   assert.match(client, /student-profiles-collapse/);
   assert.match(client, /student-profiles-content/);
   assert.match(client, /aria-controls/);
-  assert.match(client, /setProfilesExpanded\(toggle, content, false\)/);
+  assert.match(client, /setProfilesExpanded\(toggle, content, options\.expanded === true\)/);
+  assert.match(client, /options\.onExpandedChange\(!content\.hidden\)/);
   assert.doesNotMatch(client, /localStorage/);
 });
 
