@@ -16,6 +16,17 @@ function erro(code, message) {
   return { ok: false, error: { code, message } };
 }
 
+function registrarErroUpstream(runtime, reason, upstream) {
+  const logger = runtime && runtime.logger ? runtime.logger : console;
+  if (!logger || typeof logger.error !== 'function') return;
+  logger.error({
+    event: 'apps_script_upstream_error',
+    reason,
+    upstreamStatus: upstream ? upstream.status : 0,
+    contentType: upstream ? (upstream.headers.get('content-type') || '') : ''
+  });
+}
+
 function origemPermitida(origin) {
   return origin === ALLOWED_ORIGIN;
 }
@@ -84,6 +95,7 @@ export async function handleRequest(request, env, runtime) {
       })
     });
   } catch (_) {
+    registrarErroUpstream(runtime, 'fetch_failed');
     return json(erro('UPSTREAM_ERROR', 'Serviço indisponível.'), 502, origin);
   }
 
@@ -91,9 +103,11 @@ export async function handleRequest(request, env, runtime) {
   try {
     result = await upstream.json();
   } catch (_) {
+    registrarErroUpstream(runtime, 'invalid_json', upstream);
     return json(erro('UPSTREAM_ERROR', 'Serviço indisponível.'), 502, origin);
   }
   if (!upstream.ok || !result || typeof result !== 'object') {
+    registrarErroUpstream(runtime, !upstream.ok ? 'http_error' : 'invalid_payload', upstream);
     return json(erro('UPSTREAM_ERROR', 'Serviço indisponível.'), 502, origin);
   }
   return json(result, 200, origin);

@@ -45,13 +45,25 @@ test('worker rejeita origem, método e ações fora do contrato', async () => {
 
 test('worker converte resposta não JSON do Apps Script em erro seguro', async () => {
   const worker = await carregarWorker();
+  const logs = [];
   const response = await worker.handleRequest(pedido('versao'), env, {
-    fetch: async () => new Response('<html>erro interno</html>', { status: 500 })
+    fetch: async () => new Response('<html>erro interno</html>', {
+      status: 500,
+      headers: { 'content-type': 'text/html; charset=utf-8' }
+    }),
+    logger: { error: event => logs.push(event) }
   });
   const body = await response.json();
   assert.equal(response.status, 502);
   assert.equal(body.error.code, 'UPSTREAM_ERROR');
   assert.doesNotMatch(JSON.stringify(body), /html|segredo/i);
+  assert.deepEqual(logs, [{
+    event: 'apps_script_upstream_error',
+    reason: 'invalid_json',
+    upstreamStatus: 500,
+    contentType: 'text/html; charset=utf-8'
+  }]);
+  assert.doesNotMatch(JSON.stringify(logs), /erro interno|segredo-interno|script\.google/i);
 });
 
 test('worker atende preflight do navegador sem chamar o Apps Script', async () => {

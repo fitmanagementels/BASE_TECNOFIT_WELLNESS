@@ -178,6 +178,12 @@ test('cliente usa bootstrap local, cache persistente e fila de mutações', () =
   assert.doesNotMatch(client, /innerHTML\s*=/);
 });
 
+test('cliente diferencia dados em cache de dados confirmados pela base', () => {
+  const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
+  assert.match(client, /Sem conexão com a base\. Exibindo dados salvos neste dispositivo\./);
+  assert.match(client, /Não foi possível conectar à base\. Verifique a conexão e tente novamente\./);
+});
+
 test('cliente oferece filtro Matriculados e normaliza os três status elegíveis', () => {
   const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
   assert.match(client, /__matriculados__/);

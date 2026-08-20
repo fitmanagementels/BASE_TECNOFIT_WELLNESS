@@ -14,6 +14,7 @@ O endereço público não contém a chave interna. Essa chave fica somente entre
 - [ ] `APPS_SCRIPT_SHARED_SECRET` existe nas Propriedades do Script.
 - [ ] `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` existem como secrets do GitHub.
 - [ ] `APPS_SCRIPT_WEBAPP_URL` e `APPS_SCRIPT_SHARED_SECRET` existem como secrets do GitHub.
+- [ ] `CLASPRC_JSON`, `APPS_SCRIPT_ID` e `APPS_SCRIPT_API_DEPLOYMENT_ID` existem como secrets do GitHub.
 - [ ] Worker foi publicado e sua URL foi copiada.
 - [ ] `PUBLIC_WORKER_URL` existe como variável do GitHub.
 - [ ] Pages foi publicado e abriu sem login Google.
@@ -80,7 +81,15 @@ Abra [Secrets and variables > Actions](https://github.com/fitmanagementels/BASE_
 | `APPS_SCRIPT_WEBAPP_URL` | URL `/exec` copiada na etapa 1 |
 | `APPS_SCRIPT_SHARED_SECRET` | exatamente a sequência criada na etapa 2 |
 
-Os quatro são **Secrets**, não **Variables**. Nunca os envie por WhatsApp, e-mail, GitHub Issue ou commit.
+Para que mudanças futuras no Apps Script sejam publicadas automaticamente, mantenha também:
+
+| Nome | Valor |
+| --- | --- |
+| `CLASPRC_JSON` | conteúdo completo do arquivo `.clasprc.json` da conta proprietária |
+| `APPS_SCRIPT_ID` | ID do projeto Apps Script |
+| `APPS_SCRIPT_API_DEPLOYMENT_ID` | trecho entre `/s/` e `/exec` na URL do Web App |
+
+Todos são **Secrets**, não **Variables**. Nunca os envie por WhatsApp, e-mail, GitHub Issue ou commit.
 
 ## 5. Publicar o Worker
 
@@ -137,7 +146,18 @@ O cliente OAuth criado no Google Cloud pode permanecer inativo ou ser excluído 
 
 - Mudanças em `pwa/` publicam o Pages automaticamente.
 - Mudanças em `worker/` publicam o Worker automaticamente, desde que os secrets continuem cadastrados.
-- Mudanças em `apps-script/` precisam ser enviadas ao Apps Script e publicadas como nova versão do Web App. Enquanto o workflow de `clasp` não estiver configurado, execute o comando da etapa 1 e, no editor, abra **Implantar > Gerenciar implantações > Editar** para selecionar a nova versão.
+- Mudanças em `apps-script/` executam os testes, enviam os arquivos, atualizam a mesma implantação Web App e validam a ação `versao` automaticamente.
+- O workflow falha de forma explícita se a URL deixar de ser pública, devolver HTML ou não responder com uma versão válida.
+
+## Recuperação rápida quando o PWA mostra dados antigos ou não carrega
+
+1. Abra o [projeto Apps Script XSTEAM](https://script.google.com/home/projects/18Q6ACZwY09BQZTVtWcMSiL1tfgakyns67sEyYkX5NuidBQD_PZH60858/edit).
+2. Em **Implantar > Nova implantação > App da Web**, use **Executar como: Eu** e **Quem pode acessar: Qualquer pessoa**.
+3. Copie a URL terminada em `/exec`.
+4. Em [Secrets do GitHub](https://github.com/fitmanagementels/BASE_TECNOFIT_WELLNESS/settings/secrets/actions), atualize `APPS_SCRIPT_WEBAPP_URL` com a URL completa.
+5. No mesmo local, atualize `APPS_SCRIPT_API_DEPLOYMENT_ID` com o trecho entre `/s/` e `/exec`.
+
+Depois dessa configuração única, os workflows cuidam das próximas publicações. Não é necessário alterar o PWA, a planilha ou o Cloudflare manualmente.
 
 ## Desativação e rollback
 
