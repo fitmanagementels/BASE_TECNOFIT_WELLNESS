@@ -8,11 +8,21 @@
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
-  function whatsappUrl(value) {
+  function whatsappUrl(value, mobile) {
     var digits = String(value == null ? '' : value).replace(/\D/g, '');
     if (digits.length === 10 || digits.length === 11) digits = '55' + digits;
     if (!/^55\d{10,11}$/.test(digits)) return '';
-    return 'https://wa.me/' + digits;
+    return mobile
+      ? 'https://wa.me/' + digits
+      : 'https://web.whatsapp.com/send?phone=' + digits;
+  }
+
+  function isMobileDevice(navigatorRef) {
+    if (!navigatorRef) return false;
+    if (navigatorRef.userAgentData && typeof navigatorRef.userAgentData.mobile === 'boolean') {
+      return navigatorRef.userAgentData.mobile;
+    }
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigatorRef.userAgent || ''));
   }
 
   function dateValue(value) {
@@ -214,10 +224,10 @@
     return svg;
   }
 
-  function contactInfoItem(doc, card) {
+  function contactInfoItem(doc, card, navigatorRef) {
     var item = uiElement(doc, 'div', 'student-profile-info-item');
     var value = uiElement(doc, 'dd', 'student-profile-contact-value');
-    var url = whatsappUrl(card.contato);
+    var url = whatsappUrl(card.contato, isMobileDevice(navigatorRef));
     item.appendChild(uiElement(doc, 'dt', '', 'Contato'));
     value.appendChild(uiElement(doc, 'span', '', displayValue(card.contato)));
     if (url) {
@@ -343,7 +353,8 @@
 
     var contract = card.contratoPrincipal || {};
     var infoGrid = uiElement(doc, 'dl', 'student-profile-info-grid');
-    infoGrid.appendChild(contactInfoItem(doc, card));
+    var navigatorRef = options.navigator || (typeof navigator !== 'undefined' ? navigator : null);
+    infoGrid.appendChild(contactInfoItem(doc, card, navigatorRef));
     [
       ['Status', card.status],
       ['Contrato', contract.contrato],
@@ -538,6 +549,7 @@
   return {
     normalize: normalize,
     whatsappUrl: whatsappUrl,
+    isMobileDevice: isMobileDevice,
     selectPrimaryContract: selectPrimaryContract,
     buildStudentCards: buildStudentCards,
     filterStudentCards: filterStudentCards,

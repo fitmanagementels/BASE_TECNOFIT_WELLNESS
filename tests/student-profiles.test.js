@@ -3,22 +3,32 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const profiles = require('../pwa/js/student-profiles.js');
 
-test('gera WhatsApp somente para telefones brasileiros válidos sem duplicar o DDI', () => {
+test('gera a rota direta do WhatsApp Web no desktop e wa.me no celular', () => {
   assert.equal(
-    profiles.whatsappUrl('(85) 98840-0309'),
-    'https://wa.me/5585988400309'
+    profiles.whatsappUrl('(85) 98840-0309', false),
+    'https://web.whatsapp.com/send?phone=5585988400309'
   );
   assert.equal(
-    profiles.whatsappUrl('+55 (85) 98840-0309'),
+    profiles.whatsappUrl('+55 (85) 98840-0309', true),
     'https://wa.me/5585988400309'
   );
-  assert.equal(profiles.whatsappUrl('9884-0309'), '');
-  assert.equal(profiles.whatsappUrl(''), '');
+  assert.equal(profiles.whatsappUrl('9884-0309', false), '');
+  assert.equal(profiles.whatsappUrl('', true), '');
+});
+
+test('detecta celular por User-Agent Client Hints e por fallback de user agent', () => {
+  assert.equal(profiles.isMobileDevice({ userAgentData: { mobile: true } }), true);
+  assert.equal(profiles.isMobileDevice({ userAgentData: { mobile: false } }), false);
+  assert.equal(profiles.isMobileDevice({ userAgent: 'Mozilla/5.0 (Linux; Android 14)' }), true);
+  assert.equal(profiles.isMobileDevice({ userAgent: 'Mozilla/5.0 (X11; Linux x86_64)' }), false);
+  assert.equal(profiles.isMobileDevice(null), false);
 });
 
 test('contato do perfil oferece ação acessível e segura de WhatsApp', () => {
   const client = fs.readFileSync('pwa/js/student-profiles.js', 'utf8');
-  assert.match(client, /function contactInfoItem\(doc, card\)/);
+  assert.match(client, /function contactInfoItem\(doc, card, navigatorRef\)/);
+  assert.match(client, /whatsappUrl\(card\.contato, isMobileDevice\(navigatorRef\)\)/);
+  assert.match(client, /options\.navigator \|\| \(typeof navigator !== 'undefined' \? navigator : null\)/);
   assert.match(client, /target\s*=\s*'_blank'/);
   assert.match(client, /rel\s*=\s*'noopener noreferrer'/);
   assert.match(client, /Abrir WhatsApp com/);
