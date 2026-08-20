@@ -14,7 +14,7 @@
     if (!/^55\d{10,11}$/.test(digits)) return '';
     return mobile
       ? 'https://wa.me/' + digits
-      : 'https://web.whatsapp.com/send?phone=' + digits;
+      : 'https://web.whatsapp.com/send/?phone=' + digits + '&text=&type=phone_number&app_absent=0';
   }
 
   function isMobileDevice(navigatorRef) {
