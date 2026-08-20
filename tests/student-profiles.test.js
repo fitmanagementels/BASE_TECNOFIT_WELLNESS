@@ -61,6 +61,14 @@ test('seção liga o botão retrátil ao painel sem persistir preferência', () 
   assert.doesNotMatch(client, /localStorage/);
 });
 
+test('cartões contêm nomes e status longos dentro de cada coluna', () => {
+  const css = fs.readFileSync('pwa/css/student-profiles.css', 'utf8');
+  assert.match(css, /\.student-profile-card\s*\{[^}]*min-width:\s*0[^}]*overflow:\s*hidden/s);
+  assert.match(css, /\.student-profile-card-head\s*\{[^}]*min-width:\s*0[^}]*width:\s*100%/s);
+  assert.match(css, /\.student-profile-card-head\s*>\s*span:first-child\s*\{[^}]*flex:\s*1\s+1\s+auto[^}]*min-width:\s*0/s);
+  assert.match(css, /\.student-profile-card-head\s*>\s*\.chip\s*\{[^}]*flex:\s*0\s+0\s+auto[^}]*max-width:/s);
+});
+
 test('seleciona contrato ativo mais recente e filtra por nome ou ID', () => {
   const cards = profiles.buildStudentCards({
     alunos: [{
