@@ -1,6 +1,29 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const profiles = require('../pwa/js/student-profiles.js');
+
+test('gera WhatsApp somente para telefones brasileiros válidos sem duplicar o DDI', () => {
+  assert.equal(
+    profiles.whatsappUrl('(85) 98840-0309'),
+    'https://wa.me/5585988400309'
+  );
+  assert.equal(
+    profiles.whatsappUrl('+55 (85) 98840-0309'),
+    'https://wa.me/5585988400309'
+  );
+  assert.equal(profiles.whatsappUrl('9884-0309'), '');
+  assert.equal(profiles.whatsappUrl(''), '');
+});
+
+test('contato do perfil oferece ação acessível e segura de WhatsApp', () => {
+  const client = fs.readFileSync('pwa/js/student-profiles.js', 'utf8');
+  assert.match(client, /function contactInfoItem\(doc, card\)/);
+  assert.match(client, /target\s*=\s*'_blank'/);
+  assert.match(client, /rel\s*=\s*'noopener noreferrer'/);
+  assert.match(client, /Abrir WhatsApp com/);
+  assert.match(client, /student-profile-contact-value/);
+});
 
 test('seleciona contrato ativo mais recente e filtra por nome ou ID', () => {
   const cards = profiles.buildStudentCards({

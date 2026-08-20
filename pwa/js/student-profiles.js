@@ -8,6 +8,13 @@
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
+  function whatsappUrl(value) {
+    var digits = String(value == null ? '' : value).replace(/\D/g, '');
+    if (digits.length === 10 || digits.length === 11) digits = '55' + digits;
+    if (!/^55\d{10,11}$/.test(digits)) return '';
+    return 'https://wa.me/' + digits;
+  }
+
   function dateValue(value) {
     var text = String(value || '');
     var br = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(text);
@@ -193,6 +200,39 @@
     return item;
   }
 
+  function whatsappIcon(doc) {
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = doc.createElementNS(ns, 'svg');
+    var bubble = doc.createElementNS(ns, 'path');
+    var phone = doc.createElementNS(ns, 'path');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    bubble.setAttribute('d', 'M20.5 11.5a8.4 8.4 0 0 1-11.9 7.6L3.5 20.5l1.4-4.7A8.5 8.5 0 1 1 20.5 11.5Z');
+    phone.setAttribute('d', 'M9.2 7.5c.2-.5.5-.6.9-.4l1.2.6c.3.2.4.5.3.8l-.5 1.1c.7 1.4 1.8 2.5 3.2 3.2l1.1-.5c.3-.1.6 0 .8.3l.6 1.2c.2.4.1.7-.4.9-.6.3-1.3.4-2 .2-3.4-.9-6-3.5-6.9-6.9-.2-.7-.1-1.4.2-2.1Z');
+    svg.appendChild(bubble);
+    svg.appendChild(phone);
+    return svg;
+  }
+
+  function contactInfoItem(doc, card) {
+    var item = uiElement(doc, 'div', 'student-profile-info-item');
+    var value = uiElement(doc, 'dd', 'student-profile-contact-value');
+    var url = whatsappUrl(card.contato);
+    item.appendChild(uiElement(doc, 'dt', '', 'Contato'));
+    value.appendChild(uiElement(doc, 'span', '', displayValue(card.contato)));
+    if (url) {
+      var link = uiElement(doc, 'a', 'whatsapp-button');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.setAttribute('aria-label', 'Abrir WhatsApp com ' + card.aluno);
+      link.appendChild(whatsappIcon(doc));
+      value.appendChild(link);
+    }
+    item.appendChild(value);
+    return item;
+  }
+
   function field(doc, labelText, control) {
     var label = uiElement(doc, 'label', 'student-profile-field');
     label.appendChild(uiElement(doc, 'span', 'student-profile-field-label', labelText));
@@ -303,8 +343,8 @@
 
     var contract = card.contratoPrincipal || {};
     var infoGrid = uiElement(doc, 'dl', 'student-profile-info-grid');
+    infoGrid.appendChild(contactInfoItem(doc, card));
     [
-      ['Contato', card.contato],
       ['Status', card.status],
       ['Contrato', contract.contrato],
       ['Frequência', contract.frequencia],
@@ -465,6 +505,7 @@
 
   return {
     normalize: normalize,
+    whatsappUrl: whatsappUrl,
     selectPrimaryContract: selectPrimaryContract,
     buildStudentCards: buildStudentCards,
     filterStudentCards: filterStudentCards,
