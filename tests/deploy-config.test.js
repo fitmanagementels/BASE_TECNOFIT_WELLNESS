@@ -29,6 +29,8 @@ test('workflows publicam Pages e Worker sem OAuth público', () => {
   assert.match(gas, /clasp deploy --deploymentId/);
   assert.match(gas, /APPS_SCRIPT_WEBAPP_URL/);
   assert.match(gas, /APPS_SCRIPT_SHARED_SECRET/);
+  assert.match(gas, /Verificar configuração do deploy/);
+  assert.match(gas, /steps\.config\.outputs\.ready == 'true'/);
   assert.match(gas, /Verificar API pública/);
   assert.match(gas, /action:\s*'versao'/);
 });

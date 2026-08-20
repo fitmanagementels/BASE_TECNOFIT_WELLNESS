@@ -13,15 +13,36 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Verificar configuração do deploy
+        id: config
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+          APPS_SCRIPT_API_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_API_DEPLOYMENT_ID }}
+          APPS_SCRIPT_WEBAPP_URL: ${{ secrets.APPS_SCRIPT_WEBAPP_URL }}
+          APPS_SCRIPT_SHARED_SECRET: ${{ secrets.APPS_SCRIPT_SHARED_SECRET }}
+        run: |
+          if [ -n "$CLASPRC_JSON" ] && [ -n "$APPS_SCRIPT_ID" ] && [ -n "$APPS_SCRIPT_API_DEPLOYMENT_ID" ] && [ -n "$APPS_SCRIPT_WEBAPP_URL" ] && [ -n "$APPS_SCRIPT_SHARED_SECRET" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deploy automático do Apps Script não configurado; publicação direta preservada."
+          fi
       - uses: actions/checkout@v4
+        if: steps.config.outputs.ready == 'true'
       - uses: actions/setup-node@v4
+        if: steps.config.outputs.ready == 'true'
         with:
           node-version: 20
           cache: npm
       - run: npm ci
+        if: steps.config.outputs.ready == 'true'
       - run: npm test
+        if: steps.config.outputs.ready == 'true'
       - run: npm install --global @google/clasp@2.5.0
+        if: steps.config.outputs.ready == 'true'
       - name: Publicar versão no Web App existente
+        if: steps.config.outputs.ready == 'true'
         run: |
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
           printf '{"scriptId":"%s","rootDir":"apps-script"}\n' "$APPS_SCRIPT_ID" > .clasp.json
@@ -32,6 +53,7 @@ jobs:
           APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
           APPS_SCRIPT_API_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_API_DEPLOYMENT_ID }}
       - name: Verificar API pública
+        if: steps.config.outputs.ready == 'true'
         env:
           APPS_SCRIPT_WEBAPP_URL: ${{ secrets.APPS_SCRIPT_WEBAPP_URL }}
           APPS_SCRIPT_SHARED_SECRET: ${{ secrets.APPS_SCRIPT_SHARED_SECRET }}
