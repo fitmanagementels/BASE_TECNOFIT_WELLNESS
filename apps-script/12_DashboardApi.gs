@@ -312,7 +312,8 @@ function obterVersaoDashboard() {
     var ultimaImportacao = obterUltimaImportacaoDashboard_(planilha);
     return {
       versao: versaoBootstrapDashboard_(ultimaImportacao, assinaturaFluxoDashboard_(planilha)),
-      atualizadoEm: ultimaImportacao ? ultimaImportacao.concluidaEm : ''
+      atualizadoEm: ultimaImportacao ? ultimaImportacao.concluidaEm : '',
+      capacidades: { perfilAluno: true }
     };
   } catch (erro) {
     console.error('dashboard_version_error', { tipo: tipoErroDashboardSeguro_(erro) });

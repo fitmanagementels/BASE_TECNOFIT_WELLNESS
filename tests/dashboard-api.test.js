@@ -96,6 +96,20 @@ test('bootstrap inclui o payload manual de Fluxo e o contato necessário ao perf
   assert.deepEqual(JSON.parse(JSON.stringify(resultado.perfisAlunos)), []);
 });
 
+test('versão do dashboard anuncia suporte ao salvamento de perfil de aluno', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const abas = {
+    IMPORTACOES: criarAba([Array.from(config.cabecalhos.importacoes)])
+  };
+  const { gas } = carregarComPlanilha(
+    { getSheetByName: nome => abas[nome] || null },
+    criarCache(),
+    { PropertiesService: { getDocumentProperties: () => ({ getProperty: () => null }) } }
+  );
+
+  assert.deepEqual(JSON.parse(JSON.stringify(gas.obterVersaoDashboard().capacidades)), { perfilAluno: true });
+});
+
 test('obterAnaliseChurnsDashboard devolve séries de todos os churns manuais', () => {
   const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
   const abas = {

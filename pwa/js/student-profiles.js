@@ -25,6 +25,15 @@
     return /Android|iPhone|iPad|iPod|Mobile/i.test(String(navigatorRef.userAgent || ''));
   }
 
+  function profileSaveErrorMessage(error) {
+    var code = String(error && error.code || '');
+    if (code === 'VALIDATION_ERROR') return 'Revise as opções selecionadas e tente novamente.';
+    if (code === 'NETWORK_ERROR' || code === 'UPSTREAM_ERROR' || code === 'SERVICE_UNAVAILABLE') {
+      return 'Não foi possível conectar à base. Tente novamente em instantes.';
+    }
+    return 'Não foi possível salvar as configurações. Tente novamente.';
+  }
+
   function dateValue(value) {
     var text = String(value || '');
     var br = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(text);
@@ -411,24 +420,35 @@
     form.appendChild(agenda);
 
     var actions = uiElement(doc, 'div', 'student-profile-actions');
+    var feedback = uiElement(doc, 'p', 'student-profile-save-feedback');
+    feedback.hidden = true;
+    feedback.setAttribute('role', 'alert');
     var cancel = uiElement(doc, 'button', 'secondary', 'Cancelar');
     var save = uiElement(doc, 'button', 'primary', 'Salvar configurações');
     cancel.type = 'button'; save.type = 'submit';
     cancel.addEventListener('click', function () { dialog.close(); });
-    actions.appendChild(cancel); actions.appendChild(save); form.appendChild(actions);
+    actions.appendChild(cancel); actions.appendChild(save); form.appendChild(feedback); form.appendChild(actions);
     form.addEventListener('submit', function (event) {
       event.preventDefault();
       save.disabled = true;
       save.textContent = 'Salvando…';
-      options.onSave(createProfilePatch(card, {
+      feedback.hidden = true;
+      var patch = createProfilePatch(card, {
         professorResponsavel: professor.value,
         perfilPagamento: payment.value,
         observacaoPagamento: paymentNote.value,
         etiquetasPublico: checkedValues(publicTags),
         etiquetasComerciais: checkedValues(commercialTags),
         observacoesGerais: generalNotes.value
-      }));
-      dialog.close();
+      });
+      Promise.resolve(options.onSave(patch)).then(function () {
+        dialog.close();
+      }).catch(function (error) {
+        save.disabled = false;
+        save.textContent = 'Salvar configurações';
+        feedback.textContent = profileSaveErrorMessage(error);
+        feedback.hidden = false;
+      });
     });
     configPanel.appendChild(form);
     dialog.appendChild(infoPanel); dialog.appendChild(configPanel);
@@ -550,6 +570,7 @@
     normalize: normalize,
     whatsappUrl: whatsappUrl,
     isMobileDevice: isMobileDevice,
+    profileSaveErrorMessage: profileSaveErrorMessage,
     selectPrimaryContract: selectPrimaryContract,
     buildStudentCards: buildStudentCards,
     filterStudentCards: filterStudentCards,

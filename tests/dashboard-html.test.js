@@ -86,7 +86,14 @@ test('fila aplica a alteração de fluxo localmente e não repete erro de valida
   assert.match(client, /safeCacheSet\(state\.bootstrap\)/);
   assert.match(client, /state\.failedMutations\.push\(lote\)/);
   assert.match(client, /function tentarNovamenteMutacoes\(\)/);
+  assert.match(client, /return new Promise\(function \(resolve, reject\)/);
+  assert.match(client, /entry\.resolve\(response\)/);
+  assert.match(client, /entry\.reject\(error\)/);
   assert.match(client, /if\(state\.mutationQueue\.length\)flushQueue\(\);/);
+  assert.match(client, /enqueue\(\{ tipo: 'configAlertas', valores: values \}\)\.catch\(function \(\) \{\}\);/);
+  assert.match(client, /enqueue\(\{ tipo: 'configDashboard', valores: \{ homeCards: cards \} \}\)\.catch\(function \(\) \{\}\);/);
+  assert.match(client, /enqueue\(\{tipo:lead\?'fluxoLead':'fluxoChurn',valores:values\}\)\.catch\(function\(\)\{\}\);/);
+  assert.match(client, /enqueue\(\{tipo:'excluirFluxoChurn',valores:\{id:item\.id\}\}\)\.catch\(function\(\)\{\}\);/);
   assert.doesNotMatch(client, /state\.mutationQueue=patches\.concat\(state\.mutationQueue\);setSave\('Não foi possível salvar\. Tente novamente\.'\);\}\)\.finally\(function\(\)\{state\.saving=false;if\(state\.mutationQueue\.length\)flushQueue\(\);/);
 });
 

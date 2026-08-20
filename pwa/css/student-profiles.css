@@ -124,6 +124,7 @@
 .student-profile-tag-choice input:focus-visible + span { outline: 2px solid var(--lime); outline-offset: 3px; }
 .student-profile-agenda { grid-column: 1 / -1; margin: 0; padding: 14px; border: 1px dashed var(--line-strong); border-radius: 11px; opacity: .7; }
 .student-profile-agenda legend { padding: 0 5px; }
+.student-profile-save-feedback { grid-column: 1 / -1; margin: 0; padding: 10px 12px; border: 1px solid rgba(255, 117, 117, .55); border-radius: 10px; color: #ffd2d2; background: rgba(255, 75, 75, .08); font-size: 13px; }
 .student-profile-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
 
 @media (max-width: 1100px) {

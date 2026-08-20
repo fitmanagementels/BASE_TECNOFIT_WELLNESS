@@ -35,6 +35,14 @@ test('contato do perfil oferece ação acessível e segura de WhatsApp', () => {
   assert.match(client, /student-profile-contact-value/);
 });
 
+test('configuração do perfil aguarda a confirmação do servidor antes de fechar o diálogo', () => {
+  const client = fs.readFileSync('pwa/js/student-profiles.js', 'utf8');
+  assert.match(client, /function profileSaveErrorMessage\(error\)/);
+  assert.match(client, /Promise\.resolve\(options\.onSave\(patch\)\)/);
+  assert.match(client, /feedback\.textContent = profileSaveErrorMessage\(error\)/);
+  assert.match(client, /save\.disabled = false/);
+});
+
 test('perfis começam recolhidos e o controle anuncia os dois estados', () => {
   const attributes = {};
   const classes = new Set();

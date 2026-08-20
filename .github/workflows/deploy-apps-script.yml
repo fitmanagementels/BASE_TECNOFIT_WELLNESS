@@ -25,8 +25,8 @@ jobs:
           if [ -n "$CLASPRC_JSON" ] && [ -n "$APPS_SCRIPT_ID" ] && [ -n "$APPS_SCRIPT_API_DEPLOYMENT_ID" ] && [ -n "$APPS_SCRIPT_WEBAPP_URL" ] && [ -n "$APPS_SCRIPT_SHARED_SECRET" ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Deploy automático do Apps Script não configurado; publicação direta preservada."
+            echo "::error::Deploy do Apps Script não configurado. Cadastre CLASPRC_JSON, APPS_SCRIPT_ID, APPS_SCRIPT_API_DEPLOYMENT_ID, APPS_SCRIPT_WEBAPP_URL e APPS_SCRIPT_SHARED_SECRET antes de publicar."
+            exit 1
           fi
       - uses: actions/checkout@v4
         if: steps.config.outputs.ready == 'true'
@@ -76,8 +76,9 @@ jobs:
               throw new Error(`Web App indisponível (HTTP ${response.status}, ${contentType || 'sem content-type'}).`);
             }
             const result = await response.json();
-            if (!result || result.ok !== true || !result.data || !result.data.versao) {
-              throw new Error('Web App respondeu sem uma versão válida.');
+            if (!result || result.ok !== true || !result.data || !result.data.versao ||
+                !result.data.capacidades || result.data.capacidades.perfilAluno !== true) {
+              throw new Error('Web App respondeu sem uma versão compatível com perfis de alunos.');
             }
             console.log('Apps Script Web App saudável.');
           }()).catch(function (error) {
