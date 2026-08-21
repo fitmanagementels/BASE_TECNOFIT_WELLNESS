@@ -219,6 +219,18 @@ test('Home renderiza duas filas separadas e financeiro secundário', () => {
   assert.match(css, /\.home-operation-grid/);
 });
 
+test('Financeiro possui terceira subaba de Permanência sem fórmula de LTV', () => {
+  const html = fs.readFileSync('pwa/index.html', 'utf8');
+  const client = fs.readFileSync('pwa/js/dashboard.js', 'utf8');
+  const module = fs.readFileSync('pwa/js/permanencia.js', 'utf8');
+  assert.match(html, /data-subpage="permanencia"/);
+  assert.match(html, /permanencia\.css/);
+  assert.match(html, /permanencia\.js/);
+  assert.match(client, /function renderPermanence\(data\)/);
+  assert.match(client, /function showPermanenceDetail\(title, rows\)/);
+  assert.doesNotMatch(client + module, /LTV potencial|valor\s*\*\s*meses|meses\s*\*\s*valor/i);
+});
+
 test('perfis usam módulo próprio, diálogo com abas e grade responsiva', () => {
   const html = fs.readFileSync('pwa/index.html', 'utf8');
   const client = fs.readFileSync('pwa/js/student-profiles.js', 'utf8');
@@ -278,7 +290,7 @@ test('Home integra perfis à fila otimista e Configurações mantém apenas o ca
   assert.match(client, /profilesExpanded:\s*false/);
   assert.match(client, /expanded:\s*state\.profilesExpanded/);
   assert.match(client, /onExpandedChange:\s*function\s*\(expanded\)\s*\{\s*state\.profilesExpanded\s*=\s*expanded;/);
-  assert.match(client, /xsteam-dashboard-bootstrap-v4/);
+  assert.match(client, /xsteam-dashboard-bootstrap-v5/);
   assert.match(client, /Opções disponíveis para todos os perfis de alunos/);
   assert.doesNotMatch(client, /tipo:'perfilPagamento'/);
   assert.doesNotMatch(client, /settingsPaymentDraft/);
