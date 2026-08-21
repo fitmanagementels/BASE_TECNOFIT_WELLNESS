@@ -29,7 +29,8 @@ function escolherCadastroMaisRecente_(atual, candidato) {
   return compararDatas_(vencimentoCandidato, vencimentoAtual) > 0 ? candidato : atual;
 }
 
-function construirDadosMestre(vencimentos, fichas, avaliacoes, importacaoId) {
+function construirDadosMestre(vencimentos, fichas, avaliacoes, permanenciaPorId, importacaoId) {
+  permanenciaPorId = permanenciaPorId || {};
   var fichasPorId = indexarMaisRecentePorId_(fichas, 'data inicio');
   var avaliacoesPorId = indexarMaisRecentePorId_(avaliacoes, 'data da avaliacao');
   var cadastroPorId = {};
@@ -51,6 +52,10 @@ function construirDadosMestre(vencimentos, fichas, avaliacoes, importacaoId) {
     var cadastro = cadastroPorId[id];
     var ficha = fichasPorId[id] || null;
     var avaliacao = avaliacoesPorId[id] || null;
+    var permanencia = permanenciaPorId[id] || null;
+    var clienteDesde = permanencia && permanencia.cliente_desde
+      ? parseDataBr(permanencia.cliente_desde)
+      : '';
     if (!ficha) resumoAvisos.semFicha += 1;
     if (!avaliacao) resumoAvisos.semAvaliacao += 1;
     alunosPorId[id] = [
@@ -58,7 +63,7 @@ function construirDadosMestre(vencimentos, fichas, avaliacoes, importacaoId) {
       String(cadastro.cliente || '').trim(),
       ficha ? String(ficha.contato || '').trim() : '',
       String(cadastro['status cliente'] || '').trim(),
-      '',
+      clienteDesde,
       ficha ? parseDataBr(ficha['data inicio']) : '',
       avaliacao ? parseDataBr(avaliacao['data da avaliacao']) : '',
       importacaoId
