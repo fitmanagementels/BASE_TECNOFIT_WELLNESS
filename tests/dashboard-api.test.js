@@ -58,19 +58,23 @@ function carregarComPlanilha(planilha, cache, extras = {}) {
     FLUXO_LEADS: criarAba([Array.from(config.cabecalhos.fluxoLeads)]),
     FLUXO_CHURNS: criarAba([Array.from(config.cabecalhos.fluxoChurns)])
   };
+  const permanencia = {
+    BASE_PERMANENCIA: criarAba([Array.from(config.cabecalhos.basePermanencia)]),
+    HISTORICO_PERMANENCIA: criarAba([Array.from(config.cabecalhos.historicoPermanencia)])
+  };
   const gas = loadGas(FILES, {
     SpreadsheetApp: {
       openById() {
         aberturas += 1;
         return {
-          getSheetByName: nome => planilha.getSheetByName(nome) || fluxo[nome] || null
+          getSheetByName: nome => planilha.getSheetByName(nome) || fluxo[nome] || permanencia[nome] || null
         };
       }
     },
     CacheService: { getScriptCache: () => cache },
     ...extras
   });
-  return { gas, aberturas: () => aberturas, fluxo };
+  return { gas, aberturas: () => aberturas, fluxo, permanencia };
 }
 
 test('bootstrap inclui o payload manual de Fluxo e o contato necessário ao perfil', () => {
@@ -94,6 +98,56 @@ test('bootstrap inclui o payload manual de Fluxo e o contato necessário ao perf
   assert.deepEqual(JSON.parse(JSON.stringify(resultado.fluxo)), { leads: [], churns: [] });
   assert.equal(resultado.alunos[0].contato, '85900000001');
   assert.deepEqual(JSON.parse(JSON.stringify(resultado.perfisAlunos)), []);
+});
+
+test('bootstrap expõe permanência sem valores históricos ou contato', () => {
+  const config = loadGas(['apps-script/00_Config.gs']).CONFIG;
+  const abas = {
+    BASE_ALUNOS: criarAba([Array.from(config.cabecalhos.alunos)]),
+    CONTRATOS: criarAba([Array.from(config.cabecalhos.contratos)]),
+    IMPORTACOES: criarAba([Array.from(config.cabecalhos.importacoes)]),
+    CONFIG_DASHBOARD: criarAba([Array.from(config.cabecalhos.configDashboard)]),
+    CONFIG_ALERTAS: criarAba([Array.from(config.cabecalhos.configAlertas)]),
+    GESTAO_PAGAMENTOS: criarAba([Array.from(config.cabecalhos.gestaoPagamentos)]),
+    BASE_PERMANENCIA: criarAba([
+      Array.from(config.cabecalhos.basePermanencia),
+      ['1', 'ALUNO TESTE', new Date(2024, 0, 10, 12), 'Ativo', 31, 3, '2026-08-07', '2026-08-21', true, 'exec-1']
+    ]),
+    HISTORICO_PERMANENCIA: criarAba([
+      Array.from(config.cabecalhos.historicoPermanencia),
+      ['evento-1', '1', '2026-08-21', 'ALTERACAO_STATUS', 'status_permanencia', 'Cancelado', 'Ativo', 'exec-1', new Date()]
+    ])
+  };
+  const { gas } = carregarComPlanilha(
+    { getSheetByName: nome => abas[nome] || null },
+    criarCache(),
+    { PropertiesService: { getDocumentProperties: () => ({ getProperty: () => null }) } }
+  );
+
+  const resultado = gas.obterBootstrapDashboard();
+
+  assert.deepEqual(Object.keys(resultado.permanencia[0]).sort(), [
+    'aluno', 'clienteDesde', 'continuidadeMeses', 'id', 'presenteUltimoLote',
+    'quantidadeContratos', 'status'
+  ]);
+  assert.deepEqual(Object.keys(resultado.eventosPermanencia[0]).sort(), [
+    'dataReferencia', 'id', 'tipo'
+  ]);
+  assert.equal('valorAnterior' in resultado.eventosPermanencia[0], false);
+  assert.equal('contato' in resultado.permanencia[0], false);
+});
+
+test('cache de bootstrap sem permanência é considerado inválido', () => {
+  const gas = loadGas(FILES);
+  const respostaAntiga = {
+    versao: 'v1', atualizadoEm: '', filtrosPadrao: {}, configuracao: {},
+    alunos: [], contratos: [], perfisAlunos: [], catalogoPerfisAlunos: [],
+    fluxo: { leads: [], churns: [] }
+  };
+  assert.equal(gas.respostaBootstrapDashboardValida_(respostaAntiga, 'v1'), false);
+  respostaAntiga.permanencia = [];
+  respostaAntiga.eventosPermanencia = [];
+  assert.equal(gas.respostaBootstrapDashboardValida_(respostaAntiga, 'v1'), true);
 });
 
 test('versão do dashboard anuncia suporte ao salvamento de perfil de aluno', () => {
