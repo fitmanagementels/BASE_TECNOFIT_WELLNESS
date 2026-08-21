@@ -620,7 +620,7 @@ test('bootstrap inclui perfis, catálogo e contato necessário ao detalhamento',
     ]),
     PERFIS_ALUNOS: criarAba([
       Array.from(config.cabecalhos.perfisAlunos),
-      ['1', 'ALUNA TESTE', 'Elohim', 'Bom pagador', 'Observação interna', '["idoso","saude"]', '["risco_de_churn"]', 'Prefere manhã', '27/07/2026 19:30']
+      ['1', 'ALUNA TESTE', 'Elohim', '["Elohim"]', 'Bom pagador', 'Observação interna', '["idoso","saude"]', '["risco_de_churn"]', 'Prefere manhã', '27/07/2026 19:30']
     ]),
     CONFIG_PERFIS_ALUNOS: criarAba([
       Array.from(config.cabecalhos.configPerfisAlunos),
@@ -648,6 +648,7 @@ test('bootstrap inclui perfis, catálogo e contato necessário ao detalhamento',
   });
   assert.equal(resposta.alunos[0].contato, '85999999999');
   assert.equal(resposta.perfisAlunos[0].id, '1');
+  assert.deepEqual(JSON.parse(JSON.stringify(resposta.perfisAlunos[0].ultimosProfessores)), ['Elohim']);
   assert.deepEqual(JSON.parse(JSON.stringify(resposta.perfisAlunos[0].etiquetasPublico)), ['idoso', 'saude']);
   assert.equal(resposta.catalogoPerfisAlunos.some(item => item.chave === 'risco_de_churn'), true);
   assert.equal(resposta.configuracao.perfisPagamento[0].perfilPagamento, 'Bom pagador');
