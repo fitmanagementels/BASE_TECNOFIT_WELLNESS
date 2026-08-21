@@ -31,7 +31,7 @@ function dependencies(overrides = {}) {
     backup: () => { calls.push('backup'); return { original: true }; },
     substituir: dados => {
       calls.push('replace');
-      assert.equal(dados.basePermanencia.length, 1);
+      assert.ok(dados.basePermanencia.length >= 1);
       assert.equal(gas.formatarDataIso(dados.alunos[0][4]), '2024-01-10');
     },
     moverProcessado: () => calls.push('processed'),
@@ -48,7 +48,28 @@ test('carga inicial lê um único arquivo, grava, arquiva e versiona', () => {
   const deps = dependencies();
   const result = gas.executarCargaInicialPermanenciaComDependencias_(deps);
   assert.equal(result.registros, 1);
+  assert.equal(result.associadosOperacao, 1);
+  assert.equal(result.somenteHistorico, 0);
   assert.deepEqual(deps.calls, ['backup', 'replace', 'processed', 'version', 'log', 'release']);
+});
+
+test('informa quantos clientes permanecem somente no histórico', () => {
+  const deps = dependencies({
+    lerArquivo: () => [
+      {
+        codigo: '100', cliente: 'ALUNO ATUAL', 'cliente desde': '10/01/2024',
+        'status atual': 'Ativo', 'continuidade (meses)': '30', contratos: '3'
+      },
+      {
+        codigo: '200', cliente: 'ALUNO HISTORICO', 'cliente desde': '10/01/2020',
+        'status atual': 'Cancelado', 'continuidade (meses)': '10', contratos: '1'
+      }
+    ]
+  });
+  const result = gas.executarCargaInicialPermanenciaComDependencias_(deps);
+  assert.equal(result.registros, 2);
+  assert.equal(result.associadosOperacao, 1);
+  assert.equal(result.somenteHistorico, 1);
 });
 
 test('recusa repetir carga quando a base já possui registros', () => {

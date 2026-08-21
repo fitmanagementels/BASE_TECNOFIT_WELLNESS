@@ -184,7 +184,7 @@
     }, today());
     function rowsFor(ids) {
       var selected = Object.create(null); (ids || []).forEach(function (id) { selected[String(id)] = true; });
-      return analysis.rows.filter(function (row) { return selected[row.id]; });
+      return analysis.historicalRows.filter(function (row) { return selected[row.id]; });
     }
     var intro = el('section', 'permanence-intro');
     intro.appendChild(el('span', 'eyebrow', 'RELACIONAMENTO COM CLIENTES'));

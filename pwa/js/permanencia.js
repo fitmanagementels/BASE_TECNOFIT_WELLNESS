@@ -139,8 +139,8 @@
       return map;
     }, Object.create(null));
     var packageMap = packagesById(input.contracts || []);
-    var rows = currentIds.map(function (id) {
-      var item = permanenceById[id] || { id: id };
+    function rowFor(id, item) {
+      item = item || { id: id };
       var months = monthsCompleted(item.clienteDesde, now);
       var cohort = cohortKey(item.clienteDesde);
       return {
@@ -156,11 +156,18 @@
         historicalContracts: Number(item.quantidadeContratos) || 0,
         packages: packageMap[id] || []
       };
-    }).sort(function (a, b) {
+    }
+    function sortRows(a, b) {
       var monthsA = a.months == null ? -1 : a.months;
       var monthsB = b.months == null ? -1 : b.months;
       return monthsB - monthsA || a.aluno.localeCompare(b.aluno, 'pt-BR');
-    });
+    }
+    var rows = currentIds.map(function (id) {
+      return rowFor(id, permanenceById[id]);
+    }).sort(sortRows);
+    var historicalRows = permanence.map(function (item) {
+      return rowFor(String(item.id || ''), item);
+    }).filter(function (row) { return row.id; }).sort(sortRows);
 
     var withDate = rows.filter(function (row) { return row.months != null; });
     var bands = BAND_LABELS.map(function (label, index) {
@@ -201,7 +208,8 @@
       },
       bands: bands,
       cohorts: cohorts,
-      rows: rows
+      rows: rows,
+      historicalRows: historicalRows
     };
   }
 

@@ -62,3 +62,19 @@ test('resume somente os eventos do lote mais recente e deduplica pacotes', () =>
   assert.equal(result.kpis.statusChangesInLastBatch, 1);
   assert.equal(result.rows[0].packages.length, 1);
 });
+
+test('preserva linhas históricas para abrir coortes de clientes fora do recorte atual', () => {
+  const result = permanence.buildAnalysis({
+    permanence: [
+      { id: '1', aluno: 'ATUAL', clienteDesde: '10/01/2024', status: 'Ativo' },
+      { id: '2', aluno: 'HISTORICO', clienteDesde: '10/01/2024', status: 'Cancelado' }
+    ],
+    currentStudents: [{ id: '1' }],
+    contracts: [{ id: '1', contrato: '2X', valor: 500 }],
+    events: []
+  }, now);
+
+  assert.deepEqual(result.rows.map(item => item.id), ['1']);
+  assert.deepEqual(result.historicalRows.map(item => item.id).sort(), ['1', '2']);
+  assert.equal(result.historicalRows.find(item => item.id === '2').packages.length, 0);
+});

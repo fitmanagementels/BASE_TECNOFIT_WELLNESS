@@ -89,6 +89,14 @@ function executarCargaInicialPermanenciaComDependencias_(deps) {
     operacionais.basePermanencia = atualizacao.base;
     operacionais.historicoPermanencia = atualizacao.historico;
     operacionais.avisos = atualizacao.avisos;
+    var idsOperacionais = (operacionais.alunos || []).reduce(function (mapa, linha) {
+      var id = normalizarId(linha[0]);
+      if (id) mapa[id] = true;
+      return mapa;
+    }, Object.create(null));
+    var associadosOperacao = atualizacao.base.filter(function (item) {
+      return idsOperacionais[String(item.id || '')];
+    }).length;
 
     backup = deps.backup();
     deps.substituir(operacionais);
@@ -102,6 +110,8 @@ function executarCargaInicialPermanenciaComDependencias_(deps) {
       dataReferencia: CARGA_INICIAL_PERMANENCIA.dataReferencia,
       registros: atualizacao.base.length,
       eventos: atualizacao.historico.length,
+      associadosOperacao: associadosOperacao,
+      somenteHistorico: atualizacao.base.length - associadosOperacao,
       avisos: atualizacao.avisos
     };
   } catch (erro) {
