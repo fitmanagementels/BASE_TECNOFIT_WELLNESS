@@ -45,6 +45,7 @@ test('manifesto preserva o Web App público ao atualizar a implantação', () =>
     access: 'ANYONE_ANONYMOUS',
     executeAs: 'USER_DEPLOYING'
   });
+  assert.deepEqual(manifest.executionApi, { access: 'MYSELF' });
 });
 
 test('operação documenta o quarto relatório e oferece auditoria de permanência', () => {
