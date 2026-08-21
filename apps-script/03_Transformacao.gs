@@ -123,3 +123,23 @@ function construirDadosMestre(vencimentos, fichas, avaliacoes, permanenciaPorId,
     avisos: avisos
   };
 }
+
+function enriquecerDadosOperacionaisComPermanencia_(dados, permanenciaPorId) {
+  var alunos = (dados.alunos || []).map(function (linha) {
+    var copia = linha.slice();
+    var item = permanenciaPorId[String(copia[0])] || null;
+    copia[4] = item && item.cliente_desde ? item.cliente_desde : copia[4];
+    return copia;
+  });
+  var visaoMestre = (dados.visaoMestre || []).map(function (linha) {
+    var copia = linha.slice();
+    var item = permanenciaPorId[String(copia[0])] || null;
+    copia[6] = item && item.cliente_desde ? item.cliente_desde : copia[6];
+    return copia;
+  });
+  return {
+    alunos: alunos,
+    contratos: (dados.contratos || []).map(function (linha) { return linha.slice(); }),
+    visaoMestre: visaoMestre
+  };
+}

@@ -69,7 +69,7 @@ function escreverAbaGerenciada_(aba, cabecalhos, linhas) {
   aba.getRange(1, 1, Math.max(linhas.length + 1, 2), cabecalhos.length).createFilter();
 }
 
-function lerObjetosAbaGerenciada_(chave) {
+function lerLinhasAbaGerenciada_(chave) {
   var planilha = obterPlanilhaMestre_();
   var aba = planilha.getSheetByName(CONFIG.abas[chave]);
   var cabecalhos = CONFIG.cabecalhos[chave];
@@ -80,12 +80,25 @@ function lerObjetosAbaGerenciada_(chave) {
   });
   return valores.slice(1).filter(function (linha) {
     return linha.some(function (valor) { return valor !== '' && valor != null; });
-  }).map(function (linha) {
+  });
+}
+
+function lerObjetosAbaGerenciada_(chave) {
+  var cabecalhos = CONFIG.cabecalhos[chave];
+  return lerLinhasAbaGerenciada_(chave).map(function (linha) {
     return cabecalhos.reduce(function (objeto, cabecalho, indice) {
       objeto[cabecalho] = linha[indice];
       return objeto;
     }, {});
   });
+}
+
+function lerDadosOperacionaisAtuais_() {
+  return {
+    alunos: lerLinhasAbaGerenciada_('alunos'),
+    contratos: lerLinhasAbaGerenciada_('contratos'),
+    visaoMestre: lerLinhasAbaGerenciada_('visaoMestre')
+  };
 }
 
 function lerEstadoPermanencia_() {
