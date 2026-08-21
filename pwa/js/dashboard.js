@@ -367,6 +367,7 @@
       window.XSteamStudentProfiles.renderSection({
         data: data,
         bootstrap: state.bootstrap,
+        permanence: window.XSteamPermanencia,
         expanded: state.profilesExpanded,
         onExpandedChange: function (expanded) { state.profilesExpanded = expanded; },
         onSave: enqueue

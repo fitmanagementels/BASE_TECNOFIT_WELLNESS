@@ -114,6 +114,20 @@ test('seleciona contrato ativo mais recente e filtra por nome ou ID', () => {
   assert.equal(profiles.filterStudentCards(cards, 'maria saude').length, 1);
 });
 
+test('perfil associa permanência por ID e mantém valor atual separado', () => {
+  const cards = profiles.buildStudentCards({
+    alunos: [{ id: '42', aluno: 'ALUNO TESTE', status: 'Ativo' }],
+    contratos: [{ id: '42', contrato: '3X', valor: 900, statusContrato: 'Ativo' }],
+    permanencia: [{
+      id: '42', clienteDesde: '10/01/2024', status: 'Ativo', quantidadeContratos: 3
+    }],
+    perfisAlunos: [], catalogoPerfisAlunos: []
+  });
+  assert.equal(cards[0].permanencia.clienteDesde, '10/01/2024');
+  assert.equal(cards[0].contratoPrincipal.valor, 900);
+  assert.equal('ltv' in cards[0], false);
+});
+
 test('aplica e reverte criação e atualização otimistas', () => {
   const bootstrap = {
     perfisAlunos: [{ id: '42', professorResponsavel: 'Cadu', etiquetasPublico: [] }]
