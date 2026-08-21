@@ -13,7 +13,7 @@ var CONFIG = Object.freeze({
     propriedadeVersaoChurn: 'tecnofit.dashboard.churn.versao',
     propriedadeUrlPwa: 'tecnofit.dashboard.public_url'
   }),
-  tiposObrigatorios: Object.freeze(['vencimentos', 'fichas', 'avaliacao_fisica']),
+  tiposObrigatorios: Object.freeze(['vencimentos', 'fichas', 'avaliacao_fisica', 'permanencia']),
   abas: Object.freeze({
     alunos: 'BASE_ALUNOS',
     contratos: 'CONTRATOS',
@@ -82,5 +82,8 @@ var CABECALHOS_ORIGEM = Object.freeze({
     'vencimento', 'status contrato', 'modalidade'
   ]),
   fichas: Object.freeze(['codigo', 'data inicio', 'contato']),
-  avaliacao_fisica: Object.freeze(['codigo', 'data da avaliacao'])
+  avaliacao_fisica: Object.freeze(['codigo', 'data da avaliacao']),
+  permanencia: Object.freeze([
+    'codigo', 'cliente', 'cliente desde', 'status atual', 'continuidade (meses)', 'contratos'
+  ])
 });

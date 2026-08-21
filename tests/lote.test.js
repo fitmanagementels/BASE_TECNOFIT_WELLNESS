@@ -19,6 +19,15 @@ function file(name, id = name) {
   return { nome: name, id };
 }
 
+function loteValido(data = '2026-08-21', revisao = '01') {
+  return [
+    file(`vencimentos_${data}_r${revisao}.xls`),
+    file(`fichas_${data}_r${revisao}.xls`),
+    file(`avaliacao_fisica_${data}_r${revisao}.xls`),
+    file(`permanencia_${data}_r${revisao}.xls`)
+  ];
+}
+
 function xmlBlob(name, content) {
   return { getName: () => name, getDataAsString: () => content };
 }
@@ -89,7 +98,9 @@ test('detecta XLSX pelo cabeçalho ZIP mesmo quando o nome termina em XLS', () =
   );
 });
 
-test('exige exatamente os três tipos no mesmo lote', () => {
+test('exige exatamente os quatro tipos no mesmo lote', () => {
+  assert.equal(gas.agruparLote(loteValido()).arquivos.length, 4);
+  assert.throws(() => gas.agruparLote(loteValido().slice(0, 3)), /Lote incompleto.*permanencia/);
   assert.throws(
     () => gas.agruparLote([file('fichas_2026-07-08_r01.xls'), file('vencimentos_2026-07-08_r01.xls')]),
     /Lote incompleto/
@@ -124,16 +135,18 @@ test('ignora apenas o POP reservado ao validar o lote de entrada', () => {
     file('LEIA-ME_POP_01_ENTRADA.pdf'),
     file('fichas_2026-07-19_r01.xls'),
     file('vencimentos_2026-07-19_r01.xls'),
-    file('avaliacao_fisica_2026-07-19_r01.xls')
+    file('avaliacao_fisica_2026-07-19_r01.xls'),
+    file('permanencia_2026-07-19_r01.xls')
   ]));
 
-  assert.equal(lote.arquivos.length, 3);
+  assert.equal(lote.arquivos.length, 4);
   assert.throws(() => gas.agruparLote(gas.filtrarArquivosOperacionaisEntrada_([
     file('leia-me_pop_01_entrada.pdf'),
     file('notas.txt'),
     file('fichas_2026-07-19_r01.xls'),
     file('vencimentos_2026-07-19_r01.xls'),
-    file('avaliacao_fisica_2026-07-19_r01.xls')
+    file('avaliacao_fisica_2026-07-19_r01.xls'),
+    file('permanencia_2026-07-19_r01.xls')
   ])), /Arquivo inválido/);
 });
 
@@ -147,6 +160,13 @@ test('usa leitor XLSX e corrige o nome canônico de XLSX renomeado como XLS', ()
     {
       nome: 'avaliacao_fisica_2026-07-25_r01.xls',
       arquivo: arquivo(htmlBlob(tabelaHtml(['Código', 'Data da Avaliação'], ['101', '02/07/2026'])))
+    },
+    {
+      nome: 'permanencia_2026-07-25_r01.xls',
+      arquivo: arquivo(htmlBlob(tabelaHtml(
+        ['Código', 'Cliente', 'Cliente desde', 'Status atual', 'Continuidade (meses)', 'Contratos'],
+        ['101', 'ALUNO TESTE', '01/01/2024', 'Ativo', '30', '3']
+      )))
     }
   ]);
 
@@ -161,7 +181,8 @@ test('rejeita conteúdo que não seja tabela HTML nem XLSX', () => {
   const lote = leitorGas.agruparLote([
     { nome: 'vencimentos_2026-07-25_r02.xls', arquivo: arquivo({ getBytes: () => [1, 2, 3], getDataAsString: () => 'arquivo inválido' }) },
     { nome: 'fichas_2026-07-25_r02.xls', arquivo: arquivo(htmlBlob(tabelaHtml(['Código', 'Data Início', 'Contato'], ['101', '01/07/2026', '9999']))) },
-    { nome: 'avaliacao_fisica_2026-07-25_r02.xls', arquivo: arquivo(htmlBlob(tabelaHtml(['Código', 'Data da Avaliação'], ['101', '02/07/2026']))) }
+    { nome: 'avaliacao_fisica_2026-07-25_r02.xls', arquivo: arquivo(htmlBlob(tabelaHtml(['Código', 'Data da Avaliação'], ['101', '02/07/2026']))) },
+    { nome: 'permanencia_2026-07-25_r02.xls', arquivo: arquivo(htmlBlob(tabelaHtml(['Código', 'Cliente', 'Cliente desde', 'Status atual', 'Continuidade (meses)', 'Contratos'], ['101', 'ALUNO TESTE', '01/01/2024', 'Ativo', '30', '3']))) }
   ]);
 
   assert.throws(() => leitorGas.lerTabelasDoLote(lote), /Formato de arquivo inválido/);

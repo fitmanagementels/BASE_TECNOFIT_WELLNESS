@@ -60,6 +60,16 @@ test('ignora a linha-resumo Total na coluna de código', () => {
   assert.equal(objects.some(row => row.codigo.startsWith('Total:')), false);
 });
 
+test('interpreta permanência e ignora rodapé Total sem a palavra registros', () => {
+  const html = fs.readFileSync('tests/fixtures/permanencia.html', 'utf8');
+  const objects = gas.tabelaParaObjetos(gas.parseTabelaHtml(html), [
+    'codigo', 'cliente', 'cliente desde', 'status atual', 'continuidade (meses)', 'contratos'
+  ]);
+  assert.equal(objects.length, 2);
+  assert.equal(objects[0]['cliente desde'], '10/01/2024');
+  assert.equal(objects.some(row => row.codigo.startsWith('Total:')), false);
+});
+
 test('interpreta shared strings, texto inline e números de XLSX', () => {
   const rows = xlsxGas.parseTabelaXlsx(xlsxBlob([
     xmlBlob(
