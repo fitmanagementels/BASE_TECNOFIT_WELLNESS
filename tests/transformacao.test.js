@@ -19,6 +19,7 @@ function build() {
     parseFixture('vencimentos.html', ['codigo', 'cliente', 'status cliente', 'contrato', 'valor', 'inicio', 'vencimento', 'status contrato', 'modalidade']),
     parseFixture('fichas.html', ['codigo', 'data inicio', 'contato']),
     parseFixture('avaliacao_fisica.html', ['codigo', 'data da avaliacao']),
+    {},
     'exec-001'
   );
 }
@@ -29,6 +30,22 @@ test('mantém uma linha por aluno e uma por contrato', () => {
   assert.equal(result.contratos.length, 3);
   assert.equal(result.visaoMestre.length, 3);
   assert.equal(result.visaoMestre.filter(row => row[0] === '100').length, 2);
+});
+
+test('preenche inicio_plano e visão mestre pela permanência sem mudar a população', () => {
+  const permanencia = {
+    '100': { cliente_desde: new Date(2024, 0, 10, 12) }
+  };
+  const result = gas.construirDadosMestre(
+    parseFixture('vencimentos.html', ['codigo', 'cliente', 'status cliente', 'contrato', 'valor', 'inicio', 'vencimento', 'status contrato', 'modalidade']),
+    parseFixture('fichas.html', ['codigo', 'data inicio', 'contato']),
+    parseFixture('avaliacao_fisica.html', ['codigo', 'data da avaliacao']),
+    permanencia,
+    'exec-001'
+  );
+  assert.equal(result.alunos.length, 2);
+  assert.equal(gas.formatarDataIso(result.alunos.find(row => row[0] === '100')[4]), '2024-01-10');
+  assert.equal(gas.formatarDataIso(result.visaoMestre.find(row => row[0] === '100')[6]), '2024-01-10');
 });
 
 test('seleciona status e ficha mais recentes', () => {
@@ -54,7 +71,7 @@ test('mantém ausências vazias e resume avisos', () => {
 test('rejeita chave técnica duplicada', () => {
   const vencimentos = parseFixture('vencimentos.html', ['codigo', 'cliente', 'status cliente', 'contrato', 'valor', 'inicio', 'vencimento', 'status contrato', 'modalidade']);
   assert.throws(
-    () => gas.construirDadosMestre([vencimentos[0], vencimentos[0]], [], [], 'exec-002'),
+    () => gas.construirDadosMestre([vencimentos[0], vencimentos[0]], [], [], {}, 'exec-002'),
     /Chave de contrato duplicada/
   );
 });

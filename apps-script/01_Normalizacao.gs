@@ -7,7 +7,7 @@ function normalizarId(valor) {
 }
 
 function parseDataBr(valor) {
-  if (valor instanceof Date && !isNaN(valor.getTime())) {
+  if (valor && typeof valor.getTime === 'function' && !isNaN(valor.getTime())) {
     return new Date(valor.getTime());
   }
 

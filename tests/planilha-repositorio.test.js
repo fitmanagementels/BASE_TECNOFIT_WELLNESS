@@ -50,7 +50,10 @@ class SheetMock {
 }
 
 function createSpreadsheet() {
-  const names = ['BASE_ALUNOS', 'CONTRATOS', 'VISAO_MESTRE', 'IMPORTACOES'];
+  const names = [
+    'BASE_ALUNOS', 'CONTRATOS', 'VISAO_MESTRE', 'BASE_PERMANENCIA',
+    'HISTORICO_PERMANENCIA', 'IMPORTACOES'
+  ];
   const sheets = Object.fromEntries(names.map(name => [name, new SheetMock(name, [[`old-${name}`]])]));
   return {
     sheets,
@@ -60,7 +63,11 @@ function createSpreadsheet() {
 }
 
 function load(spreadsheet) {
-  return loadGas(['apps-script/00_Config.gs', 'apps-script/04_PlanilhaRepositorio.gs'], {
+  return loadGas([
+    'apps-script/00_Config.gs',
+    'apps-script/03_Permanencia.gs',
+    'apps-script/04_PlanilhaRepositorio.gs'
+  ], {
     SpreadsheetApp: {
       openById: () => spreadsheet,
       flush: () => {},
@@ -73,21 +80,49 @@ test('valida todas as larguras antes de limpar as abas', () => {
   const spreadsheet = createSpreadsheet();
   const gas = load(spreadsheet);
   assert.throws(() => gas.substituirAbasGerenciadas({
-    alunos: [['curta']], contratos: [], visaoMestre: []
+    alunos: [['curta']], contratos: [], visaoMestre: [],
+    basePermanencia: [], historicoPermanencia: []
   }), /largura inválida/);
   assert.equal(spreadsheet.sheets.BASE_ALUNOS.calls.some(call => call[0] === 'clear'), false);
 });
 
-test('substitui as três abas e oculta a chave técnica', () => {
+test('substitui as cinco abas e oculta a chave técnica', () => {
   const spreadsheet = createSpreadsheet();
   const gas = load(spreadsheet);
   gas.substituirAbasGerenciadas({
     alunos: [['1', 'A', '', 'Ativo', '', '', '', 'exec']],
     contratos: [['key', '1', '2X - P - PERSONAL', '2X', 10, '', '', 'Ativo', 'P', 'MUSCULAÇÃO', 'exec']],
-    visaoMestre: [['1', 'A', '', 'Ativo', '2X', 10, '', '', '', 'P', '', '', 'key']]
+    visaoMestre: [['1', 'A', '', 'Ativo', '2X', 10, '', '', '', 'P', '', '', 'key']],
+    basePermanencia: [],
+    historicoPermanencia: []
   });
   assert.equal(spreadsheet.sheets.BASE_ALUNOS.calls.some(call => call[0] === 'clear'), true);
   assert.deepEqual(spreadsheet.sheets.VISAO_MESTRE.calls.find(call => call[0] === 'hide'), ['hide', 13]);
+});
+
+test('substitui e restaura as cinco abas gerenciadas', () => {
+  const spreadsheet = createSpreadsheet();
+  const gas = load(spreadsheet);
+  const backup = gas.criarBackupAbasGerenciadas();
+  gas.substituirAbasGerenciadas({
+    alunos: [['1', 'A', '', 'Ativo', new Date(2024, 0, 1), '', '', 'exec']],
+    contratos: [],
+    visaoMestre: [],
+    basePermanencia: [{
+      id: '1', aluno: 'A', cliente_desde: new Date(2024, 0, 1), status_permanencia: 'Ativo',
+      continuidade_meses_origem: 30, quantidade_contratos_origem: 3,
+      primeira_observacao_em: '2026-08-07', ultima_observacao_em: '2026-08-07',
+      presente_ultimo_lote: true, importacao_id: 'exec'
+    }],
+    historicoPermanencia: [{
+      evento_id: 'e1', id: '1', data_referencia: '2026-08-07', tipo_evento: 'CARGA_INICIAL',
+      campo: '', valor_anterior: '', valor_novo: '', importacao_id: 'exec', registrado_em: new Date()
+    }]
+  });
+  assert.ok(spreadsheet.sheets.BASE_PERMANENCIA.calls.some(call => call[0] === 'clear'));
+  assert.ok(spreadsheet.sheets.HISTORICO_PERMANENCIA.calls.some(call => call[0] === 'clear'));
+  gas.restaurarBackupAbasGerenciadas(backup);
+  assert.equal(spreadsheet.sheets.BASE_PERMANENCIA.calls.at(-1)[0], 'setValues');
 });
 
 test('backup e restauração preservam os valores anteriores', () => {

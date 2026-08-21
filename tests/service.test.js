@@ -14,7 +14,12 @@ function dependencies(overrides = {}) {
     agruparLote: () => ({ dataReferencia: '2026-07-08', revisao: '01', arquivosPorTipo: {} }),
     iniciarLog: () => { calls.push('log-start'); return [2, 3, 4]; },
     verificarReprocessamento: () => calls.push('check'),
-    lerTabelas: () => ({ vencimentos: [], fichas: [], avaliacao_fisica: [], contagens: {} }),
+    lerTabelas: () => ({ vencimentos: [], fichas: [], avaliacao_fisica: [], permanencia: [], contagens: {} }),
+    lerEstadoPermanencia: () => { calls.push('read-permanence-state'); return { base: [], historico: [] }; },
+    transformarPermanencia: () => {
+      calls.push('transform-permanence');
+      return { base: [], historico: [], porId: {}, avisos: [] };
+    },
     transformar: () => ({
       alunos: [['1']], contratos: [['c']], visaoMestre: [['v']],
       resumoAvisos: {}, avisos: []
@@ -26,6 +31,7 @@ function dependencies(overrides = {}) {
     restaurar: () => calls.push('restore'),
     incrementarVersaoDashboard: () => calls.push('version'),
     finalizarLog: (_rows, result) => calls.push(`log-${result.status}`),
+    agora: () => new Date(2026, 6, 10, 12),
     agoraIso: () => '2026-07-10T12:00:00-03:00',
     ...overrides
   };
@@ -35,7 +41,10 @@ test('executa substituição e arquivamento na ordem segura', () => {
   const deps = dependencies();
   const result = gas.executarImportacaoComDependencias_(deps);
   assert.equal(result.ok, true);
-  assert.deepEqual(deps.calls, ['check', 'log-start', 'backup', 'replace', 'processed', 'version', 'log-SUCESSO', 'release']);
+  assert.deepEqual(deps.calls, [
+    'check', 'log-start', 'read-permanence-state', 'transform-permanence',
+    'backup', 'replace', 'processed', 'version', 'log-SUCESSO', 'release'
+  ]);
 });
 
 test('publica uma nova versão do dashboard somente depois que o lote foi arquivado', () => {
@@ -46,14 +55,18 @@ test('publica uma nova versão do dashboard somente depois que o lote foi arquiv
   gas.executarImportacaoComDependencias_(deps);
 
   assert.deepEqual(deps.calls, [
-    'check', 'log-start', 'backup', 'replace', 'processed', 'version', 'log-SUCESSO', 'release'
+    'check', 'log-start', 'read-permanence-state', 'transform-permanence',
+    'backup', 'replace', 'processed', 'version', 'log-SUCESSO', 'release'
   ]);
 });
 
 test('restaura dados e rejeita lote quando falha após substituição', () => {
   const deps = dependencies({ moverProcessados: () => { throw new Error('falha ao mover'); } });
   assert.throws(() => gas.executarImportacaoComDependencias_(deps), /falha ao mover/);
-  assert.deepEqual(deps.calls, ['check', 'log-start', 'backup', 'replace', 'restore', 'rejected', 'log-ERRO', 'release']);
+  assert.deepEqual(deps.calls, [
+    'check', 'log-start', 'read-permanence-state', 'transform-permanence',
+    'backup', 'replace', 'restore', 'rejected', 'log-ERRO', 'release'
+  ]);
 });
 
 test('não substitui a base quando a leitura XLSX falha', () => {
@@ -84,7 +97,8 @@ test('remove o POP reservado antes de agrupar os arquivos da importação', () =
       { nome: 'LEIA-ME_POP_01_ENTRADA.pdf' },
       { nome: 'fichas_2026-07-08_r01.xls' },
       { nome: 'vencimentos_2026-07-08_r01.xls' },
-      { nome: 'avaliacao_fisica_2026-07-08_r01.xls' }
+      { nome: 'avaliacao_fisica_2026-07-08_r01.xls' },
+      { nome: 'permanencia_2026-07-08_r01.xls' }
     ],
     filtrarArquivosEntrada: (arquivos) => arquivos.filter((arquivo) => arquivo.nome !== 'LEIA-ME_POP_01_ENTRADA.pdf'),
     agruparLote: (arquivos) => {
@@ -95,5 +109,5 @@ test('remove o POP reservado antes de agrupar os arquivos da importação', () =
 
   gas.executarImportacaoComDependencias_(deps);
 
-  assert.equal(arquivosAgrupados.length, 3);
+  assert.equal(arquivosAgrupados.length, 4);
 });

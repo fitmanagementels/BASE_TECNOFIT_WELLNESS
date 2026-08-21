@@ -11,7 +11,7 @@ function validarPartesData_(ano, mes, dia, nomeArquivo) {
 
 function parseNomeArquivo(nome) {
   var texto = String(nome || '');
-  var match = /^(vencimentos|fichas|avaliacao_fisica)_(\d{4})[-_](\d{2})[-_](\d{2})_r(\d{2})\.(xls|xlsx)$/i.exec(texto);
+  var match = /^(vencimentos|fichas|avaliacao_fisica|permanencia)_(\d{4})[-_](\d{2})[-_](\d{2})_r(\d{2})\.(xls|xlsx)$/i.exec(texto);
   if (!match) throw new Error('Arquivo inválido: ' + texto);
 
   var tipo = match[1].toLowerCase();
@@ -47,7 +47,7 @@ function agruparLote(arquivos) {
   if (enriquecidos.some(function (arquivo) {
     return arquivo.dataReferencia !== primeiraData || arquivo.revisao !== primeiraRevisao;
   })) {
-    throw new Error('Os três arquivos precisam ter a mesma data e revisão.');
+    throw new Error('Os quatro arquivos precisam ter a mesma data e revisão.');
   }
 
   var arquivosPorTipo = {};
@@ -63,7 +63,7 @@ function agruparLote(arquivos) {
   });
   if (ausentes.length) throw new Error('Lote incompleto. Faltando: ' + ausentes.join(', '));
   if (enriquecidos.length !== CONFIG.tiposObrigatorios.length) {
-    throw new Error('A pasta 01_ENTRADA deve conter exatamente três arquivos.');
+    throw new Error('A pasta 01_ENTRADA deve conter exatamente quatro arquivos.');
   }
 
   return {
@@ -98,24 +98,32 @@ function enriquecerArquivosReconhecidos_(arquivos) {
   });
 }
 
+function lerTabelaArquivo_(entrada, tipo) {
+  var blob = entrada.arquivo.getBlob();
+  var formato = detectarFormatoArquivo(blob);
+  var linhasBrutas;
+  if (formato.formato === 'xlsx') {
+    linhasBrutas = parseTabelaXlsx(blob);
+  } else {
+    var html = blob.getDataAsString('UTF-8');
+    if (!/<table\b/i.test(html)) {
+      throw new Error('Formato de arquivo inválido: esperado XLS HTML ou XLSX.');
+    }
+    linhasBrutas = parseTabelaHtml(html);
+  }
+  return {
+    linhas: tabelaParaObjetos(linhasBrutas, CABECALHOS_ORIGEM[tipo]),
+    extensaoCanonica: formato.extensaoCanonica
+  };
+}
+
 function lerTabelasDoLote(lote) {
   var resultado = { contagens: {} };
   CONFIG.tiposObrigatorios.forEach(function (tipo) {
     var entrada = lote.arquivosPorTipo[tipo];
-    var blob = entrada.arquivo.getBlob();
-    var formato = detectarFormatoArquivo(blob);
-    entrada.nomeCanonico = entrada.tipo + '_' + lote.dataReferencia + '_r' + lote.revisao + '.' + formato.extensaoCanonica;
-    var linhasBrutas;
-    if (formato.formato === 'xlsx') {
-      linhasBrutas = parseTabelaXlsx(blob);
-    } else {
-      var html = blob.getDataAsString('UTF-8');
-      if (!/<table\b/i.test(html)) {
-        throw new Error('Formato de arquivo inválido: esperado XLS HTML ou XLSX.');
-      }
-      linhasBrutas = parseTabelaHtml(html);
-    }
-    var linhas = tabelaParaObjetos(linhasBrutas, CABECALHOS_ORIGEM[tipo]);
+    var leitura = lerTabelaArquivo_(entrada, tipo);
+    entrada.nomeCanonico = entrada.tipo + '_' + lote.dataReferencia + '_r' + lote.revisao + '.' + leitura.extensaoCanonica;
+    var linhas = leitura.linhas;
     resultado[tipo] = linhas;
     resultado.contagens[tipo] = {
       lidas: linhas.length,

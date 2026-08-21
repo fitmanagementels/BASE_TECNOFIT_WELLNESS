@@ -7,7 +7,8 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "test": "node --test tests",
-    "validate:real": "node scripts/validar-dados-reais.js"
+    "test": "node --test",
+    "validate:real": "node scripts/validar-dados-reais.js",
+    "validate:permanence": "node scripts/validar-permanencia-real.js"
   }
 }

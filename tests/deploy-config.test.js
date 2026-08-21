@@ -46,3 +46,14 @@ test('manifesto preserva o Web App público ao atualizar a implantação', () =>
     executeAs: 'USER_DEPLOYING'
   });
 });
+
+test('operação documenta o quarto relatório e oferece auditoria de permanência', () => {
+  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  const pop = fs.readFileSync('docs/operacao/LEIA-ME_POP_01_ENTRADA.html', 'utf8');
+  const instructions = fs.readFileSync('apps-script/INSTRUCOES_INSTALACAO.md', 'utf8');
+  assert.equal(packageJson.scripts['validate:permanence'], 'node scripts/validar-permanencia-real.js');
+  assert.match(pop, /quatro relatórios/i);
+  assert.match(pop, /permanencia_2026-08-21_r01\.xls/);
+  assert.match(instructions, /permanencia_AAAA-MM-DD_rNN\.xls/);
+  assert.match(instructions, /exportação completa, sem filtro de status/i);
+});

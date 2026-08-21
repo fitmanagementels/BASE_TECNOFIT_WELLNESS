@@ -1,6 +1,6 @@
 (function () {
   var state = { page: 'home', subpage: 'planos', bootstrap: null, filters: {}, leadFilter: 'todos', followCategory: '', settingsSection: 'alertas', settingsAlertKind: 'prescricoes', settingsDirty: false, settingsAlertDraft: null, settingsHomeDraft: null, profilesExpanded: false, mutationQueue: [], failedMutations: [], saving: false, churnFilters: null, churnCharts: [], churnAnalyticsRequest: 0, churnAnalyticsCache: Object.create(null), backgroundSyncTimer: null };
-  var cacheKey = 'xsteam-dashboard-bootstrap-v4:publico';
+  var cacheKey = 'xsteam-dashboard-bootstrap-v5:publico';
   var labels = { home: 'Home', financeiro: 'Financeiro', acompanhamento: 'Acompanhamento', fluxo: 'Fluxo', configuracoes: 'Configurações' };
 
   function el(tag, className, text) { var node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = String(text); return node; }
@@ -154,6 +154,85 @@
     heat.appendChild(barList(['1–7', '8–15', '16–23', '24–fim'].map(function (label, index) { return { label: label, value: b.month[index], quartile: index }; }), function (i) { detailsForContracts(i.label, contractsForMonthQuartile(data.contratos, i.quartile)); }));
     return [grid, timeline, heat];
   }
+  function showPermanenceDetail(title, rows) {
+    var dialog = document.getElementById('detailDialog'), target = document.getElementById('detailContent');
+    clear(target); document.getElementById('detailTitle').textContent = title;
+    if (!rows.length) target.appendChild(el('p', 'body-copy', 'Nenhum cliente neste recorte.'));
+    rows.forEach(function (item) {
+      var row = el('article', 'student-row permanence-detail');
+      row.appendChild(el('h3', '', item.aluno || item.id));
+      row.appendChild(el('p', 'body-copy', 'Cliente desde: ' + (item.clienteDesde || 'Sem data')));
+      row.appendChild(el('p', 'body-copy', 'Tempo na empresa: ' + item.relationship));
+      row.appendChild(el('p', 'body-copy', 'Status: ' + (item.status || 'Não informado')));
+      row.appendChild(el('p', 'body-copy', 'Coorte: ' + item.cohortLabel));
+      row.appendChild(el('p', 'body-copy', 'Contratos históricos: ' + number(item.historicalContracts)));
+      var packages = el('div', 'permanence-packages');
+      if (!item.packages.length) packages.appendChild(el('span', '', 'Sem pacote atual'));
+      item.packages.forEach(function (entry) {
+        packages.appendChild(el('span', '', 'Pacote atual: ' + (entry.name || 'Não informado') + ' — ' + money(entry.value)));
+      });
+      row.appendChild(packages); target.appendChild(row);
+    });
+    dialog.showModal();
+  }
+  function renderPermanence(data) {
+    var analysis = window.XSteamPermanencia.buildAnalysis({
+      permanence: state.bootstrap.permanencia || [],
+      currentStudents: data.alunos || [],
+      contracts: data.contratos || [],
+      events: state.bootstrap.eventosPermanencia || []
+    }, today());
+    function rowsFor(ids) {
+      var selected = Object.create(null); (ids || []).forEach(function (id) { selected[String(id)] = true; });
+      return analysis.historicalRows.filter(function (row) { return selected[row.id]; });
+    }
+    var intro = el('section', 'permanence-intro');
+    intro.appendChild(el('span', 'eyebrow', 'RELACIONAMENTO COM CLIENTES'));
+    intro.appendChild(el('h2', '', 'Há quanto tempo cada aluno está conosco'));
+    intro.appendChild(el('p', 'body-copy', 'Tempo na empresa e pacote atual são apresentados separadamente. A cobertura indica quantos alunos do recorte têm data de entrada conhecida.'));
+    var grid = el('div', 'kpi-grid');
+    grid.appendChild(card('Cobertura da entrada', number(analysis.kpis.coveragePercent) + '%', number(analysis.kpis.withStartDate) + ' de ' + number(analysis.kpis.currentStudents) + ' alunos'));
+    grid.appendChild(card('Tempo mediano', analysis.kpis.medianMonths == null ? '—' : window.XSteamPermanencia.relationshipLabel(analysis.kpis.medianMonths), 'Alunos atuais com data'));
+    grid.appendChild(card('Novos no último lote', number(analysis.kpis.newInLastBatch), 'Sem contar a carga inicial'));
+    grid.appendChild(card('Mudanças de status', number(analysis.kpis.statusChangesInLastBatch), number(analysis.kpis.absentInLastBatch) + ' ausente(s) no último lote'));
+    var distributions = el('div', 'permanence-grid');
+    var bands = section('Faixas de relacionamento');
+    bands.appendChild(barList(analysis.bands, function (item) {
+      showPermanenceDetail(item.label, rowsFor(item.ids));
+    }));
+    var cohorts = section('Coortes de entrada');
+    var cohortList = el('div', 'permanence-cohort-list');
+    if (!analysis.cohorts.length) cohortList.appendChild(el('p', 'body-copy', 'Ainda não há datas de entrada válidas.'));
+    analysis.cohorts.slice().reverse().forEach(function (cohort) {
+      var button = el('button', 'permanence-cohort'); button.type = 'button';
+      button.appendChild(el('strong', '', cohort.label));
+      button.appendChild(el('span', '', number(cohort.total) + ' clientes'));
+      button.appendChild(el('em', '', number(cohort.observedRetentionPercent) + '% matriculados observados'));
+      button.addEventListener('click', function () { showPermanenceDetail('Coorte ' + cohort.label, rowsFor(cohort.ids)); });
+      cohortList.appendChild(button);
+    });
+    cohorts.appendChild(cohortList); distributions.appendChild(bands); distributions.appendChild(cohorts);
+    var list = section('Clientes por tempo de relacionamento'), rows = el('div', 'permanence-list');
+    if (!analysis.rows.length) rows.appendChild(el('p', 'body-copy', 'Nenhum aluno no recorte atual.'));
+    analysis.rows.forEach(function (item) {
+      var row = el('button', 'permanence-row'); row.type = 'button';
+      var identity = el('span', 'permanence-identity');
+      identity.appendChild(el('strong', '', item.aluno || item.id));
+      identity.appendChild(el('small', '', item.clienteDesde || 'Sem data de entrada'));
+      row.appendChild(identity);
+      row.appendChild(el('span', '', item.relationship));
+      row.appendChild(el('span', '', item.status || 'Status não informado'));
+      var packages = el('span', 'permanence-packages');
+      if (!item.packages.length) packages.appendChild(el('span', '', 'Sem pacote atual'));
+      item.packages.forEach(function (entry) { packages.appendChild(el('span', '', (entry.name || 'Pacote') + ' — ' + money(entry.value))); });
+      row.appendChild(packages);
+      row.appendChild(el('span', 'permanence-action', 'Ver detalhes'));
+      row.addEventListener('click', function () { showPermanenceDetail(item.aluno || item.id, [item]); });
+      rows.appendChild(row);
+    });
+    list.appendChild(rows);
+    return [intro, grid, distributions, list];
+  }
   function showFollowDetail(kind, person) {
     var dialog = document.getElementById('detailDialog'), target = document.getElementById('detailContent');
     clear(target);
@@ -288,6 +367,7 @@
       window.XSteamStudentProfiles.renderSection({
         data: data,
         bootstrap: state.bootstrap,
+        permanence: window.XSteamPermanencia,
         expanded: state.profilesExpanded,
         onExpandedChange: function (expanded) { state.profilesExpanded = expanded; },
         onSave: enqueue
@@ -552,10 +632,10 @@
   }
   function renderFluxoChurns(items) { var grid=el('div','kpi-grid'),analytics=section('Análises de churn'),add=el('button','primary','+ Novo churn');grid.appendChild(card('Saídas registradas',number(items.length),'Base manual',function(){abrirListaChurnsFluxo('Todos os churns',items);}));grid.appendChild(card('Com motivo',number(items.filter(function(x){return x.motivoSaida;}).length),'Auditoria'));grid.appendChild(card('Com retenção',number(items.filter(function(x){return x.acaoRetencao;}).length),'Auditoria'));add.addEventListener('click',function(){abrirFormularioFluxo('churn',null);});analytics.appendChild(add);var resultados=el('div','flow-analytics-results');resultados.id='churnAnalytics';analytics.appendChild(resultados);return[grid,analytics]; }
   function renderFluxo() { var lead=state.subpage==='leads',items=((state.bootstrap.fluxo||{})[lead?'leads':'churns']||[]);return lead?renderFluxoLeads(items):renderFluxoChurns(items); }
-  function render() { if(!state.bootstrap)return; var content=document.getElementById('pageContent');if(!(state.page==='fluxo'&&state.subpage==='churns')){state.churnAnalyticsRequest+=1;destruirGraficosChurn();}clear(content);var data=filtered(), nodes=[];document.getElementById('pageTitle').textContent=labels[state.page];document.getElementById('lastUpdate').textContent=state.bootstrap.atualizadoEm?'Base atualizada em '+state.bootstrap.atualizadoEm:'Nenhuma importação válida';var sub=document.getElementById('subnav'), global=document.querySelector('.global-filters');sub.hidden=!(state.page==='financeiro'||state.page==='acompanhamento'||state.page==='fluxo');if(global)global.hidden=state.page==='fluxo';sub.querySelectorAll('button').forEach(function(b){var finance=b.dataset.subpage==='planos'||b.dataset.subpage==='vencimentos', follow=b.dataset.subpage==='prescricoes'||b.dataset.subpage==='avaliacoes', flow=b.dataset.subpage==='leads'||b.dataset.subpage==='churns';b.hidden=(state.page==='financeiro')?!finance:(state.page==='acompanhamento')?!follow:(state.page==='fluxo')?!flow:true;b.classList.toggle('active',b.dataset.subpage===state.subpage);});if(state.page==='home')nodes=renderHome(data);else if(state.page==='financeiro')nodes=state.subpage==='planos'?renderPlans(data):renderDue(data);else if(state.page==='acompanhamento')nodes=renderFollow(state.subpage);else if(state.page==='fluxo')nodes=renderFluxo();else nodes=renderSettings();nodes.forEach(function(n){content.appendChild(n);});if(state.page==='fluxo'&&state.subpage==='churns')renderChurnAnalytics((state.bootstrap.fluxo||{}).churns||[]); }
+  function render() { if(!state.bootstrap)return; var content=document.getElementById('pageContent');if(!(state.page==='fluxo'&&state.subpage==='churns')){state.churnAnalyticsRequest+=1;destruirGraficosChurn();}clear(content);var data=filtered(), nodes=[];document.getElementById('pageTitle').textContent=labels[state.page];document.getElementById('lastUpdate').textContent=state.bootstrap.atualizadoEm?'Base atualizada em '+state.bootstrap.atualizadoEm:'Nenhuma importação válida';var sub=document.getElementById('subnav'), global=document.querySelector('.global-filters');sub.hidden=!(state.page==='financeiro'||state.page==='acompanhamento'||state.page==='fluxo');if(global)global.hidden=state.page==='fluxo';sub.querySelectorAll('button').forEach(function(b){var finance=b.dataset.subpage==='planos'||b.dataset.subpage==='vencimentos'||b.dataset.subpage==='permanencia', follow=b.dataset.subpage==='prescricoes'||b.dataset.subpage==='avaliacoes', flow=b.dataset.subpage==='leads'||b.dataset.subpage==='churns';b.hidden=(state.page==='financeiro')?!finance:(state.page==='acompanhamento')?!follow:(state.page==='fluxo')?!flow:true;b.classList.toggle('active',b.dataset.subpage===state.subpage);});if(state.page==='home')nodes=renderHome(data);else if(state.page==='financeiro')nodes=state.subpage==='planos'?renderPlans(data):state.subpage==='vencimentos'?renderDue(data):renderPermanence(data);else if(state.page==='acompanhamento')nodes=renderFollow(state.subpage);else if(state.page==='fluxo')nodes=renderFluxo();else nodes=renderSettings();nodes.forEach(function(n){content.appendChild(n);});if(state.page==='fluxo'&&state.subpage==='churns')renderChurnAnalytics((state.bootstrap.fluxo||{}).churns||[]); }
   function syncFilters() { var status=document.getElementById('globalStatus'), polo=document.getElementById('globalPolo'), b=state.bootstrap;clear(status);clear(polo);var statuses=Array.from(new Set(b.alunos.map(function(p){return p.status;}))).sort();var polos=Array.from(new Set(b.contratos.map(function(c){return c.polo;}))).sort();writeOption(status,'__matriculados__','Matriculados');statuses.forEach(function(v){writeOption(status,v,v);});polos.forEach(function(v){writeOption(polo,v,v);});status.value=state.filters.status||'';polo.value=state.filters.polo||''; }
-  function activate(page) { if(state.page==='configuracoes'&&page!=='configuracoes'&&state.settingsDirty&&!window.confirm('Descartar alterações não salvas?'))return;state.page=page;if(page==='financeiro'&&['planos','vencimentos'].indexOf(state.subpage)<0)state.subpage='planos';if(page==='acompanhamento'&&['prescricoes','avaliacoes'].indexOf(state.subpage)<0)state.subpage='prescricoes';if(page==='fluxo'&&['leads','churns'].indexOf(state.subpage)<0)state.subpage='leads';document.querySelectorAll('[data-page]').forEach(function(b){b.classList.toggle('active',b.dataset.page===page);});render(); }
-  function applyBootstrap(data) { data.perfisAlunos=data.perfisAlunos||[];data.catalogoPerfisAlunos=data.catalogoPerfisAlunos||[];state.bootstrap=data;state.filters={status:data.filtrosPadrao.status==='Ativo'?'__matriculados__':(data.filtrosPadrao.status||'__matriculados__'),polo:data.filtrosPadrao.polo||'XSTEAM WELLNESS CLUB'};syncFilters();render();safeCacheSet(data);finishLoading(); }
+  function activate(page) { if(state.page==='configuracoes'&&page!=='configuracoes'&&state.settingsDirty&&!window.confirm('Descartar alterações não salvas?'))return;state.page=page;if(page==='financeiro'&&['planos','vencimentos','permanencia'].indexOf(state.subpage)<0)state.subpage='planos';if(page==='acompanhamento'&&['prescricoes','avaliacoes'].indexOf(state.subpage)<0)state.subpage='prescricoes';if(page==='fluxo'&&['leads','churns'].indexOf(state.subpage)<0)state.subpage='leads';document.querySelectorAll('[data-page]').forEach(function(b){b.classList.toggle('active',b.dataset.page===page);});render(); }
+  function applyBootstrap(data) { data.perfisAlunos=data.perfisAlunos||[];data.catalogoPerfisAlunos=data.catalogoPerfisAlunos||[];data.permanencia=data.permanencia||[];data.eventosPermanencia=data.eventosPermanencia||[];state.bootstrap=data;state.filters={status:data.filtrosPadrao.status==='Ativo'?'__matriculados__':(data.filtrosPadrao.status||'__matriculados__'),polo:data.filtrosPadrao.polo||'XSTEAM WELLNESS CLUB'};syncFilters();render();safeCacheSet(data);finishLoading(); }
   function aplicarMutacaoOtimista(patch) {
     if(!state.bootstrap||!patch||!patch.valores)return null;
     if(patch.tipo==='perfilAluno'){

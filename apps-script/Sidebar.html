@@ -53,6 +53,7 @@
       .badge.ok { color: var(--verde); background: var(--verde-claro); }
       .badge.erro { color: var(--vermelho); background: var(--vermelho-claro); }
       .linha { margin: 3px 0; }
+      .esperados { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: 11px; }
       .arquivos { margin: 7px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
       .mensagem {
         display: none;
@@ -84,6 +85,13 @@
 
     <section class="card" id="cardLote">
       <span class="rotulo">Lote de entrada</span>
+      <p class="linha">Envie os quatro relatórios com a mesma data e revisão:</p>
+      <ul class="esperados">
+        <li class="arquivo-esperado">vencimentos_AAAA-MM-DD_rNN.xls</li>
+        <li class="arquivo-esperado">fichas_AAAA-MM-DD_rNN.xls</li>
+        <li class="arquivo-esperado">avaliacao_fisica_AAAA-MM-DD_rNN.xls</li>
+        <li class="arquivo-esperado">permanencia_AAAA-MM-DD_rNN.xls</li>
+      </ul>
       <div id="conteudoLote">Verificando…</div>
     </section>
 

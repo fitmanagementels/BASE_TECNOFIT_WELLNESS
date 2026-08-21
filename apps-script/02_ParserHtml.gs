@@ -70,6 +70,7 @@ function tabelaParaObjetos(linhas, cabecalhosObrigatorios) {
     })
     .filter(function (objeto) {
       var codigo = String(objeto.codigo || '').trim();
-      return !/^Total(?:\s+R\$|:\s*\d+\s+registros?)$/i.test(codigo);
+      return !/^Total:\s*\d+(?:\s+registros?)?$/i.test(codigo) &&
+        !/^Total\s+R\$/i.test(codigo);
     });
 }

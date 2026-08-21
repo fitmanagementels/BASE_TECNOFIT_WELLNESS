@@ -18,12 +18,29 @@ function executarImportacaoComDependencias_(deps) {
     deps.verificarReprocessamento(lote);
     referenciasLog = deps.iniciarLog(lote.arquivos, execucaoId);
     tabelas = deps.lerTabelas(lote);
+    var estadoPermanencia = deps.lerEstadoPermanencia();
+    var atualizacaoPermanencia = deps.transformarPermanencia(
+      tabelas.permanencia,
+      estadoPermanencia.base,
+      estadoPermanencia.historico,
+      {
+        dataReferencia: lote.dataReferencia,
+        revisao: lote.revisao,
+        importacaoId: execucaoId,
+        registradoEm: deps.agora(),
+        cargaInicial: estadoPermanencia.base.length === 0
+      }
+    );
     var dados = deps.transformar(
       tabelas.vencimentos,
       tabelas.fichas,
       tabelas.avaliacao_fisica,
+      atualizacaoPermanencia.porId,
       execucaoId
     );
+    dados.basePermanencia = atualizacaoPermanencia.base;
+    dados.historicoPermanencia = atualizacaoPermanencia.historico;
+    dados.avisos = dados.avisos.concat(atualizacaoPermanencia.avisos);
     backup = deps.backup();
     deps.substituir(dados);
     substituiuDados = true;
@@ -41,6 +58,8 @@ function executarImportacaoComDependencias_(deps) {
       revisao: 'r' + lote.revisao,
       alunos: dados.alunos.length,
       contratos: dados.contratos.length,
+      permanencia: dados.basePermanencia.length,
+      eventosPermanencia: dados.historicoPermanencia.length,
       avisos: dados.avisos,
       concluidoEm: deps.agoraIso()
     };
@@ -104,6 +123,8 @@ function criarDependenciasImportacao_() {
       return iniciarLogImportacao(obterAbaImportacoes_(), arquivos, execucaoId, new Date());
     },
     lerTabelas: lerTabelasDoLote,
+    lerEstadoPermanencia: lerEstadoPermanencia_,
+    transformarPermanencia: construirAtualizacaoPermanencia_,
     transformar: construirDadosMestre,
     backup: criarBackupAbasGerenciadas,
     substituir: substituirAbasGerenciadas,
@@ -114,7 +135,8 @@ function criarDependenciasImportacao_() {
     finalizarLog: function (referencias, resultado) {
       return finalizarLogImportacao(obterAbaImportacoes_(), referencias, resultado, new Date());
     },
-    agoraIso: formatarAgoraIso_
+    agoraIso: formatarAgoraIso_,
+    agora: function () { return new Date(); }
   };
 }
 

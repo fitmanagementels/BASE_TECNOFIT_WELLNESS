@@ -325,34 +325,36 @@
 
       <section class="main-rule">
         <h2>A regra que não pode falhar</h2>
-        <p>A pasta <strong>01_ENTRADA</strong> deve ter os três relatórios abaixo com a <strong>mesma data</strong> e a <strong>mesma revisão</strong>. Este PDF pode permanecer na pasta.</p>
+        <p>A pasta <strong>01_ENTRADA</strong> deve ter os quatro relatórios abaixo com a <strong>mesma data</strong> e a <strong>mesma revisão</strong>. Este PDF pode permanecer na pasta.</p>
         <div class="files">
           <span class="file">vencimentos_AAAA-MM-DD_rNN.xls</span>
           <span class="file">fichas_AAAA-MM-DD_rNN.xls</span>
           <span class="file">avaliacao_fisica_AAAA-MM-DD_rNN.xls</span>
+          <span class="file">permanencia_AAAA-MM-DD_rNN.xls</span>
         </div>
       </section>
 
       <div class="columns">
         <section class="panel">
           <h3>Como montar o nome</h3>
-          <div class="formula">tipo_2026-07-19_r01.xls</div>
+          <div class="formula">tipo_2026-08-21_r01.xls</div>
           <ul>
             <li><strong>AAAA-MM-DD</strong> é a data de referência/exportação.</li>
             <li><strong>rNN</strong> é a revisão, sempre com dois dígitos.</li>
             <li>Use minúsculas, sem espaços e sem acentos.</li>
           </ul>
-          <p class="example">vencimentos_2026-07-19_r01.xls<br>fichas_2026-07-19_r01.xls<br>avaliacao_fisica_2026-07-19_r01.xls</p>
+          <p class="example">vencimentos_2026-08-21_r01.xls<br>fichas_2026-08-21_r01.xls<br>avaliacao_fisica_2026-08-21_r01.xls<br>permanencia_2026-08-21_r01.xls</p>
         </section>
 
         <section class="panel">
           <h3>Antes de importar</h3>
           <ul class="checklist">
-            <li><span class="box"></span><span>Há três relatórios <strong>.xls</strong>.</span></li>
-            <li><span class="box"></span><span>Os três tipos estão presentes.</span></li>
-            <li><span class="box"></span><span>A data é igual nos três arquivos.</span></li>
-            <li><span class="box"></span><span>A revisão é igual nos três arquivos.</span></li>
+            <li><span class="box"></span><span>Há quatro relatórios <strong>.xls</strong>.</span></li>
+            <li><span class="box"></span><span>Os quatro tipos estão presentes.</span></li>
+            <li><span class="box"></span><span>A data é igual nos quatro arquivos.</span></li>
+            <li><span class="box"></span><span>A revisão é igual nos quatro arquivos.</span></li>
             <li><span class="box"></span><span>O PDF pode ficar na pasta; nada mais.</span></li>
+            <li><span class="box"></span><span>Permanência foi exportada completa, sem filtro de status.</span></li>
             <li><span class="box"></span><span>Os relatórios não foram editados.</span></li>
           </ul>
         </section>
@@ -364,7 +366,7 @@
       </section>
     </main>
 
-    <div class="footer"><span>TECNOFIT_BASE_CENTRAL · uso interno</span><span>Versão 1.0 · 19/07/2026 · página 1/2</span></div>
+    <div class="footer"><span>TECNOFIT_BASE_CENTRAL · uso interno</span><span>Versão 1.1 · 21/08/2026 · página 1/2</span></div>
     <div class="rule-line"></div>
   </section>
 
@@ -379,10 +381,10 @@
       <p class="intro">Execute o fluxo abaixo uma única vez por lote. Ao final, os arquivos são arquivados automaticamente.</p>
 
       <ol class="workflow">
-        <li><strong>Exporte os três relatórios</strong><span>Vencimentos, fichas e avaliação física do mesmo período.</span></li>
-        <li><strong>Renomeie os três arquivos</strong><span>Siga exatamente o padrão mostrado na primeira página.</span></li>
-        <li><strong>Confira data e revisão</strong><span>Os três nomes devem ter a mesma data e o mesmo <strong>rNN</strong>.</span></li>
-        <li><strong>Prepare a 01_ENTRADA</strong><span>Deixe o POP e somente os três relatórios do lote atual.</span></li>
+        <li><strong>Exporte os quatro relatórios</strong><span>Vencimentos, fichas, avaliação física e permanência completa, sem filtro de status.</span></li>
+        <li><strong>Renomeie os quatro arquivos</strong><span>Siga exatamente o padrão mostrado na primeira página.</span></li>
+        <li><strong>Confira data e revisão</strong><span>Os quatro nomes devem ter a mesma data e o mesmo <strong>rNN</strong>.</span></li>
+        <li><strong>Prepare a 01_ENTRADA</strong><span>Deixe o POP e somente os quatro relatórios do lote atual.</span></li>
         <li><strong>Abra a planilha mestre</strong><span>Acesse <strong>TecnoFit_Base_Mestre</strong>.</span></li>
         <li><strong>Abra o painel</strong><span>Menu <strong>TecnoFit › Abrir painel</strong>.</span></li>
         <li><strong>Confirme o estado</strong><span>O painel deve informar <strong>Pronto para importar</strong>.</span></li>
@@ -394,7 +396,7 @@
         <section class="revision">
           <h2>Precisou corrigir?</h2>
           <p>Reenvie <strong>todo o conjunto</strong> com revisão maior. Nunca misture revisões.</p>
-          <code>..._2026-07-19_r01.xls<br>↓ corrigiu algo?<br>..._2026-07-19_r02.xls</code>
+          <code>..._2026-08-21_r01.xls<br>↓ corrigiu algo?<br>..._2026-08-21_r02.xls</code>
         </section>
 
         <section class="notice">
@@ -403,7 +405,7 @@
             <li>Leia a mensagem do painel.</li>
             <li>Não edite as abas da base manualmente.</li>
             <li>Corrija/exporte novamente na origem.</li>
-            <li>Suba os três arquivos com revisão superior.</li>
+            <li>Suba os quatro arquivos com revisão superior, como <strong>r02</strong>.</li>
           </ol>
         </section>
       </div>
@@ -414,7 +416,7 @@
       </section>
     </main>
 
-    <div class="footer"><span>TECNOFIT_BASE_CENTRAL · uso interno</span><span>Versão 1.0 · 19/07/2026 · página 2/2</span></div>
+    <div class="footer"><span>TECNOFIT_BASE_CENTRAL · uso interno</span><span>Versão 1.1 · 21/08/2026 · página 2/2</span></div>
     <div class="rule-line"></div>
   </section>
 </body>

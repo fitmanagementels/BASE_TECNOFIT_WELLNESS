@@ -55,6 +55,7 @@
   function buildStudentCards(input) {
     var contractsById = Object.create(null);
     var profilesById = Object.create(null);
+    var permanenceById = Object.create(null);
     var labels = Object.create(null);
     (input.contratos || []).forEach(function (contract) {
       var id = String(contract.id || '');
@@ -62,6 +63,9 @@
     });
     (input.perfisAlunos || []).forEach(function (profile) {
       profilesById[String(profile.id || '')] = profile;
+    });
+    (input.permanencia || []).forEach(function (item) {
+      permanenceById[String(item.id || '')] = item;
     });
     (input.catalogoPerfisAlunos || []).forEach(function (item) {
       labels[item.grupo + ':' + item.chave] = item.titulo;
@@ -89,6 +93,7 @@
         dataFicha: String(student.dataFicha || ''),
         dataAvaliacao: String(student.dataAvaliacao || ''),
         perfil: profile,
+        permanencia: permanenceById[id] || null,
         contratos: contractsById[id] || [],
         contratoPrincipal: selectPrimaryContract(contractsById[id] || []),
         etiquetas: publicTags.map(function (key) {
@@ -392,11 +397,19 @@
     tabs.appendChild(infoTab); tabs.appendChild(configTab); dialog.appendChild(tabs);
 
     var contract = card.contratoPrincipal || {};
+    var relationship = card.permanencia && options.permanence
+      ? options.permanence.relationshipLabel(
+        options.permanence.monthsCompleted(card.permanencia.clienteDesde, new Date())
+      )
+      : '';
     var infoGrid = uiElement(doc, 'dl', 'student-profile-info-grid');
     var navigatorRef = options.navigator || (typeof navigator !== 'undefined' ? navigator : null);
     infoGrid.appendChild(contactInfoItem(doc, card, navigatorRef));
     [
       ['Status', card.status],
+      ['Cliente desde', card.permanencia ? card.permanencia.clienteDesde : ''],
+      ['Tempo na empresa', relationship],
+      ['Contratos históricos', card.permanencia ? card.permanencia.quantidadeContratos : ''],
       ['Contrato', contract.contrato],
       ['Frequência', contract.frequencia],
       ['Valor', contract.valor == null ? '' : money(contract.valor)],
@@ -511,6 +524,7 @@
     var all = buildStudentCards({
       alunos: options.data.alunos || [],
       contratos: options.data.contratos || [],
+      permanencia: options.bootstrap.permanencia || [],
       perfisAlunos: options.bootstrap.perfisAlunos || [],
       catalogoPerfisAlunos: options.bootstrap.catalogoPerfisAlunos || []
     });

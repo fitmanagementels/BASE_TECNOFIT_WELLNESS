@@ -83,6 +83,12 @@ function lerBaseDashboard_() {
     planilha: planilha,
     alunos: lerTabelaDashboardDaPlanilha_(planilha, CONFIG.abas.alunos, CONFIG.cabecalhos.alunos),
     contratos: lerTabelaDashboardDaPlanilha_(planilha, CONFIG.abas.contratos, CONFIG.cabecalhos.contratos),
+    permanencia: lerTabelaDashboardDaPlanilha_(
+      planilha, CONFIG.abas.basePermanencia, CONFIG.cabecalhos.basePermanencia
+    ),
+    eventosPermanencia: lerTabelaDashboardDaPlanilha_(
+      planilha, CONFIG.abas.historicoPermanencia, CONFIG.cabecalhos.historicoPermanencia
+    ),
     ultimaImportacao: obterUltimaImportacaoDashboard_(planilha),
     ultimaTentativa: obterUltimoRegistroImportacaoDashboard_(planilha)
   };
@@ -177,5 +183,26 @@ function contratoSeguroParaDashboard_(contrato) {
     statusContrato: String(contrato.status_contrato || ''),
     polo: String(contrato.polo || ''),
     modalidade: String(contrato.modalidade || '')
+  };
+}
+
+function permanenciaSeguraParaDashboard_(item) {
+  return {
+    id: String(item.id || ''),
+    aluno: String(item.aluno || ''),
+    clienteDesde: formatarDataDashboard_(item.cliente_desde),
+    status: String(item.status_permanencia || ''),
+    continuidadeMeses: Number(item.continuidade_meses_origem) || 0,
+    quantidadeContratos: Number(item.quantidade_contratos_origem) || 0,
+    presenteUltimoLote: item.presente_ultimo_lote === true ||
+      String(item.presente_ultimo_lote).toLowerCase() === 'true'
+  };
+}
+
+function eventoPermanenciaSeguroParaDashboard_(item) {
+  return {
+    id: String(item.id || ''),
+    dataReferencia: formatarDataDashboard_(item.data_referencia),
+    tipo: String(item.tipo_evento || '')
   };
 }
