@@ -18,6 +18,8 @@ var CONFIG = Object.freeze({
     alunos: 'BASE_ALUNOS',
     contratos: 'CONTRATOS',
     visaoMestre: 'VISAO_MESTRE',
+    basePermanencia: 'BASE_PERMANENCIA',
+    historicoPermanencia: 'HISTORICO_PERMANENCIA',
     importacoes: 'IMPORTACOES',
     configDashboard: 'CONFIG_DASHBOARD',
     configAlertas: 'CONFIG_ALERTAS',
@@ -41,6 +43,15 @@ var CONFIG = Object.freeze({
       'id', 'aluno', 'contato', 'status', 'contrato_x_sem', 'valor',
       'inicio_plano', 'inicio_corrente', 'vencimento', 'polo', 'data_ficha',
       'data_avaliacao', '_chave_contrato'
+    ]),
+    basePermanencia: Object.freeze([
+      'id', 'aluno', 'cliente_desde', 'status_permanencia', 'continuidade_meses_origem',
+      'quantidade_contratos_origem', 'primeira_observacao_em', 'ultima_observacao_em',
+      'presente_ultimo_lote', 'importacao_id'
+    ]),
+    historicoPermanencia: Object.freeze([
+      'evento_id', 'id', 'data_referencia', 'tipo_evento', 'campo', 'valor_anterior',
+      'valor_novo', 'importacao_id', 'registrado_em'
     ]),
     importacoes: Object.freeze([
       'execucao_id', 'data_hora_inicio', 'data_hora_fim', 'tipo_arquivo',

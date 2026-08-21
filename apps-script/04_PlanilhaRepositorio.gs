@@ -8,6 +8,10 @@ function obterAbaImportacoes_() {
   return aba;
 }
 
+var CHAVES_ABAS_GERENCIADAS = Object.freeze([
+  'alunos', 'contratos', 'visaoMestre', 'basePermanencia', 'historicoPermanencia'
+]);
+
 function garantirEstruturaPlanilha() {
   var planilha = obterPlanilhaMestre_();
   Object.keys(CONFIG.abas).forEach(function (chave) {
@@ -65,39 +69,83 @@ function escreverAbaGerenciada_(aba, cabecalhos, linhas) {
   aba.getRange(1, 1, Math.max(linhas.length + 1, 2), cabecalhos.length).createFilter();
 }
 
+function lerObjetosAbaGerenciada_(chave) {
+  var planilha = obterPlanilhaMestre_();
+  var aba = planilha.getSheetByName(CONFIG.abas[chave]);
+  var cabecalhos = CONFIG.cabecalhos[chave];
+  if (!aba || aba.getLastRow() < 1) throw new Error('Aba gerenciada ausente: ' + chave);
+  var valores = aba.getRange(1, 1, aba.getLastRow(), cabecalhos.length).getValues();
+  cabecalhos.forEach(function (cabecalho, indice) {
+    if (String(valores[0][indice]) !== cabecalho) throw new Error('Estrutura incompatível: ' + chave);
+  });
+  return valores.slice(1).filter(function (linha) {
+    return linha.some(function (valor) { return valor !== '' && valor != null; });
+  }).map(function (linha) {
+    return cabecalhos.reduce(function (objeto, cabecalho, indice) {
+      objeto[cabecalho] = linha[indice];
+      return objeto;
+    }, {});
+  });
+}
+
+function lerEstadoPermanencia_() {
+  return {
+    base: lerObjetosAbaGerenciada_('basePermanencia'),
+    historico: lerObjetosAbaGerenciada_('historicoPermanencia')
+  };
+}
+
 function substituirAbasGerenciadas(dados) {
-  validarLarguras_(dados.alunos, CONFIG.cabecalhos.alunos.length, CONFIG.abas.alunos);
-  validarLarguras_(dados.contratos, CONFIG.cabecalhos.contratos.length, CONFIG.abas.contratos);
-  validarLarguras_(dados.visaoMestre, CONFIG.cabecalhos.visaoMestre.length, CONFIG.abas.visaoMestre);
+  var linhasPorChave = {
+    alunos: dados.alunos || [],
+    contratos: dados.contratos || [],
+    visaoMestre: dados.visaoMestre || [],
+    basePermanencia: serializarObjetosPermanencia_(
+      dados.basePermanencia || [], CONFIG.cabecalhos.basePermanencia
+    ),
+    historicoPermanencia: serializarObjetosPermanencia_(
+      dados.historicoPermanencia || [], CONFIG.cabecalhos.historicoPermanencia
+    )
+  };
+
+  CHAVES_ABAS_GERENCIADAS.forEach(function (chave) {
+    validarLarguras_(linhasPorChave[chave], CONFIG.cabecalhos[chave].length, CONFIG.abas[chave]);
+  });
 
   var planilha = obterPlanilhaMestre_();
-  var abaAlunos = planilha.getSheetByName(CONFIG.abas.alunos);
-  var abaContratos = planilha.getSheetByName(CONFIG.abas.contratos);
-  var abaVisao = planilha.getSheetByName(CONFIG.abas.visaoMestre);
-  if (!abaAlunos || !abaContratos || !abaVisao) {
-    throw new Error('As abas gerenciadas não estão configuradas.');
-  }
+  var abas = CHAVES_ABAS_GERENCIADAS.reduce(function (mapa, chave) {
+    var aba = planilha.getSheetByName(CONFIG.abas[chave]);
+    if (!aba) throw new Error('Aba gerenciada não configurada: ' + CONFIG.abas[chave]);
+    mapa[chave] = aba;
+    return mapa;
+  }, {});
 
-  escreverAbaGerenciada_(abaAlunos, CONFIG.cabecalhos.alunos, dados.alunos);
-  escreverAbaGerenciada_(abaContratos, CONFIG.cabecalhos.contratos, dados.contratos);
-  escreverAbaGerenciada_(abaVisao, CONFIG.cabecalhos.visaoMestre, dados.visaoMestre);
+  CHAVES_ABAS_GERENCIADAS.forEach(function (chave) {
+    escreverAbaGerenciada_(abas[chave], CONFIG.cabecalhos[chave], linhasPorChave[chave]);
+  });
 
-  var linhasAlunos = Math.max(dados.alunos.length, 1);
-  var linhasContratos = Math.max(dados.contratos.length, 1);
-  var linhasVisao = Math.max(dados.visaoMestre.length, 1);
-  abaAlunos.getRange(2, 6, linhasAlunos, 2).setNumberFormat('dd/MM/yyyy');
-  abaContratos.getRange(2, 5, linhasContratos, 1).setNumberFormat('R$ #,##0.00');
-  abaContratos.getRange(2, 6, linhasContratos, 2).setNumberFormat('dd/MM/yyyy');
-  abaVisao.getRange(2, 6, linhasVisao, 1).setNumberFormat('R$ #,##0.00');
-  abaVisao.getRange(2, 8, linhasVisao, 2).setNumberFormat('dd/MM/yyyy');
-  abaVisao.getRange(2, 11, linhasVisao, 2).setNumberFormat('dd/MM/yyyy');
-  abaVisao.hideColumns(13);
+  var linhasAlunos = Math.max(linhasPorChave.alunos.length, 1);
+  var linhasContratos = Math.max(linhasPorChave.contratos.length, 1);
+  var linhasVisao = Math.max(linhasPorChave.visaoMestre.length, 1);
+  var linhasBasePermanencia = Math.max(linhasPorChave.basePermanencia.length, 1);
+  var linhasHistoricoPermanencia = Math.max(linhasPorChave.historicoPermanencia.length, 1);
+  abas.alunos.getRange(2, 5, linhasAlunos, 3).setNumberFormat('dd/MM/yyyy');
+  abas.contratos.getRange(2, 5, linhasContratos, 1).setNumberFormat('R$ #,##0.00');
+  abas.contratos.getRange(2, 6, linhasContratos, 2).setNumberFormat('dd/MM/yyyy');
+  abas.visaoMestre.getRange(2, 6, linhasVisao, 1).setNumberFormat('R$ #,##0.00');
+  abas.visaoMestre.getRange(2, 7, linhasVisao, 3).setNumberFormat('dd/MM/yyyy');
+  abas.visaoMestre.getRange(2, 11, linhasVisao, 2).setNumberFormat('dd/MM/yyyy');
+  abas.basePermanencia.getRange(2, 3, linhasBasePermanencia, 1).setNumberFormat('dd/MM/yyyy');
+  abas.basePermanencia.getRange(2, 7, linhasBasePermanencia, 2).setNumberFormat('yyyy-MM-dd');
+  abas.historicoPermanencia.getRange(2, 3, linhasHistoricoPermanencia, 1).setNumberFormat('yyyy-MM-dd');
+  abas.historicoPermanencia.getRange(2, 9, linhasHistoricoPermanencia, 1).setNumberFormat('dd/MM/yyyy HH:mm:ss');
+  abas.visaoMestre.hideColumns(13);
   SpreadsheetApp.flush();
 }
 
 function criarBackupAbasGerenciadas() {
   var planilha = obterPlanilhaMestre_();
-  return ['alunos', 'contratos', 'visaoMestre'].reduce(function (backup, chave) {
+  return CHAVES_ABAS_GERENCIADAS.reduce(function (backup, chave) {
     var aba = planilha.getSheetByName(CONFIG.abas[chave]);
     if (!aba) throw new Error('Aba não encontrada para backup: ' + CONFIG.abas[chave]);
     backup[chave] = aba.getDataRange().getValues();
@@ -107,7 +155,7 @@ function criarBackupAbasGerenciadas() {
 
 function restaurarBackupAbasGerenciadas(backup) {
   var planilha = obterPlanilhaMestre_();
-  ['alunos', 'contratos', 'visaoMestre'].forEach(function (chave) {
+  CHAVES_ABAS_GERENCIADAS.forEach(function (chave) {
     var aba = planilha.getSheetByName(CONFIG.abas[chave]);
     var valores = backup[chave] || [CONFIG.cabecalhos[chave]];
     aba.clearContents();
