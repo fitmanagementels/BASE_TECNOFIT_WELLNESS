@@ -72,6 +72,7 @@
         id: id,
         aluno: student.aluno,
         professorResponsavel: '',
+        ultimosProfessores: [],
         perfilPagamento: 'Sem histórico',
         observacaoPagamento: '',
         etiquetasPublico: [],
@@ -148,18 +149,16 @@
     var professors = activeCatalog(catalog, 'professor', professorGroup).map(function (item) {
       return Object.assign({}, item, { valor: item.titulo });
     });
-    var historical = String(card.perfil.professorResponsavel || '');
-    if (historical && !professors.some(function (item) { return item.valor === historical; })) {
-      professors.push({
-        tipo: 'professor',
-        grupo: professorGroup,
-        chave: 'historico',
-        titulo: historical + ' (histórico)',
-        valor: historical,
-        ativo: false,
-        ordem: 9999
+    [card.perfil.professorResponsavel].concat(card.perfil.ultimosProfessores || [])
+      .map(function (value) { return String(value || ''); })
+      .filter(function (value, index, list) { return value && list.indexOf(value) === index; })
+      .forEach(function (historical) {
+        if (professors.some(function (item) { return item.valor === historical; })) return;
+        professors.push({
+          tipo: 'professor', grupo: professorGroup, chave: 'historico-' + professors.length,
+          titulo: historical + ' (histórico)', valor: historical, ativo: false, ordem: 9999
+        });
       });
-    }
     return {
       professores: professors,
       pagamentos: activeCatalog(catalog, 'perfil_pagamento', 'global'),
@@ -175,6 +174,7 @@
         id: String(card.id || ''),
         aluno: String(card.aluno || ''),
         professorResponsavel: String(values.professorResponsavel || ''),
+        ultimosProfessores: (values.ultimosProfessores || []).slice(),
         perfilPagamento: String(values.perfilPagamento || 'Sem histórico'),
         observacaoPagamento: String(values.observacaoPagamento || ''),
         etiquetasPublico: (values.etiquetasPublico || []).slice(),
@@ -281,6 +281,37 @@
     });
     fieldset.appendChild(choices);
     return fieldset;
+  }
+
+  function multiSelectField(doc, labelText, items, selected) {
+    var field = uiElement(doc, 'div', 'student-profile-field student-profile-multiselect');
+    var details = uiElement(doc, 'details', 'student-profile-multiselect-control');
+    var summary = uiElement(doc, 'summary', 'student-profile-multiselect-summary');
+    var choices = uiElement(doc, 'div', 'student-profile-multiselect-options');
+    var selectedValues = selected || [];
+    field.appendChild(uiElement(doc, 'span', 'student-profile-field-label', labelText));
+    choices.setAttribute('role', 'group');
+    choices.setAttribute('aria-label', labelText);
+    function updateSummary() {
+      var values = checkedValues(choices);
+      summary.textContent = values.length ? values.join(', ') : 'Sem histórico';
+    }
+    items.forEach(function (item) {
+      var label = uiElement(doc, 'label', 'student-profile-multiselect-choice');
+      var input = uiElement(doc, 'input');
+      input.type = 'checkbox';
+      input.value = item.valor;
+      input.checked = selectedValues.indexOf(item.valor) !== -1;
+      input.addEventListener('change', updateSummary);
+      label.appendChild(input);
+      label.appendChild(uiElement(doc, 'span', '', item.titulo));
+      choices.appendChild(label);
+    });
+    updateSummary();
+    details.appendChild(summary);
+    details.appendChild(choices);
+    field.appendChild(details);
+    return field;
   }
 
   function renderContractList(doc, card, panel) {
@@ -391,6 +422,10 @@
     });
     if (!payment.value && formOptions.pagamentos.length) payment.value = formOptions.pagamentos[0].titulo;
     form.appendChild(field(doc, 'Professor responsável', professor));
+    var lastProfessors = multiSelectField(
+      doc, 'Último professor', formOptions.professores, card.perfil.ultimosProfessores || []
+    );
+    form.appendChild(lastProfessors);
     form.appendChild(field(doc, 'Perfil de pagamento', payment));
 
     var publicTags = tagChoices(
@@ -406,12 +441,16 @@
     paymentNote.maxLength = 1000;
     paymentNote.rows = 3;
     paymentNote.value = card.perfil.observacaoPagamento || '';
-    form.appendChild(field(doc, 'Observação de pagamento', paymentNote));
+    var paymentNoteField = field(doc, 'Observação de pagamento', paymentNote);
+    paymentNoteField.classList.add('student-profile-field-half');
+    form.appendChild(paymentNoteField);
     var generalNotes = uiElement(doc, 'textarea');
     generalNotes.maxLength = 3000;
     generalNotes.rows = 5;
     generalNotes.value = card.perfil.observacoesGerais || '';
-    form.appendChild(field(doc, 'Observações gerais', generalNotes));
+    var generalNotesField = field(doc, 'Observações gerais', generalNotes);
+    generalNotesField.classList.add('student-profile-field-half');
+    form.appendChild(generalNotesField);
 
     var agenda = uiElement(doc, 'fieldset', 'student-profile-agenda');
     agenda.disabled = true;
@@ -435,6 +474,7 @@
       feedback.hidden = true;
       var patch = createProfilePatch(card, {
         professorResponsavel: professor.value,
+        ultimosProfessores: checkedValues(lastProfessors),
         perfilPagamento: payment.value,
         observacaoPagamento: paymentNote.value,
         etiquetasPublico: checkedValues(publicTags),

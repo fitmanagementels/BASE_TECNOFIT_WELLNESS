@@ -143,7 +143,7 @@ test('monta opções por status, preserva professor histórico e cria patch comp
   ];
   const card = {
     id: '43', aluno: 'ALUNO CANCELADO', status: 'Cancelado',
-    perfil: { professorResponsavel: 'Professor antigo' }
+    perfil: { professorResponsavel: 'Professor antigo', ultimosProfessores: ['Wallyson'] }
   };
 
   const options = profiles.profileFormOptions(card, catalog);
@@ -151,16 +151,19 @@ test('monta opções por status, preserva professor histórico e cria patch comp
   assert.equal(options.pagamentos[0].titulo, 'Bom pagador');
 
   assert.deepEqual(profiles.createProfilePatch(card, {
-    professorResponsavel: 'Wallyson', perfilPagamento: 'Bom pagador',
-    observacaoPagamento: 'Paga em dia', etiquetasPublico: ['idoso'],
-    etiquetasComerciais: ['risco_de_churn'], observacoesGerais: 'Treina cedo'
+    professorResponsavel: 'Wallyson', ultimosProfessores: ['Wallyson'], perfilPagamento: 'Bom pagador',
+    observacaoPagamento: 'Paga em dia', etiquetasPublico: ['idoso', 'performance'],
+    etiquetasComerciais: ['risco_de_churn', 'coach'], observacoesGerais: 'Treina cedo'
   }), {
     tipo: 'perfilAluno',
     valores: {
-      id: '43', aluno: 'ALUNO CANCELADO', professorResponsavel: 'Wallyson',
+      id: '43', aluno: 'ALUNO CANCELADO', professorResponsavel: 'Wallyson', ultimosProfessores: ['Wallyson'],
       perfilPagamento: 'Bom pagador', observacaoPagamento: 'Paga em dia',
-      etiquetasPublico: ['idoso'], etiquetasComerciais: ['risco_de_churn'],
+      etiquetasPublico: ['idoso', 'performance'], etiquetasComerciais: ['risco_de_churn', 'coach'],
       observacoesGerais: 'Treina cedo'
     }
   });
+  const client = fs.readFileSync('pwa/js/student-profiles.js', 'utf8');
+  assert.match(client, /Último professor/);
+  assert.match(client, /student-profile-multiselect/);
 });

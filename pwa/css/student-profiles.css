@@ -102,8 +102,10 @@
 .student-profile-contract-list { display: grid; gap: 8px; }
 .student-profile-contract-item { display: grid; gap: 3px; padding: 11px; border: 1px solid var(--line); border-radius: 10px; }
 .student-profile-contract-item span { color: var(--muted); font-size: 12px; }
-.student-profile-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.student-profile-form { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
 .student-profile-field { display: grid; gap: 7px; min-width: 0; }
+.student-profile-form > .student-profile-field { grid-column: span 2; }
+.student-profile-form > .student-profile-field-half { grid-column: span 3; }
 .student-profile-field-label { color: var(--muted-strong); font-size: 11px; font-weight: 800; letter-spacing: .02em; }
 .student-profile-field select, .student-profile-field textarea {
   width: 100%;
@@ -115,7 +117,63 @@
   background: var(--surface-input);
   resize: vertical;
 }
-.student-profile-fieldset { min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 11px; }
+.student-profile-multiselect { position: relative; }
+.student-profile-multiselect-control { position: relative; min-width: 0; }
+.student-profile-multiselect-summary {
+  display: block;
+  min-height: 44px;
+  padding: 10px 36px 10px 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--surface-input);
+  cursor: pointer;
+  list-style: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.student-profile-multiselect-summary::-webkit-details-marker { display: none; }
+.student-profile-multiselect-summary::after {
+  position: absolute;
+  top: 14px;
+  right: 13px;
+  content: '⌄';
+  color: var(--muted);
+  font-size: 16px;
+}
+.student-profile-multiselect-control[open] .student-profile-multiselect-summary { border-color: var(--lime); }
+.student-profile-multiselect-control[open] .student-profile-multiselect-summary::after { transform: rotate(180deg); }
+.student-profile-multiselect-options {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  display: grid;
+  max-height: 208px;
+  padding: 6px;
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: #141a1a;
+  box-shadow: var(--shadow-float);
+}
+.student-profile-multiselect-choice {
+  display: flex;
+  min-width: 0;
+  min-height: 36px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: var(--muted-strong);
+  cursor: pointer;
+  font-size: 12px;
+}
+.student-profile-multiselect-choice:hover { color: var(--text); background: rgba(255, 255, 255, .06); }
+.student-profile-multiselect-choice input { accent-color: var(--lime); }
+.student-profile-fieldset { grid-column: span 3; min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 11px; }
 .student-profile-fieldset legend { padding: 0 5px; }
 .student-profile-tag-choice { position: relative; display: inline-flex; min-height: 36px; align-items: center; }
 .student-profile-tag-choice input { position: absolute; width: 1px; height: 1px; opacity: 0; }
