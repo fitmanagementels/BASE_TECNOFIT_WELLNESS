@@ -57,7 +57,7 @@ var CONFIG = Object.freeze({
       'id', 'aluno', 'perfil_pagamento', 'observacao', 'atualizado_em'
     ]),
     perfisAlunos: Object.freeze([
-      'id', 'aluno', 'professor_responsavel', 'perfil_pagamento',
+      'id', 'aluno', 'professor_responsavel', 'ultimos_professores', 'perfil_pagamento',
       'observacao_pagamento', 'etiquetas_publico', 'etiquetas_comerciais',
       'observacoes_gerais', 'atualizado_em'
     ]),

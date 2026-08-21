@@ -135,7 +135,7 @@ test('upsert de pagamento por ID é idempotente mesmo com a mesma solicitação 
 test('salva perfil completo por ID e preserva professor histórico', () => {
   const { gas, sheets } = setup();
   sheets.PERFIS_ALUNOS.values.push([
-    '42', 'ALUNA TESTE', 'Professor antigo', 'Sem histórico', '', '[]', '[]', '', ''
+    '42', 'ALUNA TESTE', 'Professor antigo', '[]', 'Sem histórico', '', '[]', '[]', '', ''
   ]);
 
   gas.salvarMutacoesDashboard({
@@ -144,6 +144,7 @@ test('salva perfil completo por ID e preserva professor histórico', () => {
       id: '42',
       aluno: 'ALUNA TESTE',
       professorResponsavel: 'Professor antigo',
+      ultimosProfessores: ['Aquiles'],
       perfilPagamento: 'Bom pagador',
       observacaoPagamento: 'Paga em dia',
       etiquetasPublico: ['idoso', 'saude'],
@@ -154,10 +155,11 @@ test('salva perfil completo por ID e preserva professor histórico', () => {
 
   const linha = sheets.PERFIS_ALUNOS.values.find(row => row[0] === '42');
   assert.equal(linha[2], 'Professor antigo');
-  assert.equal(linha[3], 'Bom pagador');
-  assert.equal(linha[5], '["idoso","saude"]');
-  assert.equal(linha[6], '["risco_de_churn"]');
-  assert.equal(linha[7], 'Prefere treinar cedo.');
+  assert.equal(linha[3], '["Aquiles"]');
+  assert.equal(linha[4], 'Bom pagador');
+  assert.equal(linha[6], '["idoso","saude"]');
+  assert.equal(linha[7], '["risco_de_churn"]');
+  assert.equal(linha[8], 'Prefere treinar cedo.');
 });
 
 test('primeiro salvamento de perfil cria a estrutura persistente ausente', () => {
@@ -166,7 +168,7 @@ test('primeiro salvamento de perfil cria a estrutura persistente ausente', () =>
   gas.salvarMutacoesDashboard({
     requestId: 'perfil-primeiro-salvamento',
     patches: [{ tipo: 'perfilAluno', valores: {
-      id: '42', aluno: 'ALUNA TESTE', professorResponsavel: 'Aquiles',
+      id: '42', aluno: 'ALUNA TESTE', professorResponsavel: 'Aquiles', ultimosProfessores: ['Aquiles'],
       perfilPagamento: 'Sem histórico', etiquetasPublico: ['idoso'], etiquetasComerciais: []
     } }]
   });
@@ -175,6 +177,7 @@ test('primeiro salvamento de perfil cria a estrutura persistente ausente', () =>
   assert.ok(sheets.CONFIG_PERFIS_ALUNOS);
   assert.equal(sheets.PERFIS_ALUNOS.values[1][0], '42');
   assert.equal(sheets.PERFIS_ALUNOS.values[1][2], 'Aquiles');
+  assert.equal(sheets.PERFIS_ALUNOS.values[1][3], '["Aquiles"]');
 });
 
 test('usa catálogo de cancelados e rejeita etiqueta no grupo errado sem gravar', () => {

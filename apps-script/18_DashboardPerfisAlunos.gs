@@ -18,9 +18,11 @@ var CATALOGO_PERFIS_ALUNOS_PADRAO = Object.freeze([
   Object.freeze(['etiqueta', 'publico', 'estetica', 'Estética', true, 30]),
   Object.freeze(['etiqueta', 'publico', 'dores', 'Dores', true, 40]),
   Object.freeze(['etiqueta', 'publico', 'corrida', 'Corrida', true, 50]),
+  Object.freeze(['etiqueta', 'publico', 'performance', 'Performance', true, 60]),
   Object.freeze(['etiqueta', 'comercial', 'risco_de_churn', 'Risco de Churn', true, 10]),
   Object.freeze(['etiqueta', 'comercial', 'sem_fidelizacao', 'Sem fidelização', true, 20]),
   Object.freeze(['etiqueta', 'comercial', 'elohim', 'Elohim', true, 30]),
+  Object.freeze(['etiqueta', 'comercial', 'coach', 'Coach', true, 40]),
   Object.freeze(['perfil_pagamento', 'global', 'sem_historico', 'Sem histórico', true, 10]),
   Object.freeze(['perfil_pagamento', 'global', 'bom_pagador', 'Bom pagador', true, 20]),
   Object.freeze(['perfil_pagamento', 'global', 'eventual_fora_prazo', 'Pagamento eventual fora do prazo', true, 30]),
@@ -39,8 +41,8 @@ function migrarGestaoPagamentosParaPerfisAlunos_(planilha, abaPerfis) {
   var migradas = linhas.filter(function (linha) {
     return String(linha[0] || '').trim();
   }).map(function (linha) {
-    return [
-      linha[0], linha[1], '', linha[2] || 'Sem histórico', linha[3] || '',
+  return [
+      linha[0], linha[1], '', '[]', linha[2] || 'Sem histórico', linha[3] || '',
       '[]', '[]', '', linha[4] || ''
     ];
   });
@@ -51,19 +53,73 @@ function migrarGestaoPagamentosParaPerfisAlunos_(planilha, abaPerfis) {
   }
 }
 
+var CABECALHOS_PERFIS_ALUNOS_LEGADO = Object.freeze([
+  'id', 'aluno', 'professor_responsavel', 'perfil_pagamento',
+  'observacao_pagamento', 'etiquetas_publico', 'etiquetas_comerciais',
+  'observacoes_gerais', 'atualizado_em'
+]);
+
+function cabecalhosIguaisPerfisAlunos_(recebidos, esperados) {
+  return esperados.every(function (cabecalho, indice) {
+    return String(recebidos[indice] || '') === cabecalho;
+  });
+}
+
+function migrarPerfisAlunosLegado_(aba) {
+  var ultimaLinha = aba.getLastRow();
+  if (ultimaLinha < 1) return;
+  var recebidos = aba.getRange(
+    1, 1, 1, CONFIG.cabecalhos.perfisAlunos.length
+  ).getValues()[0];
+  if (cabecalhosIguaisPerfisAlunos_(recebidos, CONFIG.cabecalhos.perfisAlunos)) return;
+  if (!cabecalhosIguaisPerfisAlunos_(recebidos, CABECALHOS_PERFIS_ALUNOS_LEGADO)) {
+    throw new Error('Estrutura de perfis de alunos incompatível.');
+  }
+  var antigas = aba.getRange(
+    1, 1, ultimaLinha, CABECALHOS_PERFIS_ALUNOS_LEGADO.length
+  ).getValues();
+  var migradas = antigas.map(function (linha, indice) {
+    if (indice === 0) return CONFIG.cabecalhos.perfisAlunos.slice();
+    return [linha[0], linha[1], linha[2], '[]'].concat(linha.slice(3));
+  });
+  aba.getRange(1, 1, migradas.length, CONFIG.cabecalhos.perfisAlunos.length)
+    .setValues(migradas);
+}
+
+function completarCatalogoPadraoPerfisAlunos_(aba) {
+  if (aba.getLastRow() < 2) return;
+  var existentes = aba.getRange(
+    2, 1, aba.getLastRow() - 1, CONFIG.cabecalhos.configPerfisAlunos.length
+  ).getValues().reduce(function (mapa, linha) {
+    mapa[[linha[0], linha[1], linha[2]].join('|')] = true;
+    return mapa;
+  }, Object.create(null));
+  var ausentes = CATALOGO_PERFIS_ALUNOS_PADRAO.filter(function (linha) {
+    return !existentes[[linha[0], linha[1], linha[2]].join('|')];
+  });
+  if (ausentes.length) {
+    aba.getRange(
+      aba.getLastRow() + 1, 1, ausentes.length, CONFIG.cabecalhos.configPerfisAlunos.length
+    ).setValues(ausentes);
+  }
+}
+
 function garantirPerfisAlunosNaPlanilha_(planilha) {
+  var abaExistente = planilha.getSheetByName(CONFIG.abas.perfisAlunos);
+  if (abaExistente) migrarPerfisAlunosLegado_(abaExistente);
   var perfis = garantirAbaConfiguracaoDashboard_(
     planilha,
     CONFIG.abas.perfisAlunos,
     CONFIG.cabecalhos.perfisAlunos,
     []
   );
-  garantirAbaConfiguracaoDashboard_(
+  var catalogo = garantirAbaConfiguracaoDashboard_(
     planilha,
     CONFIG.abas.configPerfisAlunos,
     CONFIG.cabecalhos.configPerfisAlunos,
     CATALOGO_PERFIS_ALUNOS_PADRAO
   );
+  completarCatalogoPadraoPerfisAlunos_(catalogo);
   migrarGestaoPagamentosParaPerfisAlunos_(planilha, perfis);
 }
 
@@ -75,14 +131,26 @@ function listaJsonPerfilAluno_(valor) {
 }
 
 function lerPerfisAlunosDashboard_(planilha) {
-  if (!planilha.getSheetByName(CONFIG.abas.perfisAlunos)) return [];
+  var aba = planilha.getSheetByName(CONFIG.abas.perfisAlunos);
+  if (!aba) return [];
+  var cabecalhos = CONFIG.cabecalhos.perfisAlunos;
+  if (aba.getLastRow() >= 1) {
+    var recebidos = aba.getRange(1, 1, 1, cabecalhos.length).getValues()[0];
+    if (!cabecalhosIguaisPerfisAlunos_(recebidos, cabecalhos)) {
+      if (!cabecalhosIguaisPerfisAlunos_(recebidos, CABECALHOS_PERFIS_ALUNOS_LEGADO)) {
+        throw new Error('Estrutura de perfis de alunos incompatível.');
+      }
+      cabecalhos = CABECALHOS_PERFIS_ALUNOS_LEGADO;
+    }
+  }
   return lerTabelaDashboardDaPlanilha_(
-    planilha, CONFIG.abas.perfisAlunos, CONFIG.cabecalhos.perfisAlunos
+    planilha, CONFIG.abas.perfisAlunos, cabecalhos
   ).map(function (linha) {
     return {
       id: String(linha.id || ''),
       aluno: String(linha.aluno || ''),
       professorResponsavel: String(linha.professor_responsavel || ''),
+      ultimosProfessores: listaJsonPerfilAluno_(linha.ultimos_professores),
       perfilPagamento: String(linha.perfil_pagamento || 'Sem histórico'),
       observacaoPagamento: String(linha.observacao_pagamento || ''),
       etiquetasPublico: listaJsonPerfilAluno_(linha.etiquetas_publico),
@@ -114,6 +182,14 @@ function lerCatalogoPerfisAlunosDashboard_(planilha) {
   } else {
     linhas = CATALOGO_PERFIS_ALUNOS_PADRAO;
   }
+  var chaves = Object.create(null);
+  linhas.forEach(function (linha) {
+    chaves[[linha.tipo || linha[0], linha.grupo || linha[1], linha.chave || linha[2]].join('|')] = true;
+  });
+  CATALOGO_PERFIS_ALUNOS_PADRAO.forEach(function (linha) {
+    var chave = [linha[0], linha[1], linha[2]].join('|');
+    if (!chaves[chave]) linhas.push(linha);
+  });
   return linhas.map(catalogoPerfilAlunoSeguro_).sort(function (a, b) {
     return a.tipo.localeCompare(b.tipo, 'pt-BR') ||
       a.grupo.localeCompare(b.grupo, 'pt-BR') || a.ordem - b.ordem ||
@@ -164,9 +240,16 @@ function atualizarLinhasPerfilAlunoMutacao_(linhas, valores, catalogo, alunos) {
   var grupoProfessor = grupoProfessorPerfilAluno_(alunoBase.status);
   var professores = titulosAtivosCatalogoPerfil_(catalogo, 'professor', grupoProfessor);
   var professorHistorico = anterior ? String(anterior[2] || '') : '';
-  if (professor && professores.indexOf(professor) === -1 && professor !== professorHistorico) {
+  var ultimosHistoricos = anterior ? listaJsonPerfilAluno_(anterior[3]) : [];
+  var professoresPermitidos = professores.concat(
+    professorHistorico ? [professorHistorico] : [], ultimosHistoricos
+  );
+  if (professor && professoresPermitidos.indexOf(professor) === -1) {
     throw new Error('Professor responsável inválido.');
   }
+  var ultimosProfessores = validarListaCatalogoPerfil_(
+    valores.ultimosProfessores || [], professoresPermitidos, 'Último professor'
+  );
 
   var perfilPagamento = textoMutacaoDashboard_(
     valores.perfilPagamento || 'Sem histórico', 100
@@ -190,6 +273,7 @@ function atualizarLinhasPerfilAlunoMutacao_(linhas, valores, catalogo, alunos) {
     id,
     aluno,
     professor,
+    JSON.stringify(ultimosProfessores),
     perfilPagamento,
     textoMutacaoDashboard_(valores.observacaoPagamento, 1000),
     JSON.stringify(etiquetasPublico),

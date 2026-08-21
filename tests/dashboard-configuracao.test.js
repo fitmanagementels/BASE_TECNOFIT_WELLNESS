@@ -102,15 +102,17 @@ test('migra pagamentos para perfis uma única vez sem alterar a aba legada', () 
   gas.garantirConfiguracoesDashboardNaPlanilha_(spreadsheet);
 
   assert.deepEqual(sheets.PERFIS_ALUNOS.values[0], [
-    'id', 'aluno', 'professor_responsavel', 'perfil_pagamento',
+    'id', 'aluno', 'professor_responsavel', 'ultimos_professores', 'perfil_pagamento',
     'observacao_pagamento', 'etiquetas_publico', 'etiquetas_comerciais',
     'observacoes_gerais', 'atualizado_em'
   ]);
-  assert.deepEqual(sheets.PERFIS_ALUNOS.values[1].slice(0, 5), [
-    '42', 'ALUNA TESTE', '', 'Bom pagador', 'Paga em dia'
+  assert.deepEqual(sheets.PERFIS_ALUNOS.values[1].slice(0, 6), [
+    '42', 'ALUNA TESTE', '', '[]', 'Bom pagador', 'Paga em dia'
   ]);
   assert.equal(sheets.PERFIS_ALUNOS.values.filter(row => row[0] === '42').length, 1);
   assert.equal(sheets.CONFIG_PERFIS_ALUNOS.values.some(row => row[2] === 'risco_de_churn'), true);
+  assert.equal(sheets.CONFIG_PERFIS_ALUNOS.values.some(row => row[2] === 'performance'), true);
+  assert.equal(sheets.CONFIG_PERFIS_ALUNOS.values.some(row => row[2] === 'coach'), true);
   assert.equal(sheets.GESTAO_PAGAMENTOS.values.length, 2);
 });
 
