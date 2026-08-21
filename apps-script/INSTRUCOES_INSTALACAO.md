@@ -26,12 +26,14 @@ No editor Apps Script, clique no botão **+** ao lado de Arquivos e escolha **Sc
 01_Normalizacao
 02_ParserHtml
 02_ParserXlsx
+03_Permanencia
 03_Transformacao
 04_PlanilhaRepositorio
 05_DriveRepositorio
 06_LogImportacoes
 07_ImportacaoService
 08_Main
+20_CargaInicialPermanencia
 ```
 
 Para cada nome, copie todo o conteúdo do arquivo correspondente desta pasta:
@@ -41,12 +43,14 @@ apps-script/00_Config.gs
 apps-script/01_Normalizacao.gs
 apps-script/02_ParserHtml.gs
 apps-script/02_ParserXlsx.gs
+apps-script/03_Permanencia.gs
 apps-script/03_Transformacao.gs
 apps-script/04_PlanilhaRepositorio.gs
 apps-script/05_DriveRepositorio.gs
 apps-script/06_LogImportacoes.gs
 apps-script/07_ImportacaoService.gs
 apps-script/08_Main.gs
+apps-script/20_CargaInicialPermanencia.gs
 ```
 
 A ordem visual dos arquivos no editor não altera a execução.
@@ -93,11 +97,16 @@ Somente a conta responsável pela atualização deve operar o painel nesta prime
 
 Antes de clicar no botão, confirme que `01_ENTRADA` contém somente:
 
+O padrão canônico do quarto arquivo é `permanencia_AAAA-MM-DD_rNN.xls` (ou `.xlsx`). Exemplo de lote:
+
 ```text
 vencimentos_2026_07_08_r01.xls ou vencimentos_2026_07_08_r01.xlsx
 fichas_2026_07_08_r01.xls ou fichas_2026_07_08_r01.xlsx
 avaliacao_fisica_2026_07_08_r01.xls ou avaliacao_fisica_2026_07_08_r01.xlsx
+permanencia_2026_07_08_r01.xls ou permanencia_2026_07_08_r01.xlsx
 ```
+
+Use sempre uma exportação completa, sem filtro de status, para permanência. Os quatro arquivos precisam ter a mesma data e revisão. Não edite células nas abas gerenciadas; aguarde os quatro uploads terminarem e clique em **Atualizar base** uma única vez.
 
 O backend também aceita hífens na data. Ele identifica o formato interno do arquivo: relatórios HTML de Excel continuam sendo lidos como `.xls` e arquivos Excel modernos são lidos como `.xlsx`, mesmo se o nome recebido estiver com a extensão trocada. Ao arquivar, a extensão será corrigida para refletir o formato real. Depois:
 
@@ -113,7 +122,7 @@ Resultado esperado para o primeiro lote:
 330 alunos
 339 contratos
 339 linhas de dados em VISAO_MESTRE
-3 registros SUCESSO em IMPORTACOES
+4 registros SUCESSO em IMPORTACOES
 ```
 
 Os arquivos serão renomeados com hífens e movidos para:
@@ -127,7 +136,9 @@ Os arquivos serão renomeados com hífens e movidos para:
 - `BASE_ALUNOS`: 330 linhas de dados e IDs únicos.
 - `CONTRATOS`: 339 linhas de dados.
 - `VISAO_MESTRE`: 339 linhas de dados e coluna M oculta.
-- `IMPORTACOES`: três linhas do lote com o mesmo `execucao_id` e status `SUCESSO`.
+- `IMPORTACOES`: quatro linhas do lote com o mesmo `execucao_id` e status `SUCESSO`.
+- `BASE_PERMANENCIA`: histórico acumulado de clientes, sem apagar ausentes de lotes posteriores.
+- `HISTORICO_PERMANENCIA`: eventos idempotentes de entrada, status, ausência e reaparecimento.
 - ID `2321`: três contratos com três chaves técnicas diferentes.
 - `01_ENTRADA`: vazia.
 
@@ -137,7 +148,7 @@ Os arquivos serão renomeados com hífens e movidos para:
 2. Consulte as linhas `ERRO` em `IMPORTACOES`.
 3. Não edite manualmente as abas gerenciadas.
 4. Corrija os relatórios na origem.
-5. Envie os três arquivos com revisão superior, como `r02`.
+5. Envie os quatro arquivos com revisão superior, como `r02`.
 6. Abra novamente o painel e execute a atualização.
 
 Quando o lote for reconhecido, mas algum dado for inválido, os arquivos serão movidos para `03_REJEITADOS/AAAA/AAAA-MM-DD`. A última base válida será restaurada.
@@ -228,13 +239,13 @@ No viewport móvel, confirme no inspetor que a tabela desktop e os contatos comp
 
 ## 14. Validação com exports autorizados
 
-Antes da publicação operacional, coloque temporariamente os três exports semanais autorizados — `vencimentos`, `fichas` e `avaliacao_fisica` — em `/tmp/tecnofit-validacao` e execute:
+Antes da publicação operacional, coloque temporariamente os quatro exports semanais autorizados — `vencimentos`, `fichas`, `avaliacao_fisica` e `permanencia` — em `/tmp/tecnofit-validacao` e execute:
 
 ```bash
 npm run validate:real -- --dir /tmp/tecnofit-validacao
 ```
 
-A validação deve terminar sem erros e não deve modificar a planilha mestre. Execute-a somente quando os três arquivos autorizados estiverem presentes. Por privacidade, não copie esses exports para o repositório, não registre no relatório nomes, contatos ou outras linhas de dados e apague a cópia temporária ao final. Se os três arquivos não estiverem disponíveis, registre a validação operacional como pendente; não substitua os dados reais por fixtures para declarar esse item concluído.
+A validação deve terminar sem erros e não deve modificar a planilha mestre. Execute-a somente quando os quatro arquivos autorizados estiverem presentes. Por privacidade, não copie esses exports para o repositório, não registre no relatório nomes, contatos ou outras linhas de dados e apague a cópia temporária ao final. Se os quatro arquivos não estiverem disponíveis, registre a validação operacional como pendente; não substitua os dados reais por fixtures para declarar esse item concluído.
 
 ## 15. Aplicar a página Fluxo
 

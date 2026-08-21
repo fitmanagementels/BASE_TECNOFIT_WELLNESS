@@ -135,6 +135,15 @@ test('executarImportacao delega ao backend', () => {
   );
 });
 
+test('painel orienta o lote de quatro relatórios incluindo permanência', () => {
+  const sidebar = fs.readFileSync('apps-script/Sidebar.html', 'utf8');
+  assert.match(sidebar, /quatro relatórios/i);
+  assert.equal((sidebar.match(/class="arquivo-esperado"/g) || []).length, 4);
+  for (const tipo of ['vencimentos', 'fichas', 'avaliacao_fisica', 'permanencia']) {
+    assert.match(sidebar, new RegExp(`${tipo}_AAAA-MM-DD_rNN\\.xls`));
+  }
+});
+
 test('preenche somente IDs pendentes em linhas manuais com conteúdo', () => {
   const { gas } = setup();
   const values = [
